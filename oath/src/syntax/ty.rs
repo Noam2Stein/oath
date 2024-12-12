@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Clone, Hash, Parse)]
+#[derive(Debug, Clone, Hash, Parse, Peek)]
 pub enum Type {
     Angles(InAngles<Box<Type>>),
     Path(Path),

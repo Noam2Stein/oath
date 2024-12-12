@@ -1,27 +1,14 @@
 use oath::{diagnostics::*, source::*, tokenization::TokenIterator};
 
 const SRC: &'static str = r#"
-    pub mod f {
-        pub func g() -> (int, dyn Int + Signed + !Goofy)
-
-        pub func g() pub
-    }
-    pub func hello(a: int, b: int) -> int {
-        a
-        var c = b
-        mut var d: uint
-
-        var e = {
-            b
-        }
-        (a, b, 2, "", { func })
+    pub func neg(value: int : != int::MIN) -> int {
     }
 
-    struct F {
-        f: int,
-        g: bool,
-        d: 5
-    }
+
+    pub func try_neg(value: int) -> Option<int>
+    where
+        if value == int::MIN { -> None } else { Some(_) }
+    { }
 "#;
 
 fn main() {
