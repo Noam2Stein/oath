@@ -1,0 +1,3 @@
+[workspace]
+
+members = [ "oath", "proc_macros", "sandbox" ]
