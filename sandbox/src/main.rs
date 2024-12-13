@@ -7,7 +7,7 @@ const SRC: &'static str = r#"
 
     pub func try_neg(value: int) -> Option<int>
     where
-        if value == int::MIN { -> None } else { Some(_) }
+        if value == int::MIN { -> None } else { -> Some(_) }
     { }
 "#;
 
