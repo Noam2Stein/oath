@@ -4,4 +4,5 @@ name    = "oath_sandbox"
 version = "0.1.0"
 
 [dependencies]
-oath = { path = "../oath" }
+crossterm = "0.28.1"
+oath      = { path = "../oath" }

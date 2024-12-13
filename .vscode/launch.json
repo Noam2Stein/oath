@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "extensionHost",
+      "request": "launch",
+      "name": "Oath Launch Client",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "${workspaceFolder}/editor_sandbox",
+        "--extensionDevelopmentPath=${workspaceFolder}/editor_client"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editor_client/out/**/*.js"
+      ],
+      "preLaunchTask": "Build All",
+    }
+  ]
+}

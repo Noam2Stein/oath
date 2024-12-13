@@ -1,0 +1,40 @@
+{
+  "name": "oath",
+  "description": "Oath language support for VScode",
+  "author": "Noam Stein",
+  "license": "MIT",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Noam2Stein/oath"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.96.0",
+    "typescript": "^5.7.2"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "oath",
+        "aliases": [
+          "Oath"
+        ],
+        "extensions": [
+          ".oath"
+        ],
+        "configuration": "language-configuration.json"
+      }
+    ]
+  }
+}

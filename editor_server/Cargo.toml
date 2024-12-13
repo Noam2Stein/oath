@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name    = "oath_editor_server"
+version = "0.1.0"
+
+[dependencies]
+serde      = "1.0"
+serde_json = "1.0"
+tokio      = { version = "1", features = [ "full" ] }
+tower-lsp  = "0.17.0"
