@@ -24,6 +24,10 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "changeeee!")
+            .await;
+
         // Get the document URI and content changes
         let uri = params.text_document.uri.to_string();
         let changes = params.content_changes;

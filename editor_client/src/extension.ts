@@ -10,12 +10,10 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  // Get the path to the compiled Rust binary
-  const serverModule = context.asAbsolutePath(
-    path.join("target", "oath_editor_server", "debug", "oath_editor_server")  // Adjust to your target/release folder
-  );
+  console.log("ACTIVATED");
 
-  // If the extension is launched in debug mode, use the debug server options
+  const serverModule = path.join("c:", "GitHub", "oath", "target", "debug", "oath_editor_server.exe");
+
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
     debug: {
@@ -24,7 +22,6 @@ export function activate(context: ExtensionContext) {
     },
   };
 
-  // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "oath" }],
     synchronize: {
