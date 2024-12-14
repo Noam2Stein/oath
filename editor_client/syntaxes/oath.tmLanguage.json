@@ -1,0 +1,60 @@
+{
+	"name": "oath",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#idents"
+		}
+	],
+	"repository": {
+		"idents": {
+			"patterns": [
+				{
+					"name": "entity.name.function.oath",		
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b\\s*\\(\\)"
+				},
+				{
+					"name": "entity.name.type.oath",
+					"match": "\\b([a-z_][a-zA-Z0-9]*)\\b"
+				},
+				{
+					"name": "entity.name.tag.oath",
+					"match": "\\b([A-Z_][a-zA-Z0-9]*)\\b\\s*"
+				},
+				{
+					"name": "entity.name.type.oath",
+					"match": "\\b([A-Z_][A-Z0-9_]*)\\b\\s*"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.oath",
+					"match": "\\b(if|else|match|loop|while|for|in|return|break|continue|panic|try)\\b"
+				},
+				{
+					"name": "keyword.other.oath",
+					"match": "\\b(mod|use|fn|type|alias|var|mut|pub|incl|excl|partial|struct|union|untagged|trait)\\b"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.oath",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.oath",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.oath"
+}

@@ -1,19 +1,18 @@
+// A launch configuration that launches the extension inside a new window
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "extensionHost",
-      "request": "launch",
-      "name": "Oath Launch Client",
-      "runtimeExecutable": "${execPath}",
-      "args": [
-        "${workspaceFolder}/editor_sandbox",
-        "--extensionDevelopmentPath=${workspaceFolder}/editor_client"
-      ],
-      "outFiles": [
-        "${workspaceFolder}/editor_client/out/**/*.js"
-      ],
-      "preLaunchTask": "Build All",
-    }
-  ]
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"${workspaceFolder}/editor_sandbox",
+				"--extensionDevelopmentPath=${workspaceFolder}/editor_client"
+			]
+		}
+	]
 }
