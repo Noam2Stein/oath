@@ -2,6 +2,21 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "npm install",
+      "type": "npm",
+      "script": "install",
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/vscode-extension"
+      }
+    },
+    {
+      "label": "npm compile",
       "type": "npm",
       "script": "compile",
       "group": "build",
@@ -17,6 +32,7 @@
       }
     },
     {
+      "label": "npm watch",
       "type": "npm",
       "script": "watch",
       "isBackground": true,
@@ -34,6 +50,32 @@
       "options": {
         "cwd": "${workspaceFolder}/vscode-extension"
       }
+    },
+    {
+      "label": "Cargo Build",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "build",
+        "--release"
+      ],
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/editor-server"
+      }
+    },
+    {
+      "label": "Build All",
+      "dependsOn": [
+        "npm install",
+        "Cargo Build"
+      ],
+      "group": "build"
     }
   ]
 }
