@@ -1,3 +1,0 @@
-[workspace]
-
-members = [ "editor_server", "oath", "proc_macros", "sandbox" ]

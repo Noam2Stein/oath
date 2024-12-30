@@ -1,9 +1,0 @@
-[package]
-edition = "2021"
-name    = "oath"
-version = "0.1.0"
-
-[dependencies]
-derivative       = "2.2.0"
-logos            = "0.14.2"
-oath_proc_macros = { path = "../proc_macros" }

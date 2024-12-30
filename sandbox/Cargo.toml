@@ -1,8 +1,0 @@
-[package]
-edition = "2021"
-name    = "oath_sandbox"
-version = "0.1.0"
-
-[dependencies]
-crossterm = "0.28.1"
-oath      = { path = "../oath" }
