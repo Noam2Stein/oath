@@ -1,8 +1,0 @@
-[package]
-edition = "2021"
-name    = "editor-server"
-version = "0.1.0"
-
-[dependencies]
-tokio     = { version = "1.42.0", features = [ "full" ] }
-tower-lsp = "0.20.0"

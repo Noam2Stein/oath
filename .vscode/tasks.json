@@ -1,81 +1,39 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "npm install",
-      "type": "npm",
-      "script": "install",
-      "group": "build",
-      "presentation": {
-        "panel": "dedicated",
-        "reveal": "always"
-      },
-      "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/vscode-extension"
-      }
-    },
-    {
-      "label": "npm compile",
-      "type": "npm",
-      "script": "compile",
-      "group": "build",
-      "presentation": {
-        "panel": "dedicated",
-        "reveal": "never"
-      },
-      "problemMatcher": [
-        "$tsc"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}/vscode-extension"
-      }
-    },
-    {
-      "label": "npm watch",
-      "type": "npm",
-      "script": "watch",
-      "isBackground": true,
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "panel": "dedicated",
-        "reveal": "never"
-      },
-      "problemMatcher": [
-        "$tsc-watch"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}/vscode-extension"
-      }
-    },
-    {
-      "label": "Cargo Build",
-      "type": "shell",
-      "command": "cargo",
-      "args": [
-        "build",
-        "--release"
-      ],
-      "group": "build",
-      "problemMatcher": [],
-      "presentation": {
-        "panel": "dedicated",
-        "reveal": "always"
-      },
-      "options": {
-        "cwd": "${workspaceFolder}/editor-server"
-      }
-    },
-    {
-      "label": "Build All",
-      "dependsOn": [
-        "npm install",
-        "Cargo Build"
-      ],
-      "group": "build"
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm: install",
+            "type": "shell",
+            "command": "npm install",
+            "group": "build",
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/vscode-extension"
+            }
+        },
+        {
+            "label": "npm: start",
+            "type": "shell",
+            "command": "npm run start",
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/vscode-extension"
+            }
+        },
+        {
+            "label": "all",
+            "dependsOn": [
+                "npm: install",
+                "npm: start"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
 }

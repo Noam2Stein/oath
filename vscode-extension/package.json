@@ -1,17 +1,14 @@
 {
   "name": "oath",
-  "description": "VSCode Oath language support",
-  "author": "Noam Stein",
-  "license": "MIT",
-  "version": "1.0.0",
-  "categories": [],
+  "displayName": "Oath",
+  "description": "Oath language support for VSCode",
+  "version": "0.0.1",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.96.0"
   },
-  "activationEvents": [
-    "onLanguage"
+  "categories": [
+    "Programming Languages"
   ],
-  "main": "./client/out/extension",
   "contributes": {
     "languages": [
       {
@@ -27,14 +24,23 @@
         "scopeName": "source.oath",
         "path": "./syntaxes/oath.tmLanguage.json"
       }
-    ],
-    "configuration": {}
+    ]
   },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "scripts": {
-  "postinstall": "cd ./client && npm install && cd ../../editor-server && cargo build --release && cd .."
-},
+    "start": "tsc",
+    "prelaunch": "npm run start",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "vscode": "^1.1.0",
+    "typescript": "^4.4.3"
+  },
   "devDependencies": {
-    "@types/node": "^20.5.7",
-    "typescript": "^5.2.2"
+    "tslint": "^6.1.0",
+    "tslint-config-standard": "^6.0.1"
   }
 }
