@@ -2,7 +2,17 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "npm: install",
+            "label": "cargo build",
+            "type": "shell",
+            "command": "cargo build -p editor-server",
+            "group": "build",
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "npm install",
             "type": "shell",
             "command": "npm install",
             "group": "build",
@@ -15,7 +25,7 @@
             }
         },
         {
-            "label": "npm: start",
+            "label": "npm run start",
             "type": "shell",
             "command": "npm run start",
             "group": "build",
@@ -27,8 +37,9 @@
         {
             "label": "all",
             "dependsOn": [
-                "npm: install",
-                "npm: start"
+                "cargo build",
+                "npm install",
+                "npm run start"
             ],
             "group": {
                 "kind": "build",
