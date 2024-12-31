@@ -1,3 +1,3 @@
 [workspace]
 
-members = [ "editor-server" ]
+members = [ "compiler/oath_numbers", "compiler/oath_src", "compiler/oath_tokenizer", "editor-server" ]
