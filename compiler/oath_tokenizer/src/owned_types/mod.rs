@@ -1,5 +1,6 @@
 mod char_literal;
 mod delimiters;
+mod file;
 mod float_literal;
 mod group;
 mod ident;
@@ -11,6 +12,7 @@ mod string_literal;
 mod token_tree;
 pub use char_literal::*;
 pub use delimiters::*;
+pub use file::*;
 pub use float_literal::*;
 pub use group::*;
 pub use ident::*;

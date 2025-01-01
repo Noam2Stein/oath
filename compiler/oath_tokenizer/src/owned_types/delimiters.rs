@@ -2,6 +2,8 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_src::{Span, Spanned};
 
+use crate::Seal;
+
 macro_rules! declare_delimiters {
     ($($delim_ident:ident, )*) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -22,7 +24,6 @@ macro_rules! declare_delimiters {
             fn open_span(self) -> Span;
             fn close_span(self) -> Span;
         }
-        trait Seal {}
 
         impl DelimitersType for Delimiters {
             #[inline(always)]

@@ -1,6 +1,8 @@
 use oath_src::{Span, Spanned};
 
-use super::{LiteralType, LiteralTypeSeal};
+use crate::Seal;
+
+use super::LiteralType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CharLiteral {
@@ -9,7 +11,7 @@ pub struct CharLiteral {
 }
 
 impl LiteralType for CharLiteral {}
-impl LiteralTypeSeal for CharLiteral {}
+impl Seal for CharLiteral {}
 impl Spanned for CharLiteral {
     #[inline(always)]
     fn span(&self) -> Span {

@@ -2,6 +2,8 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_src::{Span, Spanned};
 
+use crate::Seal;
+
 macro_rules! declare_keywords {
     ($($keyword:ident($keyword_variant:ident $keyword_type:ident), )*) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +28,6 @@ macro_rules! declare_keywords {
 
         #[allow(private_bounds)]
         pub trait KeywordType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned {}
-        trait Seal {}
 
         impl KeywordType for Keyword {}
         impl Seal for Keyword {}

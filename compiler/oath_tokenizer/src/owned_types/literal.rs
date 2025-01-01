@@ -2,6 +2,8 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_src::{Span, Spanned};
 
+use crate::Seal;
+
 use super::{CharLiteral, FloatLiteral, IntLiteral, StringLiteral};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -13,14 +15,10 @@ pub enum Literal {
 }
 
 #[allow(private_bounds)]
-pub trait LiteralType:
-    LiteralTypeSeal + Send + Sync + Debug + Clone + Eq + Ord + Hash + Spanned
-{
-}
-pub(crate) trait LiteralTypeSeal {}
+pub trait LiteralType: Seal + Send + Sync + Debug + Clone + Eq + Ord + Hash + Spanned {}
 
 impl LiteralType for Literal {}
-impl LiteralTypeSeal for Literal {}
+impl Seal for Literal {}
 impl Spanned for Literal {
     fn span(&self) -> Span {
         match self {

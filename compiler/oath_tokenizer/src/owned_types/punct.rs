@@ -2,6 +2,8 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_src::{Span, Spanned};
 
+use crate::Seal;
+
 macro_rules! declare_puncts {
     ($($punct:literal($punct_variant:ident $punct_type:ident), )*) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +28,6 @@ macro_rules! declare_puncts {
 
         #[allow(private_bounds)]
         pub trait PunctType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned {}
-        trait Seal {}
 
         impl PunctType for Punct {}
         impl Seal for Punct {}
