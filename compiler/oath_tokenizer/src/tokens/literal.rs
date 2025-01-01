@@ -4,14 +4,14 @@ use oath_src::{Span, Spanned};
 
 use crate::Seal;
 
-use super::{CharLiteral, FloatLiteral, IntLiteral, StringLiteral};
+use super::{CharLiteral, FloatLiteral, IntLiteral, StrLiteral};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Char(CharLiteral),
     Float(FloatLiteral),
     Int(IntLiteral),
-    String(StringLiteral),
+    Str(StrLiteral),
 }
 
 #[allow(private_bounds)]
@@ -25,7 +25,7 @@ impl Spanned for Literal {
             Self::Char(lit) => lit.span(),
             Self::Float(lit) => lit.span(),
             Self::Int(lit) => lit.span(),
-            Self::String(lit) => lit.span(),
+            Self::Str(lit) => lit.span(),
         }
     }
 }

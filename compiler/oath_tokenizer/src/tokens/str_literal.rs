@@ -5,21 +5,21 @@ use crate::Seal;
 use super::LiteralType;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StringLiteral {
+pub struct StrLiteral {
     str: String,
     span: Span,
 }
 
-impl LiteralType for StringLiteral {}
-impl Seal for StringLiteral {}
-impl Spanned for StringLiteral {
+impl LiteralType for StrLiteral {}
+impl Seal for StrLiteral {}
+impl Spanned for StrLiteral {
     #[inline(always)]
     fn span(&self) -> Span {
         self.span
     }
 }
 
-impl StringLiteral {
+impl StrLiteral {
     #[inline(always)]
     pub fn new(str: String, span: Span) -> Self {
         Self { str, span }
