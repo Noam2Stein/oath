@@ -1,24 +1,18 @@
 mod error;
+use std::sync::Mutex;
+
 pub use error::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct Diagnostics {
     pub errors: Vec<Error>,
 }
-impl Diagnostics {
-    #[inline(always)]
-    pub fn handle(&mut self) -> DiagnosticsHandle {
-        DiagnosticsHandle { diagnostics: self }
-    }
-}
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DiagnosticsHandle<'d> {
-    diagnostics: &'d mut Diagnostics,
-}
+#[derive(Debug, Clone, Copy)]
+pub struct DiagnosticsHandle<'d>(pub &'d Mutex<Diagnostics>);
 impl<'d> DiagnosticsHandle<'d> {
     #[inline(always)]
-    pub fn push_error(&mut self, error: Error) {
-        self.diagnostics.errors.push(error);
+    pub fn push_error(self, error: Error) {
+        self.0.lock().unwrap().errors.push(error);
     }
 }

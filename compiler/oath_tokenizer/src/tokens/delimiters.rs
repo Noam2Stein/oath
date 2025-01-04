@@ -48,6 +48,7 @@ macro_rules! declare_delimiters {
         }
 
         $(
+            impl Seal for $delim_ident {}
             impl DelimitersType for $delim_ident {
                 #[inline(always)]
                 fn open_span(self) -> SpanLengthed<1> {
@@ -64,7 +65,6 @@ macro_rules! declare_delimiters {
                     self.open_span().unlined().connect(self.close_span().unlined())
                 }
             }
-            impl Seal for $delim_ident {}
             impl $delim_ident {
                 #[inline(always)]
                 pub fn new(open_span: SpanLengthed<1>, close_span: SpanLengthed<1>) -> Self {

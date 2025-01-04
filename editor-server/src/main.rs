@@ -1,5 +1,7 @@
+use std::sync::Mutex;
+
 use oath_ast::TokenFileParseAstExt;
-use oath_diagnostics::Diagnostics;
+use oath_diagnostics::{Diagnostics, DiagnosticsHandle};
 use oath_src::{Spanned, SrcFile};
 use oath_tokenizer::{Keyword, SrcFileTokenizeExt};
 use tower_lsp::jsonrpc::Result;
@@ -54,12 +56,14 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let mut diagnostics = Diagnostics::default();
-        let mut diagnostics_handle = diagnostics.handle();
+        let diagnostics = Mutex::new(Diagnostics::default());
+        let diagnostics_handle = DiagnosticsHandle(&diagnostics);
 
         let _ = SrcFile::from_str(&params.text_document.text)
-            .tokenize(&mut diagnostics_handle)
-            .parse_ast(&mut diagnostics_handle);
+            .tokenize(diagnostics_handle)
+            .parse_ast(diagnostics_handle);
+
+        let diagnostics = diagnostics.into_inner().unwrap();
 
         self.client
             .publish_diagnostics(

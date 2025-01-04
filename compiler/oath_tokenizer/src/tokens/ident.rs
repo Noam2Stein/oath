@@ -1,26 +1,26 @@
-use oath_src::{Span, Spanned};
+use oath_src::{Span, SpanLined, Spanned};
 
 use super::Keyword;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident {
     str: String,
-    span: Span,
+    span: SpanLined,
 }
 impl Spanned for Ident {
     fn span(&self) -> Span {
-        self.span
+        self.span.unlined()
     }
 }
 impl Ident {
-    pub fn new(str: String, span: Span) -> Option<Self> {
+    pub fn new(str: String, span: SpanLined) -> Option<Self> {
         if Keyword::is_keyword(&str) {
             None
         } else {
             Some(Self { str, span })
         }
     }
-    pub fn new_adjusted(str: String, span: Span) -> Self {
+    pub fn new_adjusted(str: String, span: SpanLined) -> Self {
         if Keyword::is_keyword(&str) {
             Self {
                 str: format!("@{str}"),
@@ -31,14 +31,17 @@ impl Ident {
         }
     }
     #[inline(always)]
-    pub unsafe fn new_unchecked(str: String, span: Span) -> Self {
+    pub unsafe fn new_unchecked(str: String, span: SpanLined) -> Self {
         Self { str, span }
     }
-    pub fn new_or_keyword(str: String, span: Span) -> Result<Self, Keyword> {
+    pub fn new_or_keyword(str: &str, span: SpanLined) -> Result<Self, Keyword> {
         if let Some(keyword) = Keyword::from_str(&str, span) {
             Err(keyword)
         } else {
-            Ok(Self { str, span })
+            Ok(Self {
+                str: str.to_string(),
+                span,
+            })
         }
     }
 
