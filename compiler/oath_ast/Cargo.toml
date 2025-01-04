@@ -1,0 +1,9 @@
+[package]
+edition = "2021"
+name    = "oath_ast"
+version = "0.1.0"
+
+[dependencies]
+oath_diagnostics = { path = "../oath_diagnostics" }
+oath_parser      = { path = "../oath_parser" }
+oath_tokenizer   = { path = "../oath_tokenizer" }

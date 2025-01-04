@@ -1,6 +1,13 @@
+use oath_ast::TokenFileParseAstExt;
+use oath_diagnostics::Diagnostics;
+use oath_src::{Spanned, SrcFile};
+use oath_tokenizer::{Keyword, SrcFileTokenizeExt};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+
+mod span_range;
+use span_range::*;
 
 #[derive(Debug)]
 struct Backend {
@@ -31,10 +38,12 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        Ok(Some(CompletionResponse::Array(vec![
-            CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
-            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
-        ])))
+        Ok(Some(CompletionResponse::Array(
+            Keyword::KEYWORDS
+                .into_iter()
+                .map(|keyword| CompletionItem::new_simple(keyword.to_string(), String::new()))
+                .collect(),
+        )))
     }
 
     async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
@@ -42,6 +51,29 @@ impl LanguageServer for Backend {
             contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
             range: None,
         }))
+    }
+
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        let mut diagnostics = Diagnostics::default();
+        let mut diagnostics_handle = diagnostics.handle();
+
+        let _ = SrcFile::from_str(&params.text_document.text)
+            .tokenize(&mut diagnostics_handle)
+            .parse_ast(&mut diagnostics_handle);
+
+        self.client
+            .publish_diagnostics(
+                params.text_document.uri,
+                diagnostics
+                    .errors
+                    .into_iter()
+                    .map(|error| {
+                        Diagnostic::new_simple(span_to_range(error.span()), error.to_string())
+                    })
+                    .collect(),
+                Some(params.text_document.version),
+            )
+            .await;
     }
 }
 

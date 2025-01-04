@@ -1,11 +1,11 @@
 use std::{fmt::Debug, hash::Hash};
 
-use oath_src::{Span, Spanned};
+use oath_src::{Span, SpanLengthed, Spanned};
 
 use crate::Seal;
 
 macro_rules! declare_keywords {
-    ($($keyword:ident($keyword_variant:ident $keyword_type:ident), )*) => {
+    ($($keyword:ident($keyword_len:literal $keyword_variant:ident $keyword_type:ident), )*) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum Keyword {$(
             $keyword_variant($keyword_type),
@@ -13,11 +13,11 @@ macro_rules! declare_keywords {
 
         $(
             #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub struct $keyword_type(pub Span);
+            pub struct $keyword_type(pub SpanLengthed<$keyword_len>);
         )*
 
         #[macro_export]
-        macro_rules! Keyword {$(
+        macro_rules! keyword {$(
             ($keyword) => {
                 $crate::$keyword_type
             };
@@ -54,7 +54,7 @@ macro_rules! declare_keywords {
             pub fn from_str(s: &str, span: Span) -> Option<Self> {
                 match s {
                     $(
-                        stringify!($keyword) => Some(Self::$keyword_variant($keyword_type(span))),
+                        stringify!($keyword) => span.lengthed().map(|span| Self::$keyword_variant($keyword_type(span))),
                     )*
                     _ => None,
                 }
@@ -67,51 +67,53 @@ macro_rules! declare_keywords {
             impl Spanned for $keyword_type {
                 #[inline(always)]
                 fn span(&self) -> Span {
-                    self.0
+                    self.0.unlined()
                 }
             }
         )*
     };
 }
 declare_keywords!(
-    mod(Mod ModKeyword),
-    pub(Pub PubKeyword),
-    use(Use UseKeyword),
-    package(Package PackageKeyword),
-    super(Super SuperKeyword),
-    trait(Trait TraitKeyword),
-    value(Value ValueKeyword),
-    type(Type TypeKeyword),
-    struct(Struct StructKeyword),
-    union(Union UnionKeyword),
-    untagged(Untagged UntaggedKeyword),
-    fn(Fn FnKeyword),
-    alias(Alias AliasKeyword),
-    impl(Impl ImplKeyword),
-    with(With WithKeyword),
-    where(Where WhereKeyword),
-    static(Static StaticKeyword),
-    const(Const ConstKeyword),
-    async(Async AsyncKeyword),
-    unsafe(Unsafe UnsafeKeyword),
-    safe(Safe SafeKeyword),
-    mem(Mem MemKeyword),
-    panic(Panic PanicKeyword),
-    dlock(DLock DLockKeyword),
-    con(Con ConKeyword),
-    raw(Raw RawKeyword),
-    var(Var VarKeyword),
-    mut(Mut MutKeyword),
-    smut(Smut SmutKeyword),
-    excl(Excl ExclKeyword),
-    if(If IfKeyword),
-    else(Else ElseKeyword),
-    match(Match MatchKeyword),
-    loop(Loop LoopKeyword),
-    while(While WhileKeyword),
-    for(For ForKeyword),
-    in(In InKeyword),
-    break(Break BreakKeyword),
-    continue(Continue ContinueKeyword),
-    return(Return ReturnKeyword),
+    mod(3 Mod ModKeyword),
+    pub(3 Pub PubKeyword),
+    use(3 Use UseKeyword),
+    package(7 Package PackageKeyword),
+    super(5 Super SuperKeyword),
+    trait(5 Trait TraitKeyword),
+    value(5 Value ValueKeyword),
+    type(4 Type TypeKeyword),
+    struct(6 Struct StructKeyword),
+    union(5 Union UnionKeyword),
+    untagged(8 Untagged UntaggedKeyword),
+    fn(2 Fn FnKeyword),
+    alias(5 Alias AliasKeyword),
+    impl(4 Impl ImplKeyword),
+    with(4 With WithKeyword),
+    requires(8 Requires RequiresKeyword),
+    promises(8 Promises PromisesKeyword),
+    may(3 May MayKeyword),
+    will(4 Will WillKeyword),
+    wont(4 Wont WontKeyword),
+    static(6 Static StaticKeyword),
+    const(5 Const ConstKeyword),
+    async(5 Async AsyncKeyword),
+    mem(3 Mem MemKeyword),
+    panic(5 Panic PanicKeyword),
+    dlock(5 DLock DLockKeyword),
+    con(3 Con ConKeyword),
+    raw(3 Raw RawKeyword),
+    var(3 Var VarKeyword),
+    mut(3 Mut MutKeyword),
+    smut(4 Smut SmutKeyword),
+    excl(4 Excl ExclKeyword),
+    if(2 If IfKeyword),
+    else(4 Else ElseKeyword),
+    match(5 Match MatchKeyword),
+    loop(4 Loop LoopKeyword),
+    while(5 While WhileKeyword),
+    for(3 For ForKeyword),
+    in(2 In InKeyword),
+    break(5 Break BreakKeyword),
+    continue(8 Continue ContinueKeyword),
+    return(6 Return ReturnKeyword),
 );

@@ -1,3 +1,8 @@
 [workspace]
 
-members = [ "compiler/oath_numbers", "compiler/oath_src", "compiler/oath_tokenizer", "editor-server" ]
+members = [ "compiler/oath_ast",
+    "compiler/oath_diagnostics", "compiler/oath_parser", "compiler/oath_parser_macros",
+    "compiler/oath_src",
+    "compiler/oath_tokenizer",
+    "editor-server",
+]

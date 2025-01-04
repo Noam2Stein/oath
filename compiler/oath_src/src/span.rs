@@ -1,44 +1,53 @@
+use crate::{Position, SpanLengthed, SpanLined};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
-    start: usize,
-    end: usize,
-}
-
-pub trait Spanned {
-    fn span(&self) -> Span;
+    start: Position,
+    end: Position,
 }
 
 impl Span {
     #[inline(always)]
-    pub fn from_start_end(start: usize, end: usize) -> Self {
+    pub fn from_start_end(start: Position, end: Position) -> Self {
         Self { start, end }
-    }
-    #[inline(always)]
-    pub fn from_start_len(start: usize, len: usize) -> Self {
-        Self {
-            start,
-            end: start + len,
-        }
-    }
-    #[inline(always)]
-    pub fn from_end_len(end: usize, len: usize) -> Self {
-        Self {
-            start: end - len,
-            end,
-        }
     }
 
     #[inline(always)]
-    pub fn start(self) -> usize {
+    pub fn start(self) -> Position {
         self.start
     }
     #[inline(always)]
-    pub fn end(self) -> usize {
+    pub fn end(self) -> Position {
         self.end
     }
+
     #[inline(always)]
-    pub fn len(self) -> usize {
-        self.end - self.start
+    pub fn lined(self) -> Option<SpanLined> {
+        if self.start.line == self.end.line {
+            Some(SpanLined::from_start_len(
+                self.start,
+                self.end.char - self.start.char,
+            ))
+        } else {
+            None
+        }
+    }
+    #[inline(always)]
+    pub fn len(self) -> Option<u32> {
+        self.lined().map(SpanLined::len)
+    }
+    #[inline(always)]
+    pub fn line(self) -> Option<u32> {
+        self.lined().map(SpanLined::line)
+    }
+
+    #[inline(always)]
+    pub fn lengthed<const N: u32>(self) -> Option<SpanLengthed<N>> {
+        if self.start.line == self.end.line && self.end.char - self.start.char == N {
+            Some(SpanLengthed::from_start(self.start))
+        } else {
+            None
+        }
     }
 
     #[inline(always)]

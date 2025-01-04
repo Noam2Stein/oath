@@ -4,4 +4,6 @@ name    = "oath_tokenizer"
 version = "0.1.0"
 
 [dependencies]
-oath_src = { path = "../oath_src" }
+logos            = "0.15.0"
+oath_diagnostics = { path = "../oath_diagnostics" }
+oath_src         = { path = "../oath_src" }
