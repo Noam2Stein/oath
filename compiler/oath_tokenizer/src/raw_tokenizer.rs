@@ -100,17 +100,25 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                 };
 
                 Some({
-                    with_puncts!($(punct punct_len punct_variant punct_type): match next {
-                        LogosToken::IdentOrKeyword(str) => {
-                            match Ident::new_or_keyword(str, span.lined().unwrap()) {
-                                Ok(ident) => RawToken::Ident(ident),
-                                Err(keyword) => RawToken::Keyword(keyword),
+                    macro_rules! use_puncts {
+                        ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
+                            match next {
+                                LogosToken::IdentOrKeyword(str) => {
+                                    match Ident::new_or_keyword(str, span.lined().unwrap()) {
+                                        Ok(ident) => RawToken::Ident(ident),
+                                        Err(keyword) => RawToken::Keyword(keyword),
+                                    }
                                 },
                                 $(
-
+                                    LogosToken::$punct_type => {
+                                        RawToken::Punct(Punct::$punct_variant(crate::$punct_type(span.lengthed().unwrap())))
+                                    },
                                 )*
+                                LogosToken::
                             }
-                    })
+                        };
+                    }
+                    with_puncts!(use_puncts)
                 })
             } else {
                 None
@@ -125,24 +133,30 @@ impl<'src, 'd> RawTokenizer<'src, 'd> {
     }
 }
 
-with_puncts!($(punct punct_len punct_variant punct_type):
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
-    #[logos(extras = (usize, usize))]
-    enum LogosToken<'src> {
-        IdentOrKeyword(&'src str),
-        $(
-            #[token($punct)]
-            $punct_type,
-        )*
-        Literal(&'src str),
-        ParenOpen,
-        ParenClose,
-        BracketOpen,
-        BracketClose,
-        BraceOpen,
-        BraceClose,
+macro_rules! use_puncts {
+    ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
+        #[logos(extras = (usize, usize))]
+        enum LogosToken<'src> {
+            IdentOrKeyword(&'src str),
+            $(
+                #[token($punct)]
+                $punct_type,
+            )*
+            IntLiteral(&'src str),
+            FloatLiteral(&'src str),
+            StringLiteral(&'src str),
+            CharLiteral(&'src str),
+            ParenOpen,
+            ParenClose,
+            BracketOpen,
+            BracketClose,
+            BraceOpen,
+            BraceClose,
+        }
     }
-);
+}
+with_puncts!(use_puncts);
 
 fn index_to_pos(str: &str, index: usize) -> Position {
     let mut line = 0;

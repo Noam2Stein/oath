@@ -9,13 +9,8 @@ trait Seal {}
 
 #[macro_export(local_inner_macros)]
 macro_rules! with_keywords {
-    ($dollar:tt($keyword:ident $keyword_len:ident $keyword_variant:ident $keyword_type:ident): $($tt:tt)*) => {
-        macro_rules! $keyword {
-            ($dollar($dollar$keyword:ident($dollar$keyword_len:literal $dollar$keyword_variant:ident $dollar$keyword_type:ident), )*) => {
-                $($tt)*
-            }
-        }
-        $keyword!(
+    ($macro_ident:ident) => {
+        $macro_ident!(
             mod(3 Mod ModKeyword),
             pub(3 Pub PubKeyword),
             use(3 Use UseKeyword),
@@ -64,13 +59,8 @@ macro_rules! with_keywords {
 
 #[macro_export(local_inner_macros)]
 macro_rules! with_puncts {
-    ($dollar:tt($punct:ident $punct_len:ident $punct_variant:ident $punct_type:ident): $($tt:tt)*) => {
-        macro_rules! $punct {
-            ($dollar($dollar$punct:literal($dollar$punct_len:literal $dollar$punct_variant:ident $dollar$punct_type:ident), )*) => {
-                $($tt)*
-            }
-        }
-        $punct!(
+    ($macro_ident:ident) => {
+        $macro_ident! {
             ">>="(3 ShiftRAssign ShiftRAssignPunct),
             "<<="(3 ShiftLAssign ShiftLAssignPunct),
             "..."(3 DotDotDot DotDotDotPunct),
@@ -110,6 +100,6 @@ macro_rules! with_puncts {
             ":"(1 Colon ColonPunct),
             "."(1 Dot DotPunct),
             "`"(1 Backtick BacktickPunct),
-        );
+        }
     };
 }

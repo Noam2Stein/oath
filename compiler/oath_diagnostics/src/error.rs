@@ -11,8 +11,7 @@ pub enum Error {
     UnopenedParen(SpanLengthed<1>),
     UnopenedBracket(SpanLengthed<1>),
     UnopenedBrace(SpanLengthed<1>),
-    Expected(Span, &'static str),
-    ExpectedFound(Span, &'static str, &'static str),
+    StaticMessage(Span, &'static str),
 }
 impl Spanned for Error {
     fn span(&self) -> Span {
@@ -24,8 +23,7 @@ impl Spanned for Error {
             Self::UnopenedParen(span) => span.unlined(),
             Self::UnopenedBracket(span) => span.unlined(),
             Self::UnopenedBrace(span) => span.unlined(),
-            Self::Expected(span, _) => *span,
-            Self::ExpectedFound(span, _, _) => *span,
+            Self::StaticMessage(span, _) => *span,
         }
     }
 }
@@ -39,10 +37,7 @@ impl Display for Error {
             Self::UnopenedParen(_) => write!(f, "unopened `)`"),
             Self::UnopenedBracket(_) => write!(f, "unopened `]`"),
             Self::UnopenedBrace(_) => write!(f, "unopened `}}`"),
-            Self::Expected(_, expected) => write!(f, "expected {expected}"),
-            Self::ExpectedFound(_, expected, found) => {
-                write!(f, "expected {expected}. found {found}")
-            }
+            Self::StaticMessage(_, message) => write!(f, "{message}"),
         }
     }
 }
