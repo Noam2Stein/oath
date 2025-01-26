@@ -1,4 +1,5 @@
-use oath_src::{Span, Spanned};
+use oath_diagnostics::{DiagnosticsHandle, Error};
+use oath_src::{Span, SpanLined, Spanned};
 
 use crate::Seal;
 
@@ -57,92 +58,73 @@ impl FloatLiteral {
         self.suffix
     }
 
-    pub fn from_str(span: Span, str: &str, errors: &mut ErrorsHandle) -> Self {
-        let mut chars = str.chars().peekable();
-
-        let integral_value_str = {
-            let mut value_str = String::with_capacity(str.len());
-            if let Some(first_digit) = chars.next() {
-                value_str.push(first_digit);
-            } else {
-                errors.push(Error::new(
+    pub unsafe fn from_regex_str(str: &str, span: Span, diagnostics: DiagnosticsHandle) -> Self {
+        let dot_position = str.char_indices().position(|(_, char)| char == '.');
+        let dot_position = match dot_position {
+            Some(some) => some,
+            None => {
+                diagnostics.push_error(Error::StaticMessage(span, "expected `_._`"));
+                return Self {
+                    integral: 1,
+                    fractional: 0,
+                    leading_zeros: 0,
                     span,
-                    format!("expected int literal, found empty string"),
-                ));
-            };
-            while let Some(maybe_digit) = chars.next() {
-                match maybe_digit {
-                    digit if maybe_digit.is_ascii_digit() => {
-                        value_str.push(digit);
-                    }
-                    '_' => {}
-                    '.' => break,
-                    _ => errors.push(Error::new(
-                        span,
-                        format!("expected either a digit or '.', found '{maybe_digit}'"),
-                    )),
-                }
+                    suffix: None,
+                };
             }
-
-            value_str
-        };
-        let fractional_value_str = {
-            let mut value_str = String::with_capacity(str.len() - integral_value_str.len());
-            if let Some(first_digit) = chars.next() {
-                value_str.push(first_digit);
-            } else {
-                errors.push(Error::new(
-                    span,
-                    format!("unexpected end of float literal, expected a number"),
-                ));
-            };
-            while let Some(maybe_digit) = chars.peek() {
-                match *maybe_digit {
-                    digit if maybe_digit.is_ascii_digit() => {
-                        value_str.push(digit);
-                        chars.next();
-                    }
-                    '_' => {
-                        chars.next();
-                    }
-                    _ => break,
-                }
-            }
-
-            value_str
         };
 
-        let suffix_str = chars.collect::<String>();
+        if str.len() == dot_position + 1 {
+            diagnostics.push_error(Error::StaticMessage(span, "expected `_._`"));
+            return Self {
+                integral: 1,
+                fractional: 0,
+                leading_zeros: 0,
+                span,
+                suffix: None,
+            };
+        };
+
+        let suffix_start = str[dot_position..]
+            .char_indices()
+            .position(|(_, char)| char.is_alphabetic());
+
+        let intergal_str = &str[0..dot_position];
+        let fractional_str = &str[dot_position + 1..suffix_start.unwrap_or(str.len())];
+        let suffix_str = suffix_start.map(|suffix_start| &str[suffix_start..]);
+
+        let integral = u128::from_str_radix(intergal_str, 10).unwrap_or_else(|_| {
+            diagnostics.push_error(Error::StaticMessage(span, "out of bounds intergal"));
+            1
+        });
+
+        let leading_zeros = fractional_str
+            .chars()
+            .position(|char| char != '0')
+            .unwrap_or(0) as u128;
+
+        let fractional = u128::from_str_radix(fractional_str, 10).unwrap_or_else(|_| {
+            diagnostics.push_error(Error::StaticMessage(span, "out of bounds fractional"));
+            1
+        });
+
+        let suffix = suffix_str.map_or(None, |suffix_str| {
+            let span = SpanLined::from_end_len(span.end(), suffix_str.len() as _);
+            Ident::new(suffix_str.to_string(), span).or_else(|| {
+                diagnostics.push_error(Error::StaticMessage(
+                    span.unlined(),
+                    "expected an ident. found a keyword",
+                ));
+                None
+            })
+        });
 
         Self {
+            integral,
+            leading_zeros,
+            fractional,
             span,
-            integral_value: u128::from_str_radix(&integral_value_str, 10).unwrap_or_else(|_| {
-                errors.push(Error::new(
-                    span,
-                    format!("'{integral_value_str}' is not a number"),
-                ));
-                1
-            }),
-            fractional_value: u128::from_str_radix(&fractional_value_str, 10).unwrap_or_else(
-                |_| {
-                    errors.push(Error::new(
-                        span,
-                        format!("'{integral_value_str}' is not a number"),
-                    ));
-                    1
-                },
-            ),
-            suffix: if suffix_str.is_empty() {
-                None
-            } else {
-                Some(FloatSuffix::try_from_str(&suffix_str).unwrap_or_else(|| {
-                    errors.push(Error::new(
-                        span,
-                        format!("'{suffix_str}' is not an int suffix"),
-                    ));
-                    FloatSuffix::Float
-                }))
-            },
+            suffix,
         }
     }
 }

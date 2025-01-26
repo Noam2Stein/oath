@@ -36,53 +36,38 @@ impl IntLiteral {
         self.suffix
     }
 
-    pub fn from_str(str: &str, span: SpanLined, diagnostics: DiagnosticsHandle) -> Self {
-        let mut chars = str.chars().peekable();
+    pub unsafe fn from_regex_str(
+        str: &str,
+        span: SpanLined,
+        diagnostics: DiagnosticsHandle,
+    ) -> Self {
+        let suffix_start = str
+            .char_indices()
+            .find(|(_, char)| !char.is_ascii_digit() && *char != '_')
+            .map(|(char_pos, _)| char_pos);
 
-        let mut value_str = String::with_capacity(str.len());
-        if let Some(first_digit) = chars.next() {
-            value_str.push(first_digit);
-        } else {
+        let int_str = &str[0..suffix_start.unwrap_or(str.len())].replace("_", "");
+        let suffix_str = suffix_start.map(|suffix_start| &str[suffix_start..]);
+
+        let int = u128::from_str_radix(int_str, 10).unwrap_or_else(|_| {
             diagnostics.push_error(Error::StaticMessage(
                 span.unlined(),
-                "expected an int literal. found an empty string",
+                "out of bounds literal",
             ));
-        };
-        while let Some(maybe_digit) = chars.peek() {
-            match *maybe_digit {
-                digit if maybe_digit.is_ascii_digit() => {
-                    value_str.push(digit);
-                    chars.next();
-                }
-                '_' => {
-                    chars.next();
-                }
-                _ => break,
-            }
-        }
+            1
+        });
 
-        let suffix_str = chars.collect::<String>();
-
-        Self {
-            int: u128::from_str_radix(&value_str, 10).unwrap_or_else(|_| {
-                diagnostics.push_error(Error::StaticMessage(span.unlined(), "not a number"));
-                1
-            }),
-            span,
-            suffix: if suffix_str.is_empty() {
+        let suffix = suffix_str.map_or(None, |suffix_str| {
+            let span = SpanLined::from_end_len(span.end(), suffix_str.len() as _);
+            Ident::new(suffix_str.to_string(), span).or_else(|| {
+                diagnostics.push_error(Error::StaticMessage(
+                    span.unlined(),
+                    "expected an ident. found a keyword",
+                ));
                 None
-            } else {
-                Ident::new(suffix_str.to_string(), span).map_or_else(
-                    || {
-                        diagnostics.push_error(Error::StaticMessage(
-                            span.unlined(),
-                            "expected an ident. found a keyword",
-                        ));
-                        None
-                    },
-                    |ident| Some(ident),
-                )
-            },
-        }
+            })
+        });
+
+        Self { int, suffix, span }
     }
 }

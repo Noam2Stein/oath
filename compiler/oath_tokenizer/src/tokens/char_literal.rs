@@ -1,3 +1,4 @@
+use oath_diagnostics::DiagnosticsHandle;
 use oath_src::{Span, SpanLengthed, Spanned};
 
 use crate::Seal;
@@ -28,5 +29,16 @@ impl CharLiteral {
     #[inline(always)]
     pub fn char(self) -> char {
         self.char
+    }
+
+    pub unsafe fn from_regex_str(
+        str: &str,
+        span: SpanLengthed<3>,
+        _diagnostics: DiagnosticsHandle,
+    ) -> Self {
+        Self {
+            char: str.chars().skip(1).next().unwrap(),
+            span,
+        }
     }
 }
