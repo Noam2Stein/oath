@@ -3,7 +3,7 @@ use oath_src::{Span, Spanned};
 
 use crate::Seal;
 
-use super::{Literal, LiteralType, TokenTree, TokenType};
+use super::{Literal, LiteralType, TokenDowncastFrom, TokenTree, TokenType};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StrLiteral {
@@ -28,50 +28,6 @@ impl Fill for StrLiteral {
 impl Desc for StrLiteral {
     fn desc() -> &'static str {
         "an str literal"
-    }
-}
-impl TryFrom<Literal> for StrLiteral {
-    type Error = ();
-
-    fn try_from(value: Literal) -> Result<Self, Self::Error> {
-        if let Literal::Str(output) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
-    }
-}
-impl<'a> TryFrom<&'a Literal> for &'a StrLiteral {
-    type Error = ();
-
-    fn try_from(value: &'a Literal) -> Result<Self, Self::Error> {
-        if let Literal::Str(output) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
-    }
-}
-impl TryFrom<TokenTree> for StrLiteral {
-    type Error = ();
-
-    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Literal(Literal::Str(output)) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
-    }
-}
-impl<'a> TryFrom<&'a TokenTree> for &'a StrLiteral {
-    type Error = ();
-
-    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Literal(Literal::Str(output)) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
     }
 }
 

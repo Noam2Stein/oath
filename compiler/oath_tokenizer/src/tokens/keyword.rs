@@ -2,14 +2,15 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
+use oath_tokenizer_macros::TokenDowncast;
 
 use crate::{with_keywords, Seal, TokenType};
 
-use super::TokenTree;
+use super::TokenDowncastFrom;
 
 macro_rules! use_keywords {
     ($($keyword:ident($keyword_len:literal $keyword_variant:ident $keyword_type:ident), )*) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
         pub enum Keyword {$(
             $keyword_variant($keyword_type),
         )*}
@@ -30,11 +31,7 @@ macro_rules! use_keywords {
         )*}
 
         #[allow(private_bounds)]
-        pub trait KeywordType: TokenType + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + TryFrom<Keyword>
-        where
-            for<'a> &'a Self: TryFrom<&'a TokenTree>,
-            for<'a> &'a Self: TryFrom<&'a Keyword>,
-        {}
+        pub trait KeywordType: TokenType + TokenDowncastFrom<Keyword> {}
 
         impl KeywordType for Keyword {}
         impl TokenType for Keyword {}
@@ -55,28 +52,6 @@ macro_rules! use_keywords {
         impl Desc for Keyword {
             fn desc() -> &'static str {
                 "a keyword"
-            }
-        }
-        impl TryFrom<TokenTree> for Keyword {
-            type Error = ();
-
-            fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-                if let TokenTree::Keyword(output) = value {
-                    Ok(output)
-                } else {
-                    Err(())
-                }
-            }
-        }
-        impl<'a> TryFrom<&'a TokenTree> for &'a Keyword {
-            type Error = ();
-
-            fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-                if let TokenTree::Keyword(output) = value {
-                    Ok(output)
-                } else {
-                    Err(())
-                }
             }
         }
 
@@ -120,50 +95,6 @@ macro_rules! use_keywords {
             impl Desc for $keyword_type {
                 fn desc() -> &'static str {
                     concat!("`", stringify!($keyword), "`")
-                }
-            }
-            impl TryFrom<Keyword> for $keyword_type {
-                type Error = ();
-
-                fn try_from(value: Keyword) -> Result<Self, Self::Error> {
-                    if let Keyword::$keyword_variant(output) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl<'a> TryFrom<&'a Keyword> for &'a $keyword_type {
-                type Error = ();
-
-                fn try_from(value: &'a Keyword) -> Result<Self, Self::Error> {
-                    if let Keyword::$keyword_variant(output) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl TryFrom<TokenTree> for $keyword_type {
-                type Error = ();
-
-                fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-                    if let TokenTree::Keyword(Keyword::$keyword_variant(output)) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl<'a> TryFrom<&'a TokenTree> for &'a $keyword_type {
-                type Error = ();
-
-                fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-                    if let TokenTree::Keyword(Keyword::$keyword_variant(output)) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
                 }
             }
         )*

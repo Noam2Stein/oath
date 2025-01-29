@@ -1,11 +1,12 @@
 use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
+use oath_tokenizer_macros::TokenDowncast;
 
 use crate::Seal;
 
 use super::{Group, Ident, Keyword, Literal, Punct, TokenType};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
 pub enum TokenTree {
     Group(Group),
     Ident(Ident),

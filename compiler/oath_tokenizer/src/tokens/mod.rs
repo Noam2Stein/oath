@@ -1,4 +1,7 @@
+use std::{fmt::Debug, hash::Hash};
+
 use oath_diagnostics::{Desc, Fill};
+use oath_src::Spanned;
 
 use crate::Seal;
 
@@ -28,16 +31,42 @@ pub use str_literal::*;
 pub use token_tree::*;
 
 #[allow(private_bounds)]
-pub trait TokenType: Seal + Desc + Fill + TokenDowncastFrom<TokenTree> {}
+pub trait TokenType:
+    Send
+    + Sync
+    + Debug
+    + Clone
+    + Eq
+    + Ord
+    + Hash
+    + Spanned
+    + Seal
+    + Desc
+    + Fill
+    + TokenDowncastFrom<TokenTree>
+{
+}
 
 pub trait TokenDowncastFrom<F>: Sized {
     fn downcast_from(value: F) -> Option<Self>;
     fn downcast_from_ref(value: &F) -> Option<&Self>;
 }
+impl<T> TokenDowncastFrom<T> for T {
+    #[inline(always)]
+    fn downcast_from(value: T) -> Option<Self> {
+        Some(value)
+    }
+    #[inline(always)]
+    fn downcast_from_ref(value: &T) -> Option<&Self> {
+        Some(value)
+    }
+}
 pub trait TokenDowncast<I: TokenDowncastFrom<Self>>: Sized {
+    #[inline(always)]
     fn downcast(self) -> Option<I> {
         I::downcast_from(self)
     }
+    #[inline(always)]
     fn downcast_ref(&self) -> Option<&I> {
         I::downcast_from_ref(self)
     }

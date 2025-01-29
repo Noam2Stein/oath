@@ -2,12 +2,13 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
+use oath_tokenizer_macros::TokenDowncast;
 
 use crate::Seal;
 
-use super::{CharLiteral, FloatLiteral, IntLiteral, StrLiteral, TokenTree, TokenType};
+use super::{CharLiteral, FloatLiteral, IntLiteral, StrLiteral, TokenDowncastFrom, TokenType};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
 pub enum Literal {
     Char(CharLiteral),
     Float(FloatLiteral),
@@ -16,13 +17,7 @@ pub enum Literal {
 }
 
 #[allow(private_bounds)]
-pub trait LiteralType:
-    TokenType + Send + Sync + Debug + Clone + Eq + Ord + Hash + Spanned + TryFrom<Literal>
-where
-    for<'a> &'a Self: TryFrom<&'a Literal>,
-    for<'a> &'a Self: TryFrom<&'a TokenTree>,
-{
-}
+pub trait LiteralType: TokenType + TokenDowncastFrom<Literal> {}
 
 impl LiteralType for Literal {}
 impl TokenType for Literal {}
@@ -45,27 +40,5 @@ impl Fill for Literal {
 impl Desc for Literal {
     fn desc() -> &'static str {
         "a literal"
-    }
-}
-impl TryFrom<TokenTree> for Literal {
-    type Error = ();
-
-    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Literal(output) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
-    }
-}
-impl<'a> TryFrom<&'a TokenTree> for &'a Literal {
-    type Error = ();
-
-    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Literal(output) = value {
-            Ok(output)
-        } else {
-            Err(())
-        }
     }
 }

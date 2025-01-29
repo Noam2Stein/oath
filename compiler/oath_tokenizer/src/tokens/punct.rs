@@ -2,14 +2,15 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
+use oath_tokenizer_macros::TokenDowncast;
 
 use crate::{with_puncts, Seal};
 
-use super::{TokenTree, TokenType};
+use super::{TokenDowncastFrom, TokenType};
 
 macro_rules! use_puncts {
     ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
         pub enum Punct {$(
             $punct_variant($punct_type),
         )*}
@@ -30,11 +31,7 @@ macro_rules! use_puncts {
         )*}
 
         #[allow(private_bounds)]
-        pub trait PunctType: TokenType + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned
-        where
-            for<'a> &'a Self: TryFrom<&'a Punct>,
-            for<'a> &'a Self: TryFrom<&'a TokenTree>,
-        {}
+        pub trait PunctType: TokenType + TokenDowncastFrom<Punct> {}
 
         impl PunctType for Punct {}
         impl TokenType for Punct {}
@@ -56,28 +53,6 @@ macro_rules! use_puncts {
         impl Desc for Punct {
             fn desc() -> &'static str {
                 "a punct"
-            }
-        }
-        impl TryFrom<TokenTree> for Punct {
-            type Error = ();
-
-            fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-                if let TokenTree::Punct(output) = value {
-                    Ok(output)
-                } else {
-                    Err(())
-                }
-            }
-        }
-        impl<'a> TryFrom<&'a TokenTree> for &'a Punct {
-            type Error = ();
-
-            fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-                if let TokenTree::Punct(output) = value {
-                    Ok(output)
-                } else {
-                    Err(())
-                }
             }
         }
 
@@ -112,50 +87,6 @@ macro_rules! use_puncts {
             impl Desc for $punct_type {
                 fn desc() -> &'static str {
                     concat!("`", $punct, "`")
-                }
-            }
-            impl TryFrom<Punct> for $punct_type {
-                type Error = ();
-
-                fn try_from(value: Punct) -> Result<Self, Self::Error> {
-                    if let Punct::$punct_variant(output) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl<'a> TryFrom<&'a Punct> for &'a $punct_type {
-                type Error = ();
-
-                fn try_from(value: &'a Punct) -> Result<Self, Self::Error> {
-                    if let Punct::$punct_variant(output) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl TryFrom<TokenTree> for $punct_type {
-                type Error = ();
-
-                fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-                    if let TokenTree::Punct(Punct::$punct_variant(output)) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }
-            }
-            impl<'a> TryFrom<&'a TokenTree> for &'a $punct_type {
-                type Error = ();
-
-                fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-                    if let TokenTree::Punct(Punct::$punct_variant(output)) = value {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
                 }
             }
         )*
