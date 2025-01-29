@@ -1,8 +1,11 @@
 use std::{fmt::Debug, hash::Hash};
 
-use oath_src::{Span, SpanLengthed, SpanLined, Spanned};
+use oath_diagnostics::{Desc, Fill};
+use oath_src::{Span, Spanned};
 
-use crate::{with_keywords, Seal};
+use crate::{with_keywords, Seal, TokenType};
+
+use super::TokenTree;
 
 macro_rules! use_keywords {
     ($($keyword:ident($keyword_len:literal $keyword_variant:ident $keyword_type:ident), )*) => {
@@ -13,7 +16,7 @@ macro_rules! use_keywords {
 
         $(
             #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub struct $keyword_type(pub SpanLengthed<$keyword_len>);
+            pub struct $keyword_type(pub Span);
         )*
 
         #[macro_export]
@@ -27,9 +30,14 @@ macro_rules! use_keywords {
         )*}
 
         #[allow(private_bounds)]
-        pub trait KeywordType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned {}
+        pub trait KeywordType: TokenType + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + TryFrom<Keyword>
+        where
+            for<'a> &'a Self: TryFrom<&'a TokenTree>,
+            for<'a> &'a Self: TryFrom<&'a Keyword>,
+        {}
 
         impl KeywordType for Keyword {}
+        impl TokenType for Keyword {}
         impl Seal for Keyword {}
         impl Spanned for Keyword {
             #[inline(always)]
@@ -39,6 +47,39 @@ macro_rules! use_keywords {
                 )*}
             }
         }
+        impl Fill for Keyword {
+            fn fill(span: Span) -> Self {
+                Self::Mod(ModKeyword(span))
+            }
+        }
+        impl Desc for Keyword {
+            fn desc() -> &'static str {
+                "a keyword"
+            }
+        }
+        impl TryFrom<TokenTree> for Keyword {
+            type Error = ();
+
+            fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+                if let TokenTree::Keyword(output) = value {
+                    Ok(output)
+                } else {
+                    Err(())
+                }
+            }
+        }
+        impl<'a> TryFrom<&'a TokenTree> for &'a Keyword {
+            type Error = ();
+
+            fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+                if let TokenTree::Keyword(output) = value {
+                    Ok(output)
+                } else {
+                    Err(())
+                }
+            }
+        }
+
         impl Keyword {
             pub const KEYWORDS: &[&str] = &[$(stringify!($keyword)), *];
 
@@ -51,10 +92,10 @@ macro_rules! use_keywords {
                 }
             }
 
-            pub fn from_str(s: &str, span: SpanLined) -> Option<Self> {
+            pub fn from_str(s: &str, span: Span) -> Option<Self> {
                 match s {
                     $(
-                        stringify!($keyword) => span.lengthed().map(|span| Self::$keyword_variant($keyword_type(span))),
+                        stringify!($keyword) => Some(Self::$keyword_variant($keyword_type(span))),
                     )*
                     _ => None,
                 }
@@ -63,11 +104,66 @@ macro_rules! use_keywords {
 
         $(
             impl KeywordType for $keyword_type {}
+            impl TokenType for $keyword_type {}
             impl Seal for $keyword_type {}
             impl Spanned for $keyword_type {
                 #[inline(always)]
                 fn span(&self) -> Span {
-                    self.0.unlined()
+                    self.0
+                }
+            }
+            impl Fill for $keyword_type {
+                fn fill(span: Span) -> Self {
+                    Self(span)
+                }
+            }
+            impl Desc for $keyword_type {
+                fn desc() -> &'static str {
+                    concat!("`", stringify!($keyword), "`")
+                }
+            }
+            impl TryFrom<Keyword> for $keyword_type {
+                type Error = ();
+
+                fn try_from(value: Keyword) -> Result<Self, Self::Error> {
+                    if let Keyword::$keyword_variant(output) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl<'a> TryFrom<&'a Keyword> for &'a $keyword_type {
+                type Error = ();
+
+                fn try_from(value: &'a Keyword) -> Result<Self, Self::Error> {
+                    if let Keyword::$keyword_variant(output) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl TryFrom<TokenTree> for $keyword_type {
+                type Error = ();
+
+                fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+                    if let TokenTree::Keyword(Keyword::$keyword_variant(output)) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl<'a> TryFrom<&'a TokenTree> for &'a $keyword_type {
+                type Error = ();
+
+                fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+                    if let TokenTree::Keyword(Keyword::$keyword_variant(output)) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
                 }
             }
         )*

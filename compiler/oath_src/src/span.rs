@@ -1,4 +1,4 @@
-use crate::{Position, SpanLengthed, SpanLined};
+use crate::Position;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
@@ -11,6 +11,13 @@ impl Span {
     pub fn from_start_end(start: Position, end: Position) -> Self {
         Self { start, end }
     }
+    #[inline(always)]
+    pub fn from_start_len(start: Position, len: u32) -> Self {
+        Self {
+            start,
+            end: start + len,
+        }
+    }
 
     #[inline(always)]
     pub fn start(self) -> Position {
@@ -22,39 +29,18 @@ impl Span {
     }
 
     #[inline(always)]
-    pub fn lined(self) -> Option<SpanLined> {
-        if self.start.line == self.end.line {
-            Some(SpanLined::from_start_len(
-                self.start,
-                self.end.char - self.start.char,
-            ))
-        } else {
-            None
-        }
-    }
-    #[inline(always)]
-    pub fn len(self) -> Option<u32> {
-        self.lined().map(SpanLined::len)
-    }
-    #[inline(always)]
-    pub fn line(self) -> Option<u32> {
-        self.lined().map(SpanLined::line)
-    }
-
-    #[inline(always)]
-    pub fn lengthed<const N: u32>(self) -> Option<SpanLengthed<N>> {
-        if self.start.line == self.end.line && self.end.char - self.start.char == N {
-            Some(SpanLengthed::from_start(self.start))
-        } else {
-            None
-        }
-    }
-
-    #[inline(always)]
     pub fn connect(self, other: Self) -> Self {
         Self {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
+        }
+    }
+
+    #[inline(always)]
+    pub fn end_of_file() -> Self {
+        Self {
+            start: Position::end_of_file(),
+            end: Position::end_of_file(),
         }
     }
 }

@@ -53,6 +53,7 @@ macro_rules! with_keywords {
             break(5 Break BreakKeyword),
             continue(8 Continue ContinueKeyword),
             return(6 Return ReturnKeyword),
+            assume(6 Assume AssumeKeyword),
         );
     };
 }

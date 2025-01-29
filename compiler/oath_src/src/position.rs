@@ -10,6 +10,14 @@ impl Position {
     pub fn new(line: u32, char: u32) -> Self {
         Self { line, char }
     }
+
+    #[inline(always)]
+    pub fn end_of_file() -> Self {
+        Self {
+            line: u32::MAX,
+            char: u32::MAX,
+        }
+    }
 }
 impl Add<u32> for Position {
     type Output = Self;

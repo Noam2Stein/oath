@@ -1,12 +1,10 @@
 mod position;
 mod span;
-mod span_lengthed;
-mod span_lined;
 mod spanned;
 mod srcfile;
+mod with_span;
 pub use position::*;
 pub use span::*;
-pub use span_lengthed::*;
-pub use span_lined::*;
 pub use spanned::*;
 pub use srcfile::*;
+pub use with_span::*;

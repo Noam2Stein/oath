@@ -1,8 +1,11 @@
 use std::{fmt::Debug, hash::Hash};
 
-use oath_src::{Span, SpanLengthed, SpanLined, Spanned};
+use oath_diagnostics::{Desc, Fill};
+use oath_src::{Span, Spanned};
 
 use crate::{with_puncts, Seal};
+
+use super::{TokenTree, TokenType};
 
 macro_rules! use_puncts {
     ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
@@ -13,7 +16,7 @@ macro_rules! use_puncts {
 
         $(
             #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub struct $punct_type(pub SpanLengthed<$punct_len>);
+            pub struct $punct_type(pub Span);
         )*
 
         #[macro_export]
@@ -27,9 +30,14 @@ macro_rules! use_puncts {
         )*}
 
         #[allow(private_bounds)]
-        pub trait PunctType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned {}
+        pub trait PunctType: TokenType + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned
+        where
+            for<'a> &'a Self: TryFrom<&'a Punct>,
+            for<'a> &'a Self: TryFrom<&'a TokenTree>,
+        {}
 
         impl PunctType for Punct {}
+        impl TokenType for Punct {}
         impl Seal for Punct {}
         impl Spanned for Punct {
             #[inline(always)]
@@ -39,13 +47,47 @@ macro_rules! use_puncts {
                 )*}
             }
         }
+        impl Fill for Punct {
+            #[inline(always)]
+            fn fill(span: Span) -> Self {
+                Self::Question(QuestionPunct(span))
+            }
+        }
+        impl Desc for Punct {
+            fn desc() -> &'static str {
+                "a punct"
+            }
+        }
+        impl TryFrom<TokenTree> for Punct {
+            type Error = ();
+
+            fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+                if let TokenTree::Punct(output) = value {
+                    Ok(output)
+                } else {
+                    Err(())
+                }
+            }
+        }
+        impl<'a> TryFrom<&'a TokenTree> for &'a Punct {
+            type Error = ();
+
+            fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+                if let TokenTree::Punct(output) = value {
+                    Ok(output)
+                } else {
+                    Err(())
+                }
+            }
+        }
+
         impl Punct {
             pub const PUNCTS: &[&str] = &[$(stringify!($punct)), *];
 
-            pub fn from_str(s: &str, span: SpanLined) -> Option<Self> {
+            pub fn from_str(s: &str, span: Span) -> Option<Self> {
                 match s {
                     $(
-                        stringify!($punct) => span.lengthed().map(|span| Self::$punct_variant($punct_type(span))),
+                        stringify!($punct) => Some(Self::$punct_variant($punct_type(span))),
                     )*
                     _ => None,
                 }
@@ -54,11 +96,66 @@ macro_rules! use_puncts {
 
         $(
             impl PunctType for $punct_type {}
+            impl TokenType for $punct_type {}
             impl Seal for $punct_type {}
             impl Spanned for $punct_type {
                 #[inline(always)]
                 fn span(&self) -> Span {
-                    self.0.unlined()
+                    self.0
+                }
+            }
+            impl Fill for $punct_type {
+                fn fill(span: Span) -> Self {
+                    Self(span)
+                }
+            }
+            impl Desc for $punct_type {
+                fn desc() -> &'static str {
+                    concat!("`", $punct, "`")
+                }
+            }
+            impl TryFrom<Punct> for $punct_type {
+                type Error = ();
+
+                fn try_from(value: Punct) -> Result<Self, Self::Error> {
+                    if let Punct::$punct_variant(output) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl<'a> TryFrom<&'a Punct> for &'a $punct_type {
+                type Error = ();
+
+                fn try_from(value: &'a Punct) -> Result<Self, Self::Error> {
+                    if let Punct::$punct_variant(output) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl TryFrom<TokenTree> for $punct_type {
+                type Error = ();
+
+                fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+                    if let TokenTree::Punct(Punct::$punct_variant(output)) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }
+            }
+            impl<'a> TryFrom<&'a TokenTree> for &'a $punct_type {
+                type Error = ();
+
+                fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+                    if let TokenTree::Punct(Punct::$punct_variant(output)) = value {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
                 }
             }
         )*

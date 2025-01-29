@@ -5,7 +5,7 @@ use crate::{
     Braces, Brackets, Delimiters, Group, Parens, Seal, TokenFile, TokenTree,
 };
 use oath_diagnostics::{DiagnosticsHandle, Error};
-use oath_src::{SpanLengthed, Spanned, SrcFile};
+use oath_src::{Span, Spanned, SrcFile};
 
 #[allow(private_bounds)]
 pub trait SrcFileTokenizeExt: Seal {
@@ -29,11 +29,17 @@ impl SrcFileTokenizeExt for SrcFile {
                     &mut raw_tokens,
                     diagnostics,
                 ))),
-                RawToken::CloseDelimiter(close) => diagnostics.push_error(match close {
-                    SingleDelimiter::Paren(span) => Error::UnopenedParen(span),
-                    SingleDelimiter::Bracket(span) => Error::UnopenedBracket(span),
-                    SingleDelimiter::Brace(span) => Error::UnopenedBrace(span),
-                }),
+                RawToken::CloseDelimiter(close) => match close {
+                    SingleDelimiter::Paren(span) => {
+                        diagnostics.push_error(Error::UnopenedParen, span)
+                    }
+                    SingleDelimiter::Bracket(span) => {
+                        diagnostics.push_error(Error::UnopenedBracket, span)
+                    }
+                    SingleDelimiter::Brace(span) => {
+                        diagnostics.push_error(Error::UnopenedBrace, span)
+                    }
+                },
             }
         }
 
@@ -54,26 +60,29 @@ fn tokenize_group(
                 delimiters: match open_delimiter {
                     SingleDelimiter::Paren(open_span) => Delimiters::Parens(Parens::new(
                         open_span,
-                        SpanLengthed::from_start(
+                        Span::from_start_len(
                             tokens
                                 .last()
                                 .map_or(open_span.end(), |last| last.span().end()),
+                            1,
                         ),
                     )),
                     SingleDelimiter::Bracket(open_span) => Delimiters::Brackets(Brackets::new(
                         open_span,
-                        SpanLengthed::from_start(
+                        Span::from_start_len(
                             tokens
                                 .last()
                                 .map_or(open_span.end(), |last| last.span().end()),
+                            1,
                         ),
                     )),
                     SingleDelimiter::Brace(open_span) => Delimiters::Braces(Braces::new(
                         open_span,
-                        SpanLengthed::from_start(
+                        Span::from_start_len(
                             tokens
                                 .last()
                                 .map_or(open_span.end(), |last| last.span().end()),
+                            1,
                         ),
                     )),
                 },
@@ -88,11 +97,17 @@ fn tokenize_group(
                 raw_tokens.next();
                 Group { delimiters, tokens }
             } else {
-                diagnostics.push_error(match open_delimiter {
-                    SingleDelimiter::Paren(span) => Error::UnclosedParen(span),
-                    SingleDelimiter::Bracket(span) => Error::UnclosedBracket(span),
-                    SingleDelimiter::Brace(span) => Error::UnclosedBrace(span),
-                });
+                match open_delimiter {
+                    SingleDelimiter::Paren(span) => {
+                        diagnostics.push_error(Error::UnclosedParen, span)
+                    }
+                    SingleDelimiter::Bracket(span) => {
+                        diagnostics.push_error(Error::UnclosedBracket, span)
+                    }
+                    SingleDelimiter::Brace(span) => {
+                        diagnostics.push_error(Error::UnclosedBrace, span)
+                    }
+                }
                 unfinished_group!()
             };
         }
@@ -111,11 +126,11 @@ fn tokenize_group(
         }
     }
 
-    diagnostics.push_error(match open_delimiter {
-        SingleDelimiter::Paren(span) => Error::UnclosedParen(span),
-        SingleDelimiter::Bracket(span) => Error::UnclosedBracket(span),
-        SingleDelimiter::Brace(span) => Error::UnclosedBrace(span),
-    });
+    match open_delimiter {
+        SingleDelimiter::Paren(span) => diagnostics.push_error(Error::UnclosedParen, span),
+        SingleDelimiter::Bracket(span) => diagnostics.push_error(Error::UnclosedBracket, span),
+        SingleDelimiter::Brace(span) => diagnostics.push_error(Error::UnclosedBrace, span),
+    };
 
     unfinished_group!()
 }

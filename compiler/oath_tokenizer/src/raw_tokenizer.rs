@@ -1,6 +1,6 @@
 use logos::{Lexer, Logos};
 use oath_diagnostics::{DiagnosticsHandle, Error};
-use oath_src::{Position, Span, SpanLengthed, SrcFile};
+use oath_src::{Position, Span, SrcFile};
 
 use crate::{
     with_puncts, Braces, Brackets, CharLiteral, Delimiters, FloatLiteral, Ident, IntLiteral,
@@ -19,9 +19,9 @@ pub enum RawToken {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SingleDelimiter {
-    Paren(SpanLengthed<1>),
-    Bracket(SpanLengthed<1>),
-    Brace(SpanLengthed<1>),
+    Paren(Span),
+    Bracket(Span),
+    Brace(Span),
 }
 impl SingleDelimiter {
     pub fn pair(self, close: Self) -> Option<Delimiters> {
@@ -44,13 +44,6 @@ impl SingleDelimiter {
                 }
                 _ => None,
             },
-        }
-    }
-    pub fn complete(self, close_span: SpanLengthed<1>) -> Delimiters {
-        match self {
-            Self::Paren(open_span) => Delimiters::Parens(Parens::new(open_span, close_span)),
-            Self::Bracket(open_span) => Delimiters::Brackets(Brackets::new(open_span, close_span)),
-            Self::Brace(open_span) => Delimiters::Braces(Braces::new(open_span, close_span)),
         }
     }
 }
@@ -94,7 +87,7 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                 let next = match next {
                     Ok(ok) => ok,
                     Err(_) => {
-                        self.diagnostics.push_error(Error::UnknownToken(span));
+                        self.diagnostics.push_error(Error::UnknownToken, span);
 
                         continue;
                     }
@@ -105,26 +98,26 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                         ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
                             match next {
                                 LogosToken::IdentOrKeyword(str) => {
-                                    match Ident::new_or_keyword(str, span.lined().unwrap()) {
+                                    match Ident::new_or_keyword(str, span) {
                                         Ok(ident) => RawToken::Ident(ident),
                                         Err(keyword) => RawToken::Keyword(keyword),
                                     }
                                 },
                                 $(
                                     LogosToken::$punct_type => {
-                                        RawToken::Punct(Punct::$punct_variant(crate::$punct_type(span.lengthed().unwrap())))
+                                        RawToken::Punct(Punct::$punct_variant(crate::$punct_type(span)))
                                     },
                                 )*
-                                LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(unsafe { IntLiteral::from_regex_str(str, span.lined().unwrap(), self.diagnostics) })),
+                                LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(unsafe { IntLiteral::from_regex_str(str, span, self.diagnostics) })),
                                 LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(unsafe { FloatLiteral::from_regex_str(str, span, self.diagnostics) })),
                                 LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(unsafe { StrLiteral::from_regex_str(str, span, self.diagnostics) })),
-                                LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(unsafe { CharLiteral::from_regex_str(str, span.lengthed().unwrap(), self.diagnostics) })),
-                                LogosToken::ParenOpen => RawToken::OpenDelimiter(SingleDelimiter::Paren(span.lengthed().unwrap())),
-                                LogosToken::BracketOpen => RawToken::OpenDelimiter(SingleDelimiter::Bracket(span.lengthed().unwrap())),
-                                LogosToken::BraceOpen => RawToken::OpenDelimiter(SingleDelimiter::Brace(span.lengthed().unwrap())),
-                                LogosToken::ParenClose => RawToken::CloseDelimiter(SingleDelimiter::Paren(span.lengthed().unwrap())),
-                                LogosToken::BracketClose => RawToken::CloseDelimiter(SingleDelimiter::Bracket(span.lengthed().unwrap())),
-                                LogosToken::BraceClose => RawToken::CloseDelimiter(SingleDelimiter::Brace(span.lengthed().unwrap())),
+                                LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(unsafe { CharLiteral::from_regex_str(str, span, self.diagnostics) })),
+                                LogosToken::ParenOpen => RawToken::OpenDelimiter(SingleDelimiter::Paren(span)),
+                                LogosToken::BracketOpen => RawToken::OpenDelimiter(SingleDelimiter::Bracket(span)),
+                                LogosToken::BraceOpen => RawToken::OpenDelimiter(SingleDelimiter::Brace(span)),
+                                LogosToken::ParenClose => RawToken::CloseDelimiter(SingleDelimiter::Paren(span)),
+                                LogosToken::BracketClose => RawToken::CloseDelimiter(SingleDelimiter::Bracket(span)),
+                                LogosToken::BraceClose => RawToken::CloseDelimiter(SingleDelimiter::Brace(span)),
                             }
                         };
                     }
@@ -134,12 +127,6 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                 None
             };
         }
-    }
-}
-impl<'src, 'd> RawTokenizer<'src, 'd> {
-    #[inline(always)]
-    pub fn src(&self) -> &'src SrcFile {
-        SrcFile::from_str(self.lexer.source())
     }
 }
 
