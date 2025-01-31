@@ -4,9 +4,18 @@ use oath_diagnostics::DiagnosticsHandle;
 use oath_tokenizer::TokenTree;
 
 mod parse_tokens;
+mod parse_vec;
 
+mod followed;
 mod in_delimeters;
+mod repeated;
+mod seperated;
+pub use followed::*;
 pub use in_delimeters::*;
+pub use repeated::*;
+pub use seperated::*;
+
+pub use oath_parser_macros::Parse;
 
 pub trait Parse {
     fn parse(

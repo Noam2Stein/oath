@@ -1,9 +1,11 @@
 use std::{fmt::Debug, hash::Hash};
 
-use oath_diagnostics::Fill;
+use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
 
 use crate::Seal;
+
+use super::TokenDowncastFrom;
 
 macro_rules! declare_delimiters {
     ($($delim_ident:ident $group_desc:literal), * $(,)?) => {
@@ -21,12 +23,10 @@ macro_rules! declare_delimiters {
         )*
 
         #[allow(private_bounds)]
-        pub trait DelimitersType: Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + Fill
+        pub trait DelimitersType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + Fill + Desc + TokenDowncastFrom<Delimiters>
         {
             fn open_span(self) -> Span;
             fn close_span(self) -> Span;
-
-            fn group_desc() -> &'static str;
         }
 
         impl DelimitersType for Delimiters {
@@ -42,12 +42,9 @@ macro_rules! declare_delimiters {
                     Self::$delim_ident(delim) => delim.close_span(),
                 )*}
             }
-
-            fn group_desc() -> &'static str {
-                "a group"
-            }
         }
         impl Seal for Delimiters {}
+
         impl Spanned for Delimiters {
             #[inline(always)]
             fn span(&self) -> Span {
@@ -57,6 +54,11 @@ macro_rules! declare_delimiters {
         impl Fill for Delimiters {
             fn fill(span: Span) -> Self {
                 Self::Parens(Parens::new(span, span))
+            }
+        }
+        impl Desc for Delimiters {
+            fn desc() -> &'static str {
+                "delimiters"
             }
         }
 
@@ -70,13 +72,9 @@ macro_rules! declare_delimiters {
                 fn close_span(self) -> Span {
                     self.close_span
                 }
-
-                #[inline(always)]
-                fn group_desc() -> &'static str {
-                    $group_desc
-                }
             }
             impl Seal for $delim_ident {}
+
             impl Spanned for $delim_ident {
                 #[inline(always)]
                 fn span(&self) -> Span {
@@ -86,6 +84,28 @@ macro_rules! declare_delimiters {
             impl Fill for $delim_ident {
                 fn fill(span: Span) -> Self {
                     Self::new(span, span)
+                }
+            }
+            impl Desc for $delim_ident {
+                fn desc() -> &'static str {
+                    $group_desc
+                }
+            }
+
+            impl TokenDowncastFrom<Delimiters> for $delim_ident {
+                fn downcast_from(value: Delimiters) -> Option<Self> {
+                    if let Delimiters::$delim_ident(value) = value {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                }
+                fn downcast_from_ref(value: &Delimiters) -> Option<&Self> {
+                    if let Delimiters::$delim_ident(value) = value {
+                        Some(value)
+                    } else {
+                        None
+                    }
                 }
             }
 
@@ -98,4 +118,4 @@ macro_rules! declare_delimiters {
         )*
     };
 }
-declare_delimiters!(Parens "a paren group", Braces "a braced group", Brackets "a bracketed group");
+declare_delimiters!(Parens "`( )`", Braces "`{ }`", Brackets "`[ ]`");

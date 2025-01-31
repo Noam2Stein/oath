@@ -61,14 +61,14 @@ impl<T> TokenDowncastFrom<T> for T {
         Some(value)
     }
 }
-pub trait TokenDowncast<I: TokenDowncastFrom<Self>>: Sized {
+pub trait TokenDowncast: Sized {
     #[inline(always)]
-    fn downcast(self) -> Option<I> {
+    fn downcast<I: TokenDowncastFrom<Self>>(self) -> Option<I> {
         I::downcast_from(self)
     }
     #[inline(always)]
-    fn downcast_ref(&self) -> Option<&I> {
+    fn downcast_ref<I: TokenDowncastFrom<Self>>(&self) -> Option<&I> {
         I::downcast_from_ref(self)
     }
 }
-impl<T, I: TokenDowncastFrom<T>> TokenDowncast<I> for T {}
+impl<T> TokenDowncast for T {}

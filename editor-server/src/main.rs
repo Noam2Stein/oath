@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use oath_ast::TokenFileParseAstExt;
+use oath_ast::ParseAstExt;
 use oath_diagnostics::{Diagnostics, DiagnosticsHandle};
 use oath_src::{Spanned, SrcFile};
 use oath_tokenizer::{Keyword, SrcFileTokenizeExt};

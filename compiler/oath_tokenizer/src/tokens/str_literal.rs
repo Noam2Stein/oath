@@ -3,7 +3,7 @@ use oath_src::{Span, Spanned};
 
 use crate::Seal;
 
-use super::{Literal, LiteralType, TokenDowncastFrom, TokenTree, TokenType};
+use super::{LiteralType, TokenType};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StrLiteral {

@@ -19,6 +19,9 @@ impl<T: Parse, D: DelimitersType> Parse for InDelimiters<T, D> {
         tokens: &mut Peekable<impl Iterator<Item = TokenTree>>,
         diagnostics: DiagnosticsHandle,
     ) -> Self {
-        let group = tokens.parse::<Group<D>>(diagnostics);
+        let Group { delimiters, tokens } = tokens.parse::<Group<D>>(diagnostics);
+        let inner = tokens.into_iter().peekable().parse(diagnostics);
+
+        Self { delimiters, inner }
     }
 }
