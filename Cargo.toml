@@ -1,7 +1,7 @@
 [workspace]
 
 members = [ "compiler/oath_ast",
-    "compiler/oath_diagnostics", "compiler/oath_keywords_puncts", "compiler/oath_keywords_puncts_macros", "compiler/oath_parser", "compiler/oath_parser_macros",
+    "compiler/oath_diagnostics", "compiler/oath_diagnostics_macros", "compiler/oath_keywords_puncts", "compiler/oath_keywords_puncts_macros", "compiler/oath_parser", "compiler/oath_parser_macros",
     "compiler/oath_src",
     "compiler/oath_tokenizer", "compiler/oath_tokenizer_macros",
     "editor-server",

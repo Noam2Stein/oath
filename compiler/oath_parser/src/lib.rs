@@ -11,13 +11,15 @@ mod followed;
 mod in_delimeters;
 mod repeated;
 mod seperated;
+mod unmatched;
 pub use endless::*;
 pub use followed::*;
 pub use in_delimeters::*;
 pub use repeated::*;
 pub use seperated::*;
+pub use unmatched::*;
 
-pub use oath_parser_macros::Parse;
+pub use oath_parser_macros::{Parse, Peek};
 
 pub trait Parse {
     fn parse(

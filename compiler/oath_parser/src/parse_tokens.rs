@@ -7,7 +7,7 @@ use oath_tokenizer::{
     IntLiteral, Keyword, Literal, Punct, StrLiteral, TokenDowncast, TokenTree,
 };
 
-use crate::Parse;
+use crate::{Parse, Peek, PeekRef};
 
 macro_rules! token_impl {
     ($type:ty) => {
@@ -29,6 +29,30 @@ macro_rules! token_impl {
                     diagnostics.push_error(Error::Expected(Self::desc()), Span::end_of_file());
 
                     Self::fill(Span::end_of_file())
+                }
+            }
+        }
+
+        impl Peek for $type {
+            fn peek(tokens: &mut Peekable<impl Iterator<Item = TokenTree>>) -> bool {
+                if let Some(token) = tokens.peek() {
+                    token.downcast_ref::<Self>().is_some()
+                } else {
+                    false
+                }
+            }
+        }
+
+        impl PeekRef for $type {
+            fn peek_ref(tokens: &mut Peekable<impl Iterator<Item = TokenTree>>) -> Option<&Self> {
+                if let Some(token) = tokens.peek() {
+                    if let Some(token) = token.downcast_ref() {
+                        Some(token)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
             }
         }

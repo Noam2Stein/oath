@@ -4,4 +4,5 @@ name    = "oath_diagnostics"
 version = "0.1.0"
 
 [dependencies]
-oath_src = { path = "../oath_src" }
+oath_diagnostics_macros = { path = "../oath_diagnostics_macros" }
+oath_src                = { path = "../oath_src" }
