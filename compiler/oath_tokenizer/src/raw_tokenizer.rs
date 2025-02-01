@@ -130,6 +130,7 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
 
 with_puncts!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
+    #[logos(skip r"[ \t\n\r\f]+")]
     enum LogosToken<'src> {
         #[regex(r"[a-zA-Z_@][a-zA-Z_@0-9]*")]
         IdentOrKeyword(&'src str),

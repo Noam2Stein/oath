@@ -23,6 +23,9 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(
+                    TextDocumentSyncKind::FULL,
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -81,14 +84,26 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "did change")
+            .await;
+
         let uri = params.text_document.uri;
 
         let src_file = SrcFile::from_str(params.content_changes[0].text.as_str());
         let diagnostics = Mutex::new(Diagnostics::default());
 
+        self.client
+            .log_message(MessageType::INFO, "about to parse")
+            .await;
+
         let _ = src_file
             .tokenize(DiagnosticsHandle(&diagnostics))
             .parse_ast(DiagnosticsHandle(&diagnostics));
+
+        self.client
+            .log_message(MessageType::INFO, "parsed!!!!!!")
+            .await;
 
         if diagnostics.lock().unwrap().errors.is_empty() {
             self.client
