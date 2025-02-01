@@ -4,7 +4,7 @@ name    = "oath_parser"
 version = "0.1.0"
 
 [dependencies]
-oath_diagnostics   = { path = "../oath_diagnostics" }
-oath_parser_macros = { path = "../oath_parser_macros" }
-oath_src           = { path = "../oath_src" }
-oath_tokenizer     = { path = "../oath_tokenizer" }
+oath_diagnostics        = { path = "../oath_diagnostics" }
+oath_parser_proc_macros = { path = "proc_macros" }
+oath_src                = { path = "../oath_src" }
+oath_tokenizer          = { path = "../oath_tokenizer" }

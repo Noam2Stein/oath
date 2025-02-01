@@ -19,7 +19,7 @@ pub use repeated::*;
 pub use seperated::*;
 pub use unmatched::*;
 
-pub use oath_parser_macros::{Parse, Peek};
+pub use oath_parser_proc_macros::{Parse, Peek};
 
 pub trait Parse {
     fn parse(

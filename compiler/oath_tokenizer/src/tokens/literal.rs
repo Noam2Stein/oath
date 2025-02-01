@@ -2,7 +2,7 @@ use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
 use oath_src::{Span, Spanned};
-use oath_tokenizer_macros::TokenDowncast;
+use oath_tokenizer_proc_macros::TokenDowncast;
 
 use crate::Seal;
 

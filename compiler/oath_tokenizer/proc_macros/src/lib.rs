@@ -1,6 +1,5 @@
 use derive_syn_parse::Parse;
-use oath_keywords_puncts::keyword_to_type;
-use oath_keywords_puncts_macros::with_puncts;
+use oath_keywords_puncts::with_puncts;
 use proc_macro2::{Group, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, LitStr};
@@ -125,4 +124,19 @@ pub fn derive_token_downcast(input: proc_macro::TokenStream) -> proc_macro::Toke
         )
         .into_compile_error(),
     }.into()
+}
+
+fn keyword_to_type(keyword: &str) -> String {
+    keyword
+        .chars()
+        .enumerate()
+        .map(|(char_index, char)| {
+            if char_index == 0 {
+                char.to_ascii_uppercase()
+            } else {
+                char
+            }
+        })
+        .chain("Keyword".chars())
+        .collect()
 }

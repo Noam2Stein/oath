@@ -10,7 +10,7 @@ use oath_diagnostics::{DiagnosticsHandle, Error};
 pub use scope::*;
 
 pub trait NameResExt: Seal {
-    fn name_res(self) -> Scope;
+    fn name_res(self, diagnostics: DiagnosticsHandle) -> Scope;
 }
 
 impl NameResExt for SyntaxTree {

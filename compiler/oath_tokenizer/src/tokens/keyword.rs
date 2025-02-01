@@ -1,13 +1,15 @@
 use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
-use oath_keywords_puncts_macros::with_keywords;
+use oath_keywords_puncts::with_keyword_categories;
 use oath_src::{Span, Spanned};
-use oath_tokenizer_macros::TokenDowncast;
+use oath_tokenizer_proc_macros::TokenDowncast;
 
 use crate::{Seal, TokenType};
 
 use super::TokenDowncastFrom;
+
+pub use oath_keywords_puncts::with_keywords;
 
 with_keywords!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
@@ -21,7 +23,7 @@ with_keywords!(
     )*
 );
 
-pub use oath_tokenizer_macros::keyword;
+pub use oath_tokenizer_proc_macros::keyword;
 
 #[allow(private_bounds)]
 pub trait KeywordType: TokenType + TokenDowncastFrom<Keyword> {}
@@ -50,26 +52,6 @@ impl Desc for Keyword {
     }
 }
 
-impl Keyword {
-    pub fn is_keyword(s: &str) -> bool {
-        with_keywords! {
-            match s {
-                $(stringify!($keyword) => true,)*
-                _ => false,
-            }
-        }
-    }
-
-    pub fn from_str(s: &str, span: Span) -> Option<Self> {
-        with_keywords! {
-            match s {
-                $(stringify!($keyword) => Some(Self::$keyword_variant($keyword_type(span))),)*
-                _ => None,
-            }
-        }
-    }
-}
-
 with_keywords!($(
     impl KeywordType for $keyword_type {}
     impl TokenType for $keyword_type {}
@@ -92,3 +74,47 @@ with_keywords!($(
         }
     }
 )*);
+
+impl Keyword {
+    pub fn is_keyword(s: &str) -> bool {
+        with_keywords! {
+            match s {
+                $(stringify!($keyword) => true,)*
+                _ => false,
+            }
+        }
+    }
+
+    pub fn from_str(s: &str, span: Span) -> Option<Self> {
+        with_keywords! {
+            match s {
+                $(stringify!($keyword) => Some(Self::$keyword_variant($keyword_type(span))),)*
+                _ => None,
+            }
+        }
+    }
+}
+
+with_keyword_categories!(
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub enum KeywordCategory {$(
+        $category,
+    )*}
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct KeywordInfo {
+    pub str: &'static str,
+    pub category: KeywordCategory,
+}
+
+impl Keyword {
+    pub const KEYWORDS: &[KeywordInfo] = {
+        with_keywords! { &[$(
+            KeywordInfo {
+                str: stringify!($keyword),
+                category: KeywordCategory::$keyword_category,
+            }
+        ), *]}
+    };
+}

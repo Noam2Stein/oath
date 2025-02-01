@@ -1,13 +1,14 @@
 use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
-use oath_keywords_puncts_macros::with_puncts;
 use oath_src::{Span, Spanned};
-use oath_tokenizer_macros::TokenDowncast;
+use oath_tokenizer_proc_macros::TokenDowncast;
 
 use crate::Seal;
 
 use super::{TokenDowncastFrom, TokenType};
+
+pub use oath_keywords_puncts::with_puncts;
 
 with_puncts!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
@@ -21,7 +22,7 @@ with_puncts!(
     )*
 );
 
-pub use oath_tokenizer_macros::punct;
+pub use oath_tokenizer_proc_macros::punct;
 
 #[allow(private_bounds)]
 pub trait PunctType: TokenType + TokenDowncastFrom<Punct> {}
@@ -76,6 +77,12 @@ with_puncts!($(
 )*);
 
 impl Punct {
+    pub const PUNCTS: &[&str] = {
+        with_puncts! {
+            &[$($punct), *]
+        }
+    };
+
     pub fn from_str(s: &str, span: Span) -> Option<Self> {
         with_puncts! {
             match s {

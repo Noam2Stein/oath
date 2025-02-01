@@ -1,6 +1,6 @@
 use logos::{Lexer, Logos};
 use oath_diagnostics::{DiagnosticsHandle, Error};
-use oath_keywords_puncts_macros::with_puncts;
+use oath_keywords_puncts::with_puncts;
 use oath_src::{Position, Span, SrcFile};
 
 use crate::{

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use oath_ast::ParseAstExt;
 use oath_diagnostics::{Diagnostics, DiagnosticsHandle};
 use oath_src::{Spanned, SrcFile};
-use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
+use oath_tokenizer::{Keyword, SrcFileTokenizeExt};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -44,7 +44,7 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(
-            KEYWORDS
+            Keyword::KEYWORDS
                 .into_iter()
                 .map(|keyword| CompletionItem::new_simple(keyword.str.to_string(), String::new()))
                 .collect(),
