@@ -3,8 +3,8 @@ use std::iter::Peekable;
 use oath_diagnostics::{Desc, DiagnosticsHandle, Error, Fill};
 use oath_src::{Span, Spanned};
 use oath_tokenizer::{
-    CharLiteral, DelimitersType, FloatLiteral, Group, Ident, IntLiteral, Keyword, Literal, Punct,
-    StrLiteral, TokenDowncast, TokenTree,
+    with_keywords, with_puncts, CharLiteral, DelimitersType, FloatLiteral, Group, Ident,
+    IntLiteral, Keyword, Literal, Punct, StrLiteral, TokenDowncast, TokenTree,
 };
 
 use crate::Parse;
@@ -43,6 +43,12 @@ token_impl!(IntLiteral);
 token_impl!(FloatLiteral);
 token_impl!(CharLiteral);
 token_impl!(StrLiteral);
+with_keywords!($(
+    token_impl!(oath_tokenizer::$keyword_type);
+)*);
+with_puncts!($(
+    token_impl!(oath_tokenizer::$punct_type);
+)*);
 
 impl<D: DelimitersType> Parse for Group<D> {
     fn parse(

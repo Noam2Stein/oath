@@ -1,4 +1,8 @@
 use oath_parser::Parse;
 
+use crate::Mod;
+
 #[derive(Parse)]
-pub enum ModItem {}
+pub enum ModItem {
+    Mod(Mod),
+}

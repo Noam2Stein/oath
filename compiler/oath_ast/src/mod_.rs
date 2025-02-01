@@ -1,9 +1,9 @@
 use oath_parser::Parse;
-use oath_tokenizer::{keyword, Ident, SemiPunct};
+use oath_tokenizer::{keyword, punct, Ident};
 
 #[derive(Parse)]
 pub struct Mod {
-    mod_keyword: keyword!(mod),
-    ident: Ident,
-    semi: SemiPunct,
+    pub mod_keyword: keyword!("mod"),
+    pub ident: Ident,
+    pub semi: punct!(";"),
 }

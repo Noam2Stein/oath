@@ -10,18 +10,6 @@
 		}
 	],
 	"repository": {
-		"keywords": {
-			"patterns": [
-				{
-					"name": "keyword.control.oath",
-					"match": "\\b(if|else|match|loop|while|for|return|break|continue)\\b"
-				},
-				{
-					"name": "keyword.other.oath",
-					"match": "\\b(mod|pub|package|use|trait|fn|alias|type|value|struct|union|untagged|impl|with|macro|async|static|const|raw|con|unsafe|safe|panic|mem|dlock|where|var|mut|smut|excl)\\b"
-				}
-			]
-		},
 		"strings": {
 			"name": "string.quoted.double.oath",
 			"begin": "\"",

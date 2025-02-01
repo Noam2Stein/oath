@@ -21,7 +21,7 @@ pub fn keyword(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        #keyword_type #init
+        ::oath_tokenizer::#keyword_type #init
     }
     .into()
 }
@@ -49,7 +49,7 @@ pub fn punct(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        #punct_type #init
+        ::oath_tokenizer::#punct_type #init
     }
     .into()
 }

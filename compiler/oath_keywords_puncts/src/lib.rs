@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeywordInfo {
     pub str: &'static str,
-    pub ty: KeywordType,
+    pub ty: KeywordCategory,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum KeywordType {
+pub enum KeywordCategory {
     Flow,
     Other,
 }
@@ -20,7 +20,7 @@ macro_rules! define_keywords {
     ($($ty:ident: [ $($str:ident), * $(,)? ]), * $(,)?) => {
         pub const KEYWORDS: &[KeywordInfo] = &[$(
             $(
-                KeywordInfo { str: stringify!($str), ty: KeywordType::$ty },
+                KeywordInfo { str: stringify!($str), ty: KeywordCategory::$ty },
             )*
         )*];
     };

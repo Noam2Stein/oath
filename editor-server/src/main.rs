@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use oath_ast::ParseAstExt;
 use oath_diagnostics::{Diagnostics, DiagnosticsHandle};
 use oath_src::{Spanned, SrcFile};
-use oath_tokenizer::{Keyword, SrcFileTokenizeExt};
+use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -41,9 +41,9 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(
-            Keyword::KEYWORDS
+            KEYWORDS
                 .into_iter()
-                .map(|keyword| CompletionItem::new_simple(keyword.to_string(), String::new()))
+                .map(|keyword| CompletionItem::new_simple(keyword.str.to_string(), String::new()))
                 .collect(),
         )))
     }
@@ -72,11 +72,61 @@ impl LanguageServer for Backend {
                     .errors
                     .into_iter()
                     .map(|error| {
-                        Diagnostic::new_simple(span_to_range(error.span()), error.to_string())
+                        Diagnostic::new_simple(span_to_range(error.span()), error.inner.to_string())
                     })
                     .collect(),
                 Some(params.text_document.version),
             )
+            .await;
+    }
+
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let uri = params.text_document.uri;
+
+        let src_file = SrcFile::from_str(params.content_changes[0].text.as_str());
+        let diagnostics = Mutex::new(Diagnostics::default());
+
+        let _ = src_file
+            .tokenize(DiagnosticsHandle(&diagnostics))
+            .parse_ast(DiagnosticsHandle(&diagnostics));
+
+        if diagnostics.lock().unwrap().errors.is_empty() {
+            self.client
+                .log_message(MessageType::INFO, "No errors found.")
+                .await;
+        } else {
+            self.client
+                .log_message(
+                    MessageType::INFO,
+                    format!("Found {} errors", diagnostics.lock().unwrap().errors.len()),
+                )
+                .await;
+        }
+
+        let diagnostics: Vec<Diagnostic> = diagnostics
+            .into_inner()
+            .unwrap()
+            .errors
+            .into_iter()
+            .map(|error| Diagnostic {
+                range: Range {
+                    start: Position {
+                        line: error.span().start().line,
+                        character: error.span().start().char,
+                    },
+                    end: Position {
+                        line: error.span().end().line,
+                        character: error.span().end().char,
+                    },
+                },
+                severity: Some(DiagnosticSeverity::ERROR),
+                message: error.inner.to_string(),
+                ..Default::default()
+            })
+            .collect();
+
+        self.client
+            .publish_diagnostics(uri, diagnostics, None)
             .await;
     }
 }
