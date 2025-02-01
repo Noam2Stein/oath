@@ -1,5 +1,5 @@
-use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Field, Fields, FieldsNamed};
+use quote::{quote, quote_spanned};
+use syn::{parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Fields};
 
 #[proc_macro_derive(Parse)]
 pub fn derive_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -15,8 +15,8 @@ pub fn derive_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let parse_output = match data {
         Data::Enum(DataEnum {
-            enum_token,
-            brace_token,
+            enum_token: _,
+            brace_token: _,
             variants,
         }) => 'parse_output: {
             if variants.len() == 0 {
@@ -30,40 +30,86 @@ pub fn derive_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 (variants.pop().unwrap(), variants)
             };
 
-            let last_variant_ident = &last_variant.ident;
-            let last_variant_type = &last_variant.;
+            let peek_variants = non_last_variants.into_iter().map(|variant| 'peek_variant: {
+                let variant_ident = &last_variant.ident;
+
+                match variant.fields {
+                    Fields::Named(fields) => {
+                        if fields.named.len() == 0 {
+                            break 'peek_variant quote_spanned! {
+                                variant_ident.span() =>
+                                compile_error!("Cannot peek a variant with no fields");
+                            }
+                        }
+
+                        let first_field_type = &fields.named[0].ty;
+                        let field_idents = fields.named.iter().map(|field| &field.ident);
+                        let field_types = fields.named.iter().map(|field| &field.ty);
+    
+                        quote! {
+                            if <#first_field_type as oath_parser::Peek>::peek(tokens, diagnostics) {
+                                return Self::#variant_ident {
+                                    #(#field_idents: <#field_types as oath_parser::Parse>::parse(tokens, diagnostics),)*
+                                };
+                            }
+                        }
+                    },
+                    Fields::Unit => {
+                        quote_spanned! {
+                            variant_ident.span() =>
+                            compile_error!("Cannot peek a variant with no fields");
+                        }
+                    },
+                    Fields::Unnamed(fields) => {
+                        if fields.unnamed.len() == 0 {
+                            break 'peek_variant quote_spanned! {
+                                variant_ident.span() =>
+                                compile_error!("Cannot peek a variant with no fields");
+                            }
+                        }
+
+                        let first_field_type = &fields.unnamed[0].ty;                        
+                        let field_types = fields.unnamed.iter().map(|field| &field.ty);
+    
+                        quote! {
+                            if <#first_field_type as oath_parser::Peek>::peek(tokens, diagnostics) {
+                                return Self::#variant_ident(#(<#field_types as oath_parser::Parse>::parse(tokens, diagnostics)), *);
+                            }
+                        }
+                    }
+                }
+            });
 
             let parse_last_variant = match last_variant.fields {
                 Fields::Named(fields) => {
+                    let variant_ident = &last_variant.ident;
                     let field_idents = fields.named.iter().map(|field| &field.ident);
                     let field_types = fields.named.iter().map(|field| &field.ty);
-    
+
                     quote! {
-                        Self::#last_variant_ident {
+                        Self::#variant_ident {
                             #(#field_idents: <#field_types as oath_parser::Parse>::parse(tokens, diagnostics),)*
                         }
                     }
                 }
                 Fields::Unit => {
+                    let variant_ident = &last_variant.ident;
                     quote! {
-                        Self::#last_variant_ident
+                        Self::#variant_ident
                     }
                 }
                 Fields::Unnamed(fields) => {
+                    let variant_ident = &last_variant.ident;
                     let field_types = fields.unnamed.iter().map(|field| &field.ty);
 
                     quote! {
-                        Self::#last_variant_ident(#(<#field_types as oath_parser::Parse>::parse(tokens, diagnostics)), *)
+                        Self::#variant_ident(#(<#field_types as oath_parser::Parse>::parse(tokens, diagnostics)), *)
                     }
                 }
             };
 
             quote! {
-                #(
-                    if let Some(value) = <Option<#non_last_variant_types> as oath_parser::Parse>::parse(tokens, diagnostics) {
-                        return Self::#non_last_variant_idents(value);
-                    }
-                )*
+                #(#peek_variants)*
                 #parse_last_variant
             }
         }

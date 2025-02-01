@@ -1,10 +1,12 @@
 [package]
 edition = "2021"
-name = "oath_tokenizer"
+name    = "oath_tokenizer"
 version = "0.1.0"
 
 [dependencies]
-logos = "0.15.0"
-oath_diagnostics = { path = "../oath_diagnostics" }
-oath_src = { path = "../oath_src" }
-oath_tokenizer_macros = { path = "../oath_tokenizer_macros" }
+logos                       = "0.15.0"
+oath_diagnostics            = { path = "../oath_diagnostics" }
+oath_keywords_puncts        = { path = "../oath_keywords_puncts" }
+oath_keywords_puncts_macros = { path = "../oath_keywords_puncts_macros" }
+oath_src                    = { path = "../oath_src" }
+oath_tokenizer_macros       = { path = "../oath_tokenizer_macros" }

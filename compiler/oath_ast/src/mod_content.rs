@@ -1,8 +1,8 @@
-use oath_parser::Parse;
+use oath_parser::{Endless, Parse};
 
 use crate::ModItem;
 
 #[derive(Parse)]
 pub struct ModContent {
-    pub items: Vec<ModItem>,
+    pub items: Endless<ModItem>,
 }

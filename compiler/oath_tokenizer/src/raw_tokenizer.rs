@@ -1,10 +1,11 @@
 use logos::{Lexer, Logos};
 use oath_diagnostics::{DiagnosticsHandle, Error};
+use oath_keywords_puncts_macros::with_puncts;
 use oath_src::{Position, Span, SrcFile};
 
 use crate::{
-    with_puncts, Braces, Brackets, CharLiteral, Delimiters, FloatLiteral, Ident, IntLiteral,
-    Keyword, Literal, Parens, Punct, Seal, StrLiteral,
+    Braces, Brackets, CharLiteral, Delimiters, FloatLiteral, Ident, IntLiteral, Keyword, Literal,
+    Parens, Punct, Seal, StrLiteral,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -94,34 +95,31 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                 };
 
                 Some({
-                    macro_rules! use_puncts {
-                        ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
-                            match next {
-                                LogosToken::IdentOrKeyword(str) => {
-                                    match Ident::new_or_keyword(str, span) {
-                                        Ok(ident) => RawToken::Ident(ident),
-                                        Err(keyword) => RawToken::Keyword(keyword),
-                                    }
+                    with_puncts! {
+                        match next {
+                            LogosToken::IdentOrKeyword(str) => {
+                                match Ident::new_or_keyword(str, span) {
+                                    Ok(ident) => RawToken::Ident(ident),
+                                    Err(keyword) => RawToken::Keyword(keyword),
+                                }
+                            },
+                            $(
+                                LogosToken::$punct_type => {
+                                    RawToken::Punct(Punct::$punct_variant(crate::$punct_type(span)))
                                 },
-                                $(
-                                    LogosToken::$punct_type => {
-                                        RawToken::Punct(Punct::$punct_variant(crate::$punct_type(span)))
-                                    },
-                                )*
-                                LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(unsafe { IntLiteral::from_regex_str(str, span, self.diagnostics) })),
-                                LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(unsafe { FloatLiteral::from_regex_str(str, span, self.diagnostics) })),
-                                LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(unsafe { StrLiteral::from_regex_str(str, span, self.diagnostics) })),
-                                LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(unsafe { CharLiteral::from_regex_str(str, span, self.diagnostics) })),
-                                LogosToken::ParenOpen => RawToken::OpenDelimiter(SingleDelimiter::Paren(span)),
-                                LogosToken::BracketOpen => RawToken::OpenDelimiter(SingleDelimiter::Bracket(span)),
-                                LogosToken::BraceOpen => RawToken::OpenDelimiter(SingleDelimiter::Brace(span)),
-                                LogosToken::ParenClose => RawToken::CloseDelimiter(SingleDelimiter::Paren(span)),
-                                LogosToken::BracketClose => RawToken::CloseDelimiter(SingleDelimiter::Bracket(span)),
-                                LogosToken::BraceClose => RawToken::CloseDelimiter(SingleDelimiter::Brace(span)),
-                            }
-                        };
+                            )*
+                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(unsafe { IntLiteral::from_regex_str(str, span, self.diagnostics) })),
+                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(unsafe { FloatLiteral::from_regex_str(str, span, self.diagnostics) })),
+                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(unsafe { StrLiteral::from_regex_str(str, span, self.diagnostics) })),
+                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(unsafe { CharLiteral::from_regex_str(str, span, self.diagnostics) })),
+                            LogosToken::ParenOpen => RawToken::OpenDelimiter(SingleDelimiter::Paren(span)),
+                            LogosToken::BracketOpen => RawToken::OpenDelimiter(SingleDelimiter::Bracket(span)),
+                            LogosToken::BraceOpen => RawToken::OpenDelimiter(SingleDelimiter::Brace(span)),
+                            LogosToken::ParenClose => RawToken::CloseDelimiter(SingleDelimiter::Paren(span)),
+                            LogosToken::BracketClose => RawToken::CloseDelimiter(SingleDelimiter::Bracket(span)),
+                            LogosToken::BraceClose => RawToken::CloseDelimiter(SingleDelimiter::Brace(span)),
+                        }
                     }
-                    with_puncts!(use_puncts)
                 })
             } else {
                 None
@@ -130,40 +128,37 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
     }
 }
 
-macro_rules! use_puncts {
-    ($($punct:literal($punct_len:literal $punct_variant:ident $punct_type:ident),)*) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
-        enum LogosToken<'src> {
-            #[regex(r"[a-zA-Z_@][a-zA-Z_@0-9]*")]
-            IdentOrKeyword(&'src str),
-            $(
-                #[token($punct)]
-                $punct_type,
-            )*
-            #[regex("[0-9][0-9_@a-zA-Z]*")]
-            IntLiteral(&'src str),
-            #[regex(r"[0-9][0-9_]*\.[0-9_@a-zA-Z]+")]
-            FloatLiteral(&'src str),
-            #[regex("\".*\"")]
-            StrLiteral(&'src str),
-            #[regex("'.'")]
-            CharLiteral(&'src str),
-            #[token("(")]
-            ParenOpen,
-            #[token(")")]
-            ParenClose,
-            #[token("[")]
-            BracketOpen,
-            #[token("]")]
-            BracketClose,
-            #[token("{")]
-            BraceOpen,
-            #[token("}")]
-            BraceClose,
-        }
+with_puncts!(
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
+    enum LogosToken<'src> {
+        #[regex(r"[a-zA-Z_@][a-zA-Z_@0-9]*")]
+        IdentOrKeyword(&'src str),
+        $(
+            #[token($punct)]
+            $punct_type,
+        )*
+        #[regex("[0-9][0-9_@a-zA-Z]*")]
+        IntLiteral(&'src str),
+        #[regex(r"[0-9][0-9_]*\.[0-9_@a-zA-Z]+")]
+        FloatLiteral(&'src str),
+        #[regex("\".*\"")]
+        StrLiteral(&'src str),
+        #[regex("'.'")]
+        CharLiteral(&'src str),
+        #[token("(")]
+        ParenOpen,
+        #[token(")")]
+        ParenClose,
+        #[token("[")]
+        BracketOpen,
+        #[token("]")]
+        BracketClose,
+        #[token("{")]
+        BraceOpen,
+        #[token("}")]
+        BraceClose,
     }
-}
-with_puncts!(use_puncts);
+);
 
 fn index_to_pos(str: &str, index: usize) -> Position {
     let mut line = 0;

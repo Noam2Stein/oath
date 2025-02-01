@@ -1,0 +1,13 @@
+[package]
+edition = "2021"
+name    = "oath_keywords_puncts_macros"
+version = "0.1.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+oath_keywords_puncts = { path = "../oath_keywords_puncts" }
+proc-macro2          = "1.0.93"
+quote                = "1.0.38"
+syn                  = "2.0.96"

@@ -1,6 +1,58 @@
-use proc_macro2::TokenStream;
+use derive_syn_parse::Parse;
+use oath_keywords_puncts::keyword_to_type;
+use oath_keywords_puncts_macros::with_puncts;
+use proc_macro2::{Group, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, Ident};
+use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, LitStr};
+
+#[proc_macro]
+pub fn keyword(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    #[derive(Parse)]
+    struct Input {
+        keyword: LitStr,
+        init: Option<Group>,
+    }
+
+    let Input { keyword, init } = parse_macro_input!(input as Input);
+
+    let keyword_type = Ident::new(
+        keyword_to_type(keyword.value().as_str()).as_str(),
+        keyword.span(),
+    );
+
+    quote! {
+        #keyword_type #init
+    }
+    .into()
+}
+
+#[proc_macro]
+pub fn punct(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    #[derive(Parse)]
+    struct Input {
+        punct: LitStr,
+        init: Option<Group>,
+    }
+
+    let Input { punct, init } = parse_macro_input!(input as Input);
+
+    let punct_type = Ident::new(
+        {
+            with_puncts! {
+                match punct.value().as_str() {
+                    $($punct => stringify!($punct_type),)*
+                    non_punct => panic!("`{non_punct}` is not a punct"),
+                }
+            }
+        },
+        punct.span(),
+    );
+
+    quote! {
+        #punct_type #init
+    }
+    .into()
+}
 
 #[proc_macro_derive(TokenDowncast)]
 pub fn derive_token_downcast(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
