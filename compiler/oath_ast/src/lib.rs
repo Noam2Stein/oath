@@ -6,20 +6,24 @@ mod mod_;
 mod mod_content;
 mod mod_item;
 mod path;
-mod type_;
+mod pub_;
+mod struct_;
 mod use_;
 pub use mod_::*;
 pub use mod_content::*;
 pub use mod_item::*;
 pub use path::*;
-pub use type_::*;
+pub use pub_::*;
+pub use struct_::*;
 pub use use_::*;
 
 trait Seal {}
 
+pub type SyntaxTree = ModContent;
+
 #[allow(private_bounds)]
 pub trait ParseAstExt: Seal {
-    fn parse_ast(self, diagnostics: DiagnosticsHandle) -> ModContent;
+    fn parse_ast(self, diagnostics: DiagnosticsHandle) -> SyntaxTree;
 }
 
 impl Seal for TokenFile {}

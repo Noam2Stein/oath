@@ -1,0 +1,9 @@
+[package]
+edition = "2021"
+name    = "oath_name_res"
+version = "0.1.0"
+
+[dependencies]
+oath_ast         = { path = "../oath_ast" }
+oath_diagnostics = { path = "../oath_diagnostics" }
+oath_src         = { path = "../oath_src" }
