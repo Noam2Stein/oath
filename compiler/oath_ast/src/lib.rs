@@ -1,7 +1,8 @@
 use oath_diagnostics::DiagnosticsHandle;
-use oath_parser::ParseExt;
+use oath_parser::IntoParser;
 use oath_tokenizer::TokenFile;
 
+mod generic_params;
 mod mod_;
 mod mod_content;
 mod mod_item;
@@ -9,6 +10,7 @@ mod path;
 mod pub_;
 mod struct_;
 mod use_;
+pub use generic_params::*;
 pub use mod_::*;
 pub use mod_content::*;
 pub use mod_item::*;
@@ -29,6 +31,6 @@ pub trait ParseAstExt: Seal {
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {
     fn parse_ast(self, diagnostics: DiagnosticsHandle) -> ModContent {
-        self.tokens.into_iter().peekable().parse(diagnostics)
+        self.into_parser().parse(diagnostics)
     }
 }

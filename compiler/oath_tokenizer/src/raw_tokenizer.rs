@@ -4,8 +4,8 @@ use oath_keywords_puncts::with_puncts;
 use oath_src::{Position, Span, SrcFile};
 
 use crate::{
-    Braces, Brackets, CharLiteral, Delimiters, FloatLiteral, Ident, IntLiteral, Keyword, Literal,
-    Parens, Punct, Seal, StrLiteral,
+    CharLiteral, Delimiters, FloatLiteral, Ident, IntLiteral, Keyword, Literal, Punct, Seal,
+    StrLiteral,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,26 +23,25 @@ pub enum SingleDelimiter {
     Paren(Span),
     Bracket(Span),
     Brace(Span),
+    Angle(Span),
 }
 impl SingleDelimiter {
-    pub fn pair(self, close: Self) -> Option<Delimiters> {
+    pub fn pair_close(self, close: Self) -> Option<Delimiters> {
         match self {
             Self::Paren(open_span) => match close {
-                Self::Paren(close_span) => {
-                    Some(Delimiters::Parens(Parens::new(open_span, close_span)))
-                }
+                Self::Paren(close_span) => Some(Delimiters::parens(open_span, close_span)),
                 _ => None,
             },
             Self::Bracket(open_span) => match close {
-                Self::Bracket(close_span) => {
-                    Some(Delimiters::Brackets(Brackets::new(open_span, close_span)))
-                }
+                Self::Bracket(close_span) => Some(Delimiters::brackets(open_span, close_span)),
                 _ => None,
             },
             Self::Brace(open_span) => match close {
-                Self::Brace(close_span) => {
-                    Some(Delimiters::Braces(Braces::new(open_span, close_span)))
-                }
+                Self::Brace(close_span) => Some(Delimiters::braces(open_span, close_span)),
+                _ => None,
+            },
+            Self::Angle(open_span) => match close {
+                Self::Angle(close_span) => Some(Delimiters::angles(open_span, close_span)),
                 _ => None,
             },
         }
@@ -115,9 +114,11 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                             LogosToken::ParenOpen => RawToken::OpenDelimiter(SingleDelimiter::Paren(span)),
                             LogosToken::BracketOpen => RawToken::OpenDelimiter(SingleDelimiter::Bracket(span)),
                             LogosToken::BraceOpen => RawToken::OpenDelimiter(SingleDelimiter::Brace(span)),
+                            LogosToken::AngleOpen => RawToken::OpenDelimiter(SingleDelimiter::Angle(span)),
                             LogosToken::ParenClose => RawToken::CloseDelimiter(SingleDelimiter::Paren(span)),
                             LogosToken::BracketClose => RawToken::CloseDelimiter(SingleDelimiter::Bracket(span)),
                             LogosToken::BraceClose => RawToken::CloseDelimiter(SingleDelimiter::Brace(span)),
+                            LogosToken::AngleClose => RawToken::CloseDelimiter(SingleDelimiter::Angle(span)),
                         }
                     }
                 })
@@ -158,6 +159,10 @@ with_puncts!(
         BraceOpen,
         #[token("}")]
         BraceClose,
+        #[token("<#")]
+        AngleOpen,
+        #[token("#>")]
+        AngleClose,
     }
 );
 

@@ -139,8 +139,8 @@ pub fn derive_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     quote! {
         impl # impl_generics ::oath_parser::Parse for #ident #ty_generics #where_clause {
             fn parse(
-                tokens: &mut std::iter::Peekable<impl Iterator<Item = oath_tokenizer::TokenTree>>,
-                diagnostics: oath_diagnostics::DiagnosticsHandle,
+                tokens: &mut ::oath_parser::Parser<impl Iterator<Item = oath_tokenizer::TokenTree>>,
+                diagnostics: ::oath_diagnostics::DiagnosticsHandle,
             ) -> Self {
                 #parse_output
             }
@@ -220,7 +220,7 @@ pub fn derive_peek(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     quote! {
         impl # impl_generics ::oath_parser::Peek for #ident #ty_generics #where_clause {
             fn peek(
-                tokens: &mut std::iter::Peekable<impl Iterator<Item = oath_tokenizer::TokenTree>>,
+                tokens: &mut ::oath_parser::Parser<impl Iterator<Item = ::oath_tokenizer::TokenTree>>,
             ) -> bool {
                 #parse_output
             }

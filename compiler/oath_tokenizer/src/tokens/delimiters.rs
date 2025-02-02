@@ -7,115 +7,140 @@ use crate::Seal;
 
 use super::TokenDowncastFrom;
 
-macro_rules! declare_delimiters {
-    ($($delim_ident:ident $group_desc:literal), * $(,)?) => {
+pub use oath_keywords_puncts::with_delimiters;
+
+with_delimiters!(
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub enum Delimiters {$(
+        $delim_type($delim_type),
+    )*}
+
+    $(
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub enum Delimiters {$(
-            $delim_ident($delim_ident),
-        )*}
-
-        $(
-            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub struct $delim_ident {
-                open_span: Span,
-                close_span: Span,
-            }
-        )*
-
-        #[allow(private_bounds)]
-        pub trait DelimitersType: Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + Fill + Desc + TokenDowncastFrom<Delimiters>
-        {
-            fn open_span(self) -> Span;
-            fn close_span(self) -> Span;
+        pub struct $delim_type {
+            open_span: Span,
+            close_span: Span,
         }
+    )*
+);
 
-        impl DelimitersType for Delimiters {
+#[allow(private_bounds)]
+pub trait DelimitersType:
+    Seal
+    + Send
+    + Sync
+    + Debug
+    + Copy
+    + Eq
+    + Ord
+    + Hash
+    + Spanned
+    + Fill
+    + Desc
+    + TokenDowncastFrom<Delimiters>
+{
+    fn open_span(self) -> Span;
+    fn close_span(self) -> Span;
+}
+
+impl DelimitersType for Delimiters {
+    #[inline(always)]
+    fn open_span(self) -> Span {
+        with_delimiters! {
+            match self {$(
+                Self::$delim_type(delim) => delim.open_span(),
+            )*}
+        }
+    }
+    #[inline(always)]
+    fn close_span(self) -> Span {
+        with_delimiters! {
+            match self {$(
+                Self::$delim_type(delim) => delim.close_span(),
+            )*}
+        }
+    }
+}
+impl Seal for Delimiters {}
+
+impl Spanned for Delimiters {
+    #[inline(always)]
+    fn span(&self) -> Span {
+        self.open_span().connect(self.close_span())
+    }
+}
+impl Fill for Delimiters {
+    fn fill(span: Span) -> Self {
+        Self::Parens(Parens::new(span, span))
+    }
+}
+impl Desc for Delimiters {
+    fn desc() -> &'static str {
+        "delimiters"
+    }
+}
+
+with_delimiters!(
+    $(
+        impl DelimitersType for $delim_type {
             #[inline(always)]
             fn open_span(self) -> Span {
-                match self {$(
-                    Self::$delim_ident(delim) => delim.open_span(),
-                )*}
+                self.open_span
             }
             #[inline(always)]
             fn close_span(self) -> Span {
-                match self {$(
-                    Self::$delim_ident(delim) => delim.close_span(),
-                )*}
+                self.close_span
             }
         }
-        impl Seal for Delimiters {}
+        impl Seal for $delim_type {}
 
-        impl Spanned for Delimiters {
+        impl Spanned for $delim_type {
             #[inline(always)]
             fn span(&self) -> Span {
                 self.open_span().connect(self.close_span())
             }
         }
-        impl Fill for Delimiters {
+        impl Fill for $delim_type {
             fn fill(span: Span) -> Self {
-                Self::Parens(Parens::new(span, span))
+                Self::new(span, span)
             }
         }
-        impl Desc for Delimiters {
+        impl Desc for $delim_type {
             fn desc() -> &'static str {
-                "delimiters"
+                concat!("`", $open_delim, " ", $close_delim, "`")
             }
         }
 
-        $(
-            impl DelimitersType for $delim_ident {
-                #[inline(always)]
-                fn open_span(self) -> Span {
-                    self.open_span
-                }
-                #[inline(always)]
-                fn close_span(self) -> Span {
-                    self.close_span
+        impl TokenDowncastFrom<Delimiters> for $delim_type {
+            fn downcast_from(value: Delimiters) -> Option<Self> {
+                if let Delimiters::$delim_type(value) = value {
+                    Some(value)
+                } else {
+                    None
                 }
             }
-            impl Seal for $delim_ident {}
+            fn downcast_from_ref(value: &Delimiters) -> Option<&Self> {
+                if let Delimiters::$delim_type(value) = value {
+                    Some(value)
+                } else {
+                    None
+                }
+            }
+        }
 
-            impl Spanned for $delim_ident {
-                #[inline(always)]
-                fn span(&self) -> Span {
-                    self.open_span().connect(self.close_span())
-                }
+        impl $delim_type {
+            #[inline(always)]
+            pub fn new(open_span: Span, close_span: Span) -> Self {
+                Self { open_span, close_span }
             }
-            impl Fill for $delim_ident {
-                fn fill(span: Span) -> Self {
-                    Self::new(span, span)
-                }
-            }
-            impl Desc for $delim_ident {
-                fn desc() -> &'static str {
-                    $group_desc
-                }
-            }
+        }
+    )*
+);
 
-            impl TokenDowncastFrom<Delimiters> for $delim_ident {
-                fn downcast_from(value: Delimiters) -> Option<Self> {
-                    if let Delimiters::$delim_ident(value) = value {
-                        Some(value)
-                    } else {
-                        None
-                    }
-                }
-                fn downcast_from_ref(value: &Delimiters) -> Option<&Self> {
-                    if let Delimiters::$delim_ident(value) = value {
-                        Some(value)
-                    } else {
-                        None
-                    }
-                }
-            }
-
-            impl $delim_ident {
-                #[inline(always)]
-                pub fn new(open_span: Span, close_span: Span) -> Self {
-                    Self { open_span, close_span }
-                }
-            }
-        )*
-    };
-}
-declare_delimiters!(Parens "`( )`", Braces "`{ }`", Brackets "`[ ]`");
+with_delimiters!(
+    impl Delimiters {$(
+        pub fn $delim_fn(open_span: Span, close_span: Span) -> Self {
+            Self::$delim_type($delim_type::new(open_span, close_span))
+        }
+    )*}
+);

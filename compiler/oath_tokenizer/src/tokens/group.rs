@@ -32,3 +32,12 @@ impl<D: DelimitersType> Desc for Group<D> {
         D::desc()
     }
 }
+
+impl<D: DelimitersType> IntoIterator for Group<D> {
+    type IntoIter = <Vec<TokenTree> as IntoIterator>::IntoIter;
+    type Item = TokenTree;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tokens.into_iter()
+    }
+}

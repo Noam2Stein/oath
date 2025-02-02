@@ -1,12 +1,16 @@
-use crate::{Parse, ParseExt, Peek};
+use oath_diagnostics::DiagnosticsHandle;
+use oath_tokenizer::TokenTree;
+
+use crate::{Parse, Parser, Peek};
 
 impl<T: Peek> Parse for Vec<T> {
     fn parse(
-        tokens: &mut std::iter::Peekable<impl Iterator<Item = oath_tokenizer::TokenTree>>,
-        diagnostics: oath_diagnostics::DiagnosticsHandle,
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        diagnostics: DiagnosticsHandle,
     ) -> Self {
         let mut output = Vec::new();
-        while let Some(value) = tokens.parse_if(diagnostics) {
+
+        while let Some(value) = parser.parse(diagnostics) {
             output.push(value);
         }
 

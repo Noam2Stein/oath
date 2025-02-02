@@ -1,22 +1,20 @@
-use std::iter::Peekable;
-
 use oath_diagnostics::{Desc, DiagnosticsHandle, Error, Fill};
-use oath_src::{Span, Spanned};
+use oath_src::Spanned;
 use oath_tokenizer::{
     with_keywords, with_puncts, CharLiteral, DelimitersType, FloatLiteral, Group, Ident,
     IntLiteral, Keyword, Literal, Punct, StrLiteral, TokenDowncast, TokenTree,
 };
 
-use crate::{Parse, Peek, PeekRef};
+use crate::{Parse, Parser, Peek, PeekRef};
 
 macro_rules! token_impl {
     ($type:ty) => {
         impl Parse for $type {
             fn parse(
-                tokens: &mut Peekable<impl Iterator<Item = TokenTree>>,
+                parser: &mut Parser<impl Iterator<Item = TokenTree>>,
                 diagnostics: DiagnosticsHandle,
             ) -> Self {
-                if let Some(token) = tokens.next() {
+                if let Some(token) = parser.next() {
                     let span = token.span();
                     if let Some(output) = token.downcast() {
                         output
@@ -26,16 +24,16 @@ macro_rules! token_impl {
                         Self::fill(span)
                     }
                 } else {
-                    diagnostics.push_error(Error::Expected(Self::desc()), Span::end_of_file());
+                    diagnostics.push_error(Error::Expected(Self::desc()), parser.end_span());
 
-                    Self::fill(Span::end_of_file())
+                    Self::fill(parser.end_span())
                 }
             }
         }
 
         impl Peek for $type {
-            fn peek(tokens: &mut Peekable<impl Iterator<Item = TokenTree>>) -> bool {
-                if let Some(token) = tokens.peek() {
+            fn peek(tokens: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
+                if let Some(token) = tokens.peek_next() {
                     token.downcast_ref::<Self>().is_some()
                 } else {
                     false
@@ -44,8 +42,8 @@ macro_rules! token_impl {
         }
 
         impl PeekRef for $type {
-            fn peek_ref(tokens: &mut Peekable<impl Iterator<Item = TokenTree>>) -> Option<&Self> {
-                if let Some(token) = tokens.peek() {
+            fn peek_ref(tokens: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self> {
+                if let Some(token) = tokens.peek_next() {
                     if let Some(token) = token.downcast_ref() {
                         Some(token)
                     } else {
@@ -76,10 +74,10 @@ with_puncts!($(
 
 impl<D: DelimitersType> Parse for Group<D> {
     fn parse(
-        tokens: &mut Peekable<impl Iterator<Item = TokenTree>>,
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         diagnostics: DiagnosticsHandle,
     ) -> Self {
-        if let Some(token) = tokens.next() {
+        if let Some(token) = parser.next() {
             let span = token.span();
             if let Some(Group { delimiters, tokens }) = token.downcast::<Group>() {
                 if let Some(delimiters) = delimiters.downcast() {
@@ -95,9 +93,19 @@ impl<D: DelimitersType> Parse for Group<D> {
                 Self::fill(span)
             }
         } else {
-            diagnostics.push_error(Error::Expected(Self::desc()), Span::end_of_file());
+            diagnostics.push_error(Error::Expected(Self::desc()), parser.end_span());
 
-            Self::fill(Span::end_of_file())
+            Self::fill(parser.end_span())
+        }
+    }
+}
+
+impl<D: DelimitersType> Peek for Group<D> {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
+        if let Some(TokenTree::Group(group)) = parser.peek_next() {
+            group.delimiters.downcast_ref::<D>().is_some()
+        } else {
+            false
         }
     }
 }

@@ -20,12 +20,19 @@ macro_rules! define_puncts {
         ), *];
     };
 }
+macro_rules! define_delimiters {
+    ($($open_str:literal $close_str:literal $ty:ident), * $(,)?) => {
+        const DELIMITERS: &[DelimiterInfo] = &[$(
+            DelimiterInfo { open_str: $open_str, close_str: $close_str, ty: stringify!($ty) }
+        ), *];
+    }
+}
 
 define_keywords!(
     Other: [
         mod, use, pub, package, super,
         trait, promise, require,
-        type, struct, union, untagged,
+        type, struct, union, untagged, val,
         fn, raw, con, async,
         macro,
         const, static,
@@ -77,6 +84,13 @@ define_puncts!(
     ":" Colon,
     "." Dot,
     "`" Backtick,
+    "#" Num,
+);
+define_delimiters!(
+    "(" ")" Parens,
+    "[" "]" Brackets,
+    "{" "}" Braces,
+    "<#" "#>" Angles,
 );
 
 /// provides meta info about all Oath keywords with `$()*` + `$info` syntax.
@@ -191,6 +205,40 @@ pub fn with_puncts(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// provides meta info about all Oath delimiters with `$()*` + `$info` syntax.
+///
+/// `$open_delim:literal`, `$close_delim:literal`, `$delim_type:ident`, `$delim_fn:ident`
+#[proc_macro]
+pub fn with_delimiters(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = TokenStream::from(input);
+
+    let macro_input = DELIMITERS.into_iter().map(|delim_info| {
+        let open_delim = LitStr::new(&delim_info.open_str, Span::call_site());
+
+        let close_delim = LitStr::new(&delim_info.close_str, Span::call_site());
+
+        let delim_type = Ident::new(&delim_info.ty, Span::call_site());
+
+        let delim_fn = Ident::new(&delim_info.ty.to_lowercase(), Span::call_site());
+
+        quote! {
+            #open_delim #close_delim #delim_type #delim_fn,
+        }
+    });
+
+    quote! {
+        macro_rules! why {
+            ($($open_delim:literal $close_delim:literal $delim_type:ident $delim_fn:ident, )*) => {
+                #input
+            }
+        }
+        why! {
+            #(#macro_input)*
+        }
+    }
+    .into()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct KeywordInfo {
     pub str: &'static str,
@@ -201,6 +249,13 @@ struct KeywordInfo {
 struct PunctInfo {
     pub str: &'static str,
     pub name: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct DelimiterInfo {
+    pub open_str: &'static str,
+    pub close_str: &'static str,
+    pub ty: &'static str,
 }
 
 fn keyword_to_variant(keyword: &str) -> String {

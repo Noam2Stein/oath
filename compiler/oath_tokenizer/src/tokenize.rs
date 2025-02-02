@@ -2,7 +2,7 @@ use std::iter::Peekable;
 
 use crate::{
     raw_tokenizer::{RawToken, RawTokenizer, SingleDelimiter, SrcFileTokenizeRawExt},
-    Braces, Brackets, Delimiters, Group, Parens, Seal, TokenFile, TokenTree,
+    Angles, Braces, Brackets, Delimiters, Group, Parens, Seal, TokenFile, TokenTree,
 };
 use oath_diagnostics::{DiagnosticsHandle, Error};
 use oath_src::{Span, Spanned, SrcFile};
@@ -38,6 +38,9 @@ impl SrcFileTokenizeExt for SrcFile {
                     }
                     SingleDelimiter::Brace(span) => {
                         diagnostics.push_error(Error::UnopenedBrace, span)
+                    }
+                    SingleDelimiter::Angle(span) => {
+                        diagnostics.push_error(Error::UnopenedAngle, span)
                     }
                 },
             }
@@ -85,6 +88,15 @@ fn tokenize_group(
                             1,
                         ),
                     )),
+                    SingleDelimiter::Angle(open_span) => Delimiters::Angles(Angles::new(
+                        open_span,
+                        Span::from_start_len(
+                            tokens
+                                .last()
+                                .map_or(open_span.end(), |last| last.span().end()),
+                            1,
+                        ),
+                    )),
                 },
                 tokens,
             }
@@ -93,7 +105,7 @@ fn tokenize_group(
 
     while let Some(raw_token) = raw_tokens.peek() {
         if let RawToken::CloseDelimiter(close_delimiter) = raw_token {
-            return if let Some(delimiters) = close_delimiter.pair(open_delimiter) {
+            return if let Some(delimiters) = open_delimiter.pair_close(*close_delimiter) {
                 raw_tokens.next();
                 Group { delimiters, tokens }
             } else {
@@ -106,6 +118,9 @@ fn tokenize_group(
                     }
                     SingleDelimiter::Brace(span) => {
                         diagnostics.push_error(Error::UnclosedBrace, span)
+                    }
+                    SingleDelimiter::Angle(span) => {
+                        diagnostics.push_error(Error::UnclosedAngle, span)
                     }
                 }
                 unfinished_group!()
@@ -130,6 +145,7 @@ fn tokenize_group(
         SingleDelimiter::Paren(span) => diagnostics.push_error(Error::UnclosedParen, span),
         SingleDelimiter::Bracket(span) => diagnostics.push_error(Error::UnclosedBracket, span),
         SingleDelimiter::Brace(span) => diagnostics.push_error(Error::UnclosedBrace, span),
+        SingleDelimiter::Angle(span) => diagnostics.push_error(Error::UnclosedAngle, span),
     };
 
     unfinished_group!()

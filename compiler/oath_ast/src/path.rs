@@ -1,10 +1,10 @@
 use oath_diagnostics::Desc;
-use oath_parser::{Parse, Peek, Seperated, Unmatched};
+use oath_parser::{Parse, Peek, Sep, Unmatched};
 use oath_tokenizer::{keyword, punct, Ident};
 
 #[derive(Parse, Peek)]
 pub struct Path {
-    pub segments: Seperated<PathSegment, punct!("::")>,
+    pub segments: Sep<PathSegment, punct!("::")>,
 }
 
 #[derive(Parse, Peek, Desc)]
