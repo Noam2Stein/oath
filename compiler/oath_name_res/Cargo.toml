@@ -7,3 +7,4 @@ version = "0.1.0"
 oath_ast         = { path = "../oath_ast" }
 oath_diagnostics = { path = "../oath_diagnostics" }
 oath_src         = { path = "../oath_src" }
+oath_tokenizer   = { path = "../oath_tokenizer" }
