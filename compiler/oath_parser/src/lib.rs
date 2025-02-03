@@ -5,9 +5,11 @@ mod parse_tokens;
 mod parse_vec;
 
 mod into_parser;
+mod parse_garbage;
 mod parser;
 mod parsing_types;
 pub use into_parser::*;
+pub use parse_garbage::*;
 pub use parser::*;
 pub use parsing_types::*;
 
@@ -39,4 +41,12 @@ impl<T: Peek> Parse for Option<T> {
 
 pub trait PeekRef: Peek {
     fn peek_ref(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self>;
+}
+
+impl Parse for () {
+    fn parse(
+        _parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        _diagnostics: DiagnosticsHandle,
+    ) -> Self {
+    }
 }

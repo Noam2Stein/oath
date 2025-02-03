@@ -1,5 +1,5 @@
 use oath_diagnostics::Desc;
-use oath_parser::{Parse, Peek, Sep, Unmatched};
+use oath_parser::{Parse, Peek, Sep, Garbage};
 use oath_tokenizer::{keyword, punct, Ident};
 
 #[derive(Parse, Peek)]
@@ -15,5 +15,5 @@ pub enum PathSegment {
     Super(keyword!("super")),
     Star(punct!("*")),
     #[dont_peek]
-    Unmatched(Unmatched<Self>),
+    Unmatched(Garbage<Self>),
 }

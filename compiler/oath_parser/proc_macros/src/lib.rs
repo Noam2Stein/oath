@@ -201,7 +201,7 @@ pub fn derive_peek(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fields,
             semi_token: _,
         }) => 'peek_struct: {
-            let first_field_type = match fields.into_iter().next() {
+            let first_field_type = match fields.into_iter().find(|item| !item.attrs.iter().any(|attrib| attrib.path().is_ident("dont_peek"))) {
                 Some(some) => some.ty,
                 None => break 'peek_struct quote! {
                     compile_error!("`Peek` cannot be derived for empty structs")
