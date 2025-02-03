@@ -18,8 +18,8 @@ impl<T: Parse> Parse for RepEndless<T> {
         Self(vec)
     }
 }
-impl<T: Peek> Peek for RepEndless<T> {
+impl<T: Parse> Peek for RepEndless<T> {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
-        T::peek(parser)
+        parser.is_left()
     }
 }

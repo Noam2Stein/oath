@@ -22,8 +22,8 @@ impl<T: Parse, S: Parse> Parse for FolEndless<T, S> {
         Self { items, seperators }
     }
 }
-impl<T: Peek, S: Parse> Peek for FolEndless<T, S> {
-    fn peek(tokens: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
-        T::peek(tokens)
+impl<T: Parse, S: Parse> Peek for FolEndless<T, S> {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
+        parser.is_left()
     }
 }
