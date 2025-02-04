@@ -42,7 +42,7 @@ fn update_vscode_lang_config() {
         }
     };
 
-    DirBuilder::new().create(DIR).unwrap();
+    DirBuilder::new().recursive(true).create(DIR).unwrap();
 
     File::create(PATH)
         .unwrap()
@@ -117,7 +117,7 @@ fn update_vscode_tmlang() {
         }
     }.replace("control_keyword_regex", &control_keyword_regex).replace("other_keyword_regex", &other_keyword_regex).replace("\n", "");
 
-    DirBuilder::new().create(DIR).unwrap();
+    DirBuilder::new().recursive(true).create(DIR).unwrap();
 
     File::create(PATH)
         .unwrap()
