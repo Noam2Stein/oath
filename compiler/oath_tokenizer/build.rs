@@ -65,9 +65,9 @@ fn update_vscode_tmlang() {
     }
     .replace(" ", "");
 
-    let control_keyword_regex = format!("\"\\b({control_keywords})\\b\"");
+    let control_keyword_regex = format!("\"\\\\b({control_keywords})\\\\b\"");
 
-    let other_keyword_regex = format!("\"\\b({other_keywords})\\b\"");
+    let other_keyword_regex = format!("\"\\\\b({other_keywords})\\\\b\"");
 
     let content = {
         with_keywords! {
