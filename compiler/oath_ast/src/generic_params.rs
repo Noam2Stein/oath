@@ -1,10 +1,10 @@
-use oath_parser::{InAngles, Parse, Peek, SepEndless};
+use oath_parser::{InAngles, Parse, Peek, TrlEndless};
 use oath_tokenizer::{keyword, punct, Ident};
 
 #[derive(Debug, Clone, Parse, Peek)]
-pub struct GenericParams(pub InAngles<SepEndless<GenericParam, punct!(",")>>);
+pub struct GenericParams(pub InAngles<Option<TrlEndless<GenericParam, punct!(",")>>>);
 
-#[derive(Debug, Clone, Parse)]
+#[derive(Debug, Clone, Parse, Peek)]
 pub struct GenericParam {
     pub ident: Ident,
     pub content: GenericParamContent,
