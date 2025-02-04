@@ -2,6 +2,7 @@ use oath_tokenizer::TokenTree;
 
 use crate::{Parse, Parser, Peek};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RepEndless<T: Parse>(pub Vec<T>);
 
 impl<T: Parse> Parse for RepEndless<T> {

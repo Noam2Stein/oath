@@ -2,6 +2,7 @@ use oath_tokenizer::TokenTree;
 
 use crate::{Parse, Parser, Peek};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Sep<T: Parse, S: Peek> {
     pub items: Vec<T>,
     pub seperators: Vec<S>,

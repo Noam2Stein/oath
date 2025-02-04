@@ -3,6 +3,7 @@ use oath_tokenizer::TokenTree;
 
 use crate::{Parse, Parser, Peek};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TrlEndless<T: Parse, S: Parse> {
     pub items: Vec<T>,
     pub seperators: Vec<S>,
