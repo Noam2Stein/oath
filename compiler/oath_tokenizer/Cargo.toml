@@ -9,3 +9,6 @@ oath_diagnostics           = { path = "../oath_diagnostics" }
 oath_keywords_puncts       = { path = "keywords_puncts" }
 oath_src                   = { path = "../oath_src" }
 oath_tokenizer_proc_macros = { path = "proc_macros" }
+
+[build-dependencies]
+oath_keywords_puncts = { path = "keywords_puncts" }
