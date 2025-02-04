@@ -1,4 +1,7 @@
-use std::{fs::File, io::Write};
+use std::{
+    fs::{DirBuilder, File},
+    io::Write,
+};
 
 use oath_keywords_puncts::{
     with_control_keywords, with_delimiters, with_keywords, with_other_keywords,
@@ -10,6 +13,7 @@ fn main() {
 }
 
 fn update_vscode_lang_config() {
+    const DIR: &str = "../../vscode-extension";
     const PATH: &str = "../../vscode-extension/language-configuration.json";
 
     const CONTENT: &str = {
@@ -38,6 +42,8 @@ fn update_vscode_lang_config() {
         }
     };
 
+    DirBuilder::new().create(DIR).unwrap();
+
     File::create(PATH)
         .unwrap()
         .write_all(CONTENT.as_bytes())
@@ -45,6 +51,7 @@ fn update_vscode_lang_config() {
 }
 
 fn update_vscode_tmlang() {
+    const DIR: &str = "../../vscode-extension/syntaxes";
     const PATH: &str = "../../vscode-extension/syntaxes/oath.tmLanguage.json";
 
     let control_keywords = {
@@ -109,6 +116,8 @@ fn update_vscode_tmlang() {
             )
         }
     }.replace("control_keyword_regex", &control_keyword_regex).replace("other_keyword_regex", &other_keyword_regex).replace("\n", "");
+
+    DirBuilder::new().create(DIR).unwrap();
 
     File::create(PATH)
         .unwrap()
