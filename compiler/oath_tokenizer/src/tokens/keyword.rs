@@ -1,7 +1,6 @@
 use std::{fmt::Debug, hash::Hash};
 
 use oath_diagnostics::{Desc, Fill};
-use oath_keywords_puncts::with_keyword_categories;
 use oath_src::{Span, Spanned};
 use oath_tokenizer_proc_macros::TokenDowncast;
 
@@ -9,7 +8,9 @@ use crate::{Seal, TokenType};
 
 use super::TokenDowncastFrom;
 
-pub use oath_keywords_puncts::with_keywords;
+pub use oath_keywords_puncts::{
+    with_control_keywords, with_keyword_categories, with_keywords, with_other_keywords,
+};
 
 with_keywords!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]

@@ -38,7 +38,7 @@ define_keywords!(
         const, static,
         var, mut, smut, excl,
     ],
-    Flow: [
+    Control: [
         assume,
         if, else, match,
         return, break, continue,
@@ -95,7 +95,7 @@ define_delimiters!(
 
 /// provides meta info about all Oath keywords with `$()*` + `$info` syntax.
 ///
-/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, `$keyword_category:ident`
+/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
 #[proc_macro]
 pub fn with_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = TokenStream::from(input);
@@ -118,15 +118,106 @@ pub fn with_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             Span::call_site(),
         );
 
-        let keyword_category = Ident::new(
-            keyword_to_variant(&keyword_info.category).as_str(),
-            Span::call_site(),
-        );
+        let keyword_category = Ident::new(&keyword_info.category, Span::call_site());
 
         quote! {
             #keyword #keyword_len #keyword_type #keyword_variant #keyword_category,
         }
     });
+
+    quote! {
+        macro_rules! collage_of_water {
+            ($($keyword:ident $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
+                #input
+            }
+        }
+        collage_of_water! {
+            #(#macro_input)*
+        }
+    }.into()
+}
+
+/// provides meta info about all Oath control keywords with `$()*` + `$info` syntax.
+///
+/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+#[proc_macro]
+pub fn with_control_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = TokenStream::from(input);
+
+    let macro_input = KEYWORDS
+        .into_iter()
+        .filter(|keyword_info| keyword_info.category == "Control")
+        .map(|keyword_info| {
+            let keyword = Ident::new(&keyword_info.str, Span::call_site());
+
+            let keyword_len = LitInt::new(
+                keyword_info.str.len().to_string().as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_type = Ident::new(
+                keyword_to_type(keyword_info.str).as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_variant = Ident::new(
+                keyword_to_variant(keyword_info.str).as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_category = Ident::new(&keyword_info.category, Span::call_site());
+
+            quote! {
+                #keyword #keyword_len #keyword_type #keyword_variant  #keyword_category,
+            }
+        });
+
+    quote! {
+        macro_rules! collage_of_water {
+            ($($keyword:ident $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
+                #input
+            }
+        }
+        collage_of_water! {
+            #(#macro_input)*
+        }
+    }.into()
+}
+
+/// provides meta info about all Oath other keywords with `$()*` + `$info` syntax.
+///
+/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+#[proc_macro]
+pub fn with_other_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = TokenStream::from(input);
+
+    let macro_input = KEYWORDS
+        .into_iter()
+        .filter(|keyword_info| keyword_info.category == "Other")
+        .map(|keyword_info| {
+            let keyword = Ident::new(&keyword_info.str, Span::call_site());
+
+            let keyword_len = LitInt::new(
+                keyword_info.str.len().to_string().as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_type = Ident::new(
+                keyword_to_type(keyword_info.str).as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_variant = Ident::new(
+                keyword_to_variant(keyword_info.str).as_str(),
+                Span::call_site(),
+            );
+
+            let keyword_category = Ident::new(&keyword_info.category, Span::call_site());
+
+            quote! {
+                #keyword #keyword_len #keyword_type #keyword_variant #keyword_category,
+            }
+        });
 
     quote! {
         macro_rules! collage_of_water {
