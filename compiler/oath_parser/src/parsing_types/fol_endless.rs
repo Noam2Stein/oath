@@ -11,8 +11,8 @@ impl<T: Parse, S: Parse> Parse for FolEndless<T, S> {
         tokens: &mut Parser<impl Iterator<Item = TokenTree>>,
         diagnostics: oath_diagnostics::DiagnosticsHandle,
     ) -> Self {
-        let mut items = Vec::new();
-        let mut seperators = Vec::new();
+        let mut items = vec![tokens.parse(diagnostics)];
+        let mut seperators = vec![tokens.parse(diagnostics)];
 
         while tokens.is_left() {
             items.push(tokens.parse(diagnostics));
