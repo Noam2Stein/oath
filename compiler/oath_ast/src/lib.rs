@@ -3,20 +3,28 @@ use oath_parser::{IntoParser, RepEndless};
 use oath_tokenizer::TokenFile;
 
 mod block;
+mod contract;
+mod expr;
 mod fn_;
 mod generic_params;
 mod mod_;
 mod path;
 mod pub_;
 mod struct_;
+mod trait_;
+mod type_;
 mod use_;
 pub use block::*;
+pub use contract::*;
+pub use expr::*;
 pub use fn_::*;
 pub use generic_params::*;
 pub use mod_::*;
 pub use path::*;
 pub use pub_::*;
 pub use struct_::*;
+pub use trait_::*;
+pub use type_::*;
 pub use use_::*;
 
 trait Seal {}
