@@ -55,22 +55,14 @@ fn update_vscode_tmlang() {
     const PATH: &str = "../../vscode-extension/syntaxes/oath.tmLanguage.json";
 
     let control_keywords = {
-        with_control_keywords! {
-            stringify!(
-                $($keyword)|*
-            )
-        }
+        with_control_keywords! { [$($keyword), *] }
     }
-    .replace(" ", "");
+    .join("|");
 
     let other_keywords = {
-        with_other_keywords! {
-            stringify!(
-                $($keyword)|*
-            )
-        }
+        with_other_keywords! { [$($keyword), *] }
     }
-    .replace(" ", "");
+    .join("|");
 
     let control_keyword_regex = format!("\"\\\\b({control_keywords})\\\\b\"");
 

@@ -71,7 +71,7 @@ with_keywords!($(
     }
     impl Desc for $keyword_type {
         fn desc() -> &'static str {
-            concat!("`", stringify!($keyword), "`")
+            concat!("`", $keyword, "`")
         }
     }
 )*);
@@ -80,7 +80,7 @@ impl Keyword {
     pub fn is_keyword(s: &str) -> bool {
         with_keywords! {
             match s {
-                $(stringify!($keyword) => true,)*
+                $($keyword => true,)*
                 _ => false,
             }
         }
@@ -89,7 +89,7 @@ impl Keyword {
     pub fn from_str(s: &str, span: Span) -> Option<Self> {
         with_keywords! {
             match s {
-                $(stringify!($keyword) => Some(Self::$keyword_variant($keyword_type(span))),)*
+                $($keyword => Some(Self::$keyword_variant($keyword_type(span))),)*
                 _ => None,
             }
         }
@@ -113,7 +113,7 @@ impl Keyword {
     pub const KEYWORDS: &[KeywordInfo] = {
         with_keywords! { &[$(
             KeywordInfo {
-                str: stringify!($keyword),
+                str: $keyword,
                 category: KeywordCategory::$keyword_category,
             }
         ), *]}

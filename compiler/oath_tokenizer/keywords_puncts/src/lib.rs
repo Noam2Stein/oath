@@ -31,12 +31,13 @@ macro_rules! define_delimiters {
 define_keywords!(
     Other: [
         mod, use, pub, package, super,
-        trait, promise, require,
+        trait, promise, require, valid,
         type, struct, union, untagged, val,
-        fn, raw, con, async,
+        fn, raw, con, async, panic, lock, undef,
         macro,
         const, static,
         var, mut, smut, excl,
+        self, Self,
     ],
     Control: [
         assume,
@@ -95,13 +96,13 @@ define_delimiters!(
 
 /// provides meta info about all Oath keywords with `$()*` + `$info` syntax.
 ///
-/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+/// `$keyword:literal`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
 #[proc_macro]
 pub fn with_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = TokenStream::from(input);
 
     let macro_input = KEYWORDS.into_iter().map(|keyword_info| {
-        let keyword = Ident::new(&keyword_info.str, Span::call_site());
+        let keyword = LitStr::new(&keyword_info.str, Span::call_site());
 
         let keyword_len = LitInt::new(
             keyword_info.str.len().to_string().as_str(),
@@ -127,7 +128,7 @@ pub fn with_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     quote! {
         macro_rules! collage_of_water {
-            ($($keyword:ident $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
+            ($($keyword:literal $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
                 #input
             }
         }
@@ -139,7 +140,7 @@ pub fn with_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
 /// provides meta info about all Oath control keywords with `$()*` + `$info` syntax.
 ///
-/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+/// `$keyword:literal`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
 #[proc_macro]
 pub fn with_control_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = TokenStream::from(input);
@@ -148,7 +149,7 @@ pub fn with_control_keywords(input: proc_macro::TokenStream) -> proc_macro::Toke
         .into_iter()
         .filter(|keyword_info| keyword_info.category == "Control")
         .map(|keyword_info| {
-            let keyword = Ident::new(&keyword_info.str, Span::call_site());
+            let keyword = LitStr::new(&keyword_info.str, Span::call_site());
 
             let keyword_len = LitInt::new(
                 keyword_info.str.len().to_string().as_str(),
@@ -174,7 +175,7 @@ pub fn with_control_keywords(input: proc_macro::TokenStream) -> proc_macro::Toke
 
     quote! {
         macro_rules! collage_of_water {
-            ($($keyword:ident $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
+            ($($keyword:literal $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
                 #input
             }
         }
@@ -186,7 +187,7 @@ pub fn with_control_keywords(input: proc_macro::TokenStream) -> proc_macro::Toke
 
 /// provides meta info about all Oath other keywords with `$()*` + `$info` syntax.
 ///
-/// `$keyword:ident`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+/// `$keyword:literal`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
 #[proc_macro]
 pub fn with_other_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = TokenStream::from(input);
@@ -195,7 +196,7 @@ pub fn with_other_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenS
         .into_iter()
         .filter(|keyword_info| keyword_info.category == "Other")
         .map(|keyword_info| {
-            let keyword = Ident::new(&keyword_info.str, Span::call_site());
+            let keyword = LitStr::new(&keyword_info.str, Span::call_site());
 
             let keyword_len = LitInt::new(
                 keyword_info.str.len().to_string().as_str(),
@@ -221,7 +222,7 @@ pub fn with_other_keywords(input: proc_macro::TokenStream) -> proc_macro::TokenS
 
     quote! {
         macro_rules! collage_of_water {
-            ($($keyword:ident $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
+            ($($keyword:literal $keyword_len:literal $keyword_type:ident $keyword_variant:ident $keyword_category:ident, )*) => {
                 #input
             }
         }
@@ -350,29 +351,37 @@ struct DelimiterInfo {
 }
 
 fn keyword_to_variant(keyword: &str) -> String {
-    keyword
-        .chars()
-        .enumerate()
-        .map(|(char_index, char)| {
-            if char_index == 0 {
-                char.to_ascii_uppercase()
-            } else {
-                char
-            }
-        })
-        .collect()
+    match keyword {
+        "self" => "LowercaseSelf".to_string(),
+        "Self" => "UppercaseSelf".to_string(),
+        _ => keyword
+            .chars()
+            .enumerate()
+            .map(|(char_index, char)| {
+                if char_index == 0 {
+                    char.to_ascii_uppercase()
+                } else {
+                    char
+                }
+            })
+            .collect(),
+    }
 }
 fn keyword_to_type(keyword: &str) -> String {
-    keyword
-        .chars()
-        .enumerate()
-        .map(|(char_index, char)| {
-            if char_index == 0 {
-                char.to_ascii_uppercase()
-            } else {
-                char
-            }
-        })
-        .chain("Keyword".chars())
-        .collect()
+    match keyword {
+        "self" => "LowercaseSelf".to_string(),
+        "Self" => "UppercaseSelf".to_string(),
+        _ => keyword
+            .chars()
+            .enumerate()
+            .map(|(char_index, char)| {
+                if char_index == 0 {
+                    char.to_ascii_uppercase()
+                } else {
+                    char
+                }
+            })
+            .chain("Keyword".chars())
+            .collect(),
+    }
 }
