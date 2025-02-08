@@ -1,6 +1,7 @@
 use oath_diagnostics::DiagnosticsHandle;
 use oath_tokenizer::TokenTree;
 
+mod parse_box;
 mod parse_tokens;
 mod parse_vec;
 
@@ -25,6 +26,18 @@ pub trait Parse {
 pub trait Peek: Parse {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool;
 }
+
+pub trait PeekRef: Peek {
+    fn peek_ref(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self>;
+}
+
+pub trait TryParse: Sized {
+    fn try_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        diagnostics: DiagnosticsHandle,
+    ) -> Result<Self, ()>;
+}
+
 impl<T: Peek> Parse for Option<T> {
     #[inline(always)]
     fn parse(
@@ -39,8 +52,13 @@ impl<T: Peek> Parse for Option<T> {
     }
 }
 
-pub trait PeekRef: Peek {
-    fn peek_ref(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self>;
+impl<T: Parse> TryParse for T {
+    fn try_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        diagnostics: DiagnosticsHandle,
+    ) -> Result<Self, ()> {
+        Ok(parser.parse(diagnostics))
+    }
 }
 
 impl Parse for () {

@@ -5,10 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 logos                      = "0.15.0"
-oath_diagnostics           = { path = "../oath_diagnostics" }
-oath_keywords_puncts       = { path = "keywords_puncts" }
+oath_context               = { path = "../oath_context" }
 oath_src                   = { path = "../oath_src" }
+oath_token_set             = { path = "token_set" }
 oath_tokenizer_proc_macros = { path = "proc_macros" }
-
-[build-dependencies]
-oath_keywords_puncts = { path = "keywords_puncts" }

@@ -4,7 +4,7 @@ use oath_diagnostics::{DiagnosticsHandle, Error};
 use oath_src::{Span, Spanned};
 use oath_tokenizer::TokenTree;
 
-use crate::{Parse, Peek, PeekRef};
+use crate::{Parse, Peek, PeekRef, TryParse};
 
 #[derive(Debug, Clone)]
 pub struct Parser<I: Iterator<Item = TokenTree>> {
@@ -43,6 +43,9 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     }
     pub fn peek_ref<P: PeekRef>(&mut self) -> Option<&P> {
         P::peek_ref(self)
+    }
+    pub fn try_parse<P: TryParse>(&mut self, diagnostics: DiagnosticsHandle) -> Result<P, ()> {
+        P::try_parse(self, diagnostics)
     }
 
     pub fn expect_empty(&mut self, diagnostics: DiagnosticsHandle) {

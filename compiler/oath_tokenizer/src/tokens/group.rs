@@ -1,9 +1,4 @@
-use oath_diagnostics::{Desc, Fill};
-use oath_src::{Span, Spanned};
-
-use crate::Seal;
-
-use super::{Delimiters, DelimitersType, TokenTree, TokenType};
+use crate::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Group<D: DelimitersType = Delimiters> {
@@ -11,25 +6,46 @@ pub struct Group<D: DelimitersType = Delimiters> {
     pub tokens: Vec<TokenTree>,
 }
 
-impl TokenType for Group {}
-impl Seal for Group {}
+impl<D: DelimitersType> TokenType for Group<D> {}
+impl<D: DelimitersType> Seal for Group<D> {}
+
+impl<D: DelimitersType> TryFrom<TokenTree> for Group<D> {
+    type Error = ();
+
+    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Group(Group { delimiters, tokens }) = value {
+            if let Ok(delimiters) = delimiters.try_into() {
+                Ok(Self { delimiters, tokens })
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
+}
+impl<'a, D: DelimitersType> TryFrom<&'a TokenTree> for Group<D> {
+    type Error = ();
+
+    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Group(Group { delimiters, tokens }) = value {
+            if let Ok(delimiters) = (*delimiters).try_into() {
+                Ok(Self {
+                    delimiters,
+                    tokens: tokens.clone(),
+                })
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
+}
 
 impl<D: DelimitersType> Spanned for Group<D> {
     fn span(&self) -> Span {
         self.delimiters.span()
-    }
-}
-impl<D: DelimitersType> Fill for Group<D> {
-    fn fill(span: Span) -> Self {
-        Self {
-            delimiters: D::fill(span),
-            tokens: Vec::default(),
-        }
-    }
-}
-impl<D: DelimitersType> Desc for Group<D> {
-    fn desc() -> &'static str {
-        D::desc()
     }
 }
 

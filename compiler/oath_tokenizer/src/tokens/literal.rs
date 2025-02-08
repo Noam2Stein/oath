@@ -1,14 +1,6 @@
-use std::{fmt::Debug, hash::Hash};
+use crate::*;
 
-use oath_diagnostics::{Desc, Fill};
-use oath_src::{Span, Spanned};
-use oath_tokenizer_proc_macros::TokenDowncast;
-
-use crate::Seal;
-
-use super::{CharLiteral, FloatLiteral, IntLiteral, StrLiteral, TokenDowncastFrom, TokenType};
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Char(CharLiteral),
     Float(FloatLiteral),
@@ -17,11 +9,35 @@ pub enum Literal {
 }
 
 #[allow(private_bounds)]
-pub trait LiteralType: TokenType + TokenDowncastFrom<Literal> {}
+pub trait LiteralType: TokenType + Copy + TryFrom<Literal> {}
 
 impl LiteralType for Literal {}
 impl TokenType for Literal {}
 impl Seal for Literal {}
+
+impl TryFrom<TokenTree> for Literal {
+    type Error = ();
+
+    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Literal(value) = value {
+            Ok(value)
+        } else {
+            Err(())
+        }
+    }
+}
+impl<'a> TryFrom<&'a TokenTree> for Literal {
+    type Error = ();
+
+    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Literal(value) = value {
+            Ok(*value)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl Spanned for Literal {
     fn span(&self) -> Span {
         match self {
@@ -30,15 +46,5 @@ impl Spanned for Literal {
             Self::Int(lit) => lit.span(),
             Self::Str(lit) => lit.span(),
         }
-    }
-}
-impl Fill for Literal {
-    fn fill(span: Span) -> Self {
-        Self::Int(IntLiteral::fill(span))
-    }
-}
-impl Desc for Literal {
-    fn desc() -> &'static str {
-        "a literal"
     }
 }

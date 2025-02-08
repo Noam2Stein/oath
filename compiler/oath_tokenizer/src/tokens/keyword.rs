@@ -1,21 +1,17 @@
 use std::{fmt::Debug, hash::Hash};
 
-use oath_diagnostics::{Desc, Fill};
-use oath_src::{Span, Spanned};
-use oath_tokenizer_proc_macros::TokenDowncast;
+use crate::*;
 
-use crate::{Seal, TokenType};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Keyword {
+    span: Span,
+    pub kind: KeywordKind,
+}
 
-use super::TokenDowncastFrom;
-
-pub use oath_keywords_puncts::{
-    with_control_keywords, with_keyword_categories, with_keywords, with_other_keywords,
-};
-
-with_keywords!(
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
-    pub enum Keyword {$(
-        $keyword_variant($keyword_type),
+with_token_set!(
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub enum KeywordKind {$(
+        $keyword_variant,
     )*}
 
     $(
@@ -27,36 +23,87 @@ with_keywords!(
 pub use oath_tokenizer_proc_macros::keyword;
 
 #[allow(private_bounds)]
-pub trait KeywordType: TokenType + TokenDowncastFrom<Keyword> {}
+pub trait KeywordType: TokenType + Copy + TryFrom<Keyword> {}
 
 impl KeywordType for Keyword {}
 impl TokenType for Keyword {}
 impl Seal for Keyword {}
 
-impl Spanned for Keyword {
-    fn span(&self) -> Span {
-        with_keywords! {
-            match self {$(
-                Self::$keyword_variant(keyword) => keyword.span(),
-            )*}
+impl TryFrom<TokenTree> for Keyword {
+    type Error = ();
+
+    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Keyword(value) = value {
+            Ok(value)
+        } else {
+            Err(())
         }
     }
 }
-impl Fill for Keyword {
-    fn fill(span: Span) -> Self {
-        Self::Mod(ModKeyword(span))
-    }
-}
-impl Desc for Keyword {
-    fn desc() -> &'static str {
-        "a keyword"
+impl<'a> TryFrom<&'a TokenTree> for Keyword {
+    type Error = ();
+
+    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Keyword(value) = value {
+            Ok(*value)
+        } else {
+            Err(())
+        }
     }
 }
 
-with_keywords!($(
+impl Spanned for Keyword {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+with_token_set!($(
     impl KeywordType for $keyword_type {}
     impl TokenType for $keyword_type {}
     impl Seal for $keyword_type {}
+
+    impl TryFrom<TokenTree> for $keyword_type {
+        type Error = ();
+    
+        fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+            if let TokenTree::Keyword(value) = value {
+                if value.kind == KeywordKind::$keyword_variant {
+                    Ok($keyword_type(value.span))
+                } else {
+                    Err(())
+                }
+            } else {
+                Err(())
+            }
+        }
+    }
+    impl<'a> TryFrom<&'a TokenTree> for $keyword_type {
+        type Error = ();
+    
+        fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+            if let TokenTree::Keyword(value) = value {
+                if value.kind == KeywordKind::$keyword_variant {
+                    Ok($keyword_type(value.span))
+                } else {
+                    Err(())
+                }
+            } else {
+                Err(())
+            }
+        }
+    }
+    impl TryFrom<Keyword> for $keyword_type {
+        type Error = ();
+    
+        fn try_from(value: Keyword) -> Result<Self, Self::Error> {
+            if value.kind == KeywordKind::$keyword_variant {
+                Ok($keyword_type(value.span))
+            } else {
+                Err(())
+            }
+        }
+    }
 
     impl Spanned for $keyword_type {
         #[inline(always)]
@@ -64,58 +111,38 @@ with_keywords!($(
             self.0
         }
     }
-    impl Fill for $keyword_type {
-        fn fill(span: Span) -> Self {
-            Self(span)
-        }
-    }
-    impl Desc for $keyword_type {
-        fn desc() -> &'static str {
-            concat!("`", $keyword, "`")
-        }
-    }
 )*);
 
-impl Keyword {
-    pub fn is_keyword(s: &str) -> bool {
-        with_keywords! {
-            match s {
-                $($keyword => true,)*
-                _ => false,
-            }
+pub const KEYWORDS: &[&str] = with_token_set_expr! {
+    &[$($keyword), *]
+};
+
+pub fn is_keyword(str: &str) -> bool {
+    with_token_set_expr! {
+        match str {
+            $($keyword => true,)*
+            _ => false,
         }
     }
+}
 
-    pub fn from_str(s: &str, span: Span) -> Option<Self> {
-        with_keywords! {
-            match s {
-                $($keyword => Some(Self::$keyword_variant($keyword_type(span))),)*
+impl Keyword {
+    pub fn new(kind: KeywordKind, span: Span) -> Self {
+        Self { span, kind }
+    }
+
+    pub fn from_str(str: &str, span: Span) -> Option<Self> {
+        KeywordKind::from_str(str).map(|kind| Self { span, kind })
+    }
+}
+
+impl KeywordKind {
+    pub fn from_str(str: &str) -> Option<Self> {
+        with_token_set_expr! {
+            match str {
+                $($keyword => Some(Self::$keyword_variant),)*
                 _ => None,
             }
         }
     }
-}
-
-with_keyword_categories!(
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub enum KeywordCategory {$(
-        $category,
-    )*}
-);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct KeywordInfo {
-    pub str: &'static str,
-    pub category: KeywordCategory,
-}
-
-impl Keyword {
-    pub const KEYWORDS: &[KeywordInfo] = {
-        with_keywords! { &[$(
-            KeywordInfo {
-                str: $keyword,
-                category: KeywordCategory::$keyword_category,
-            }
-        ), *]}
-    };
 }

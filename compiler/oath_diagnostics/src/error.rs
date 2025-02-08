@@ -2,32 +2,30 @@ use std::fmt::{self, Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Error {
-    UnknownToken,
-    UnclosedParen,
-    UnclosedBracket,
-    UnclosedBrace,
-    UnclosedAngle,
-    UnopenedParen,
-    UnopenedBracket,
-    UnopenedBrace,
-    UnopenedAngle,
-    Expected(&'static str),
-    StaticMessage(&'static str),
+    Token(TokenError),
+    Syntax(SyntaxError),
 }
+
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownToken => write!(f, "unknown token"),
-            Self::UnclosedParen => write!(f, "unclosed `(`"),
-            Self::UnclosedBracket => write!(f, "unclosed `[`"),
-            Self::UnclosedBrace => write!(f, "unclosed `{{`"),
-            Self::UnclosedAngle => write!(f, "unclosed `<#`"),
-            Self::UnopenedParen => write!(f, "unopened `)`"),
-            Self::UnopenedBracket => write!(f, "unopened `]`"),
-            Self::UnopenedBrace => write!(f, "unopened `}}`"),
-            Self::UnopenedAngle => write!(f, "unopened `#>`"),
-            Self::Expected(ty) => write!(f, "expected {ty}"),
-            Self::StaticMessage(message) => write!(f, "{message}"),
+            Self::Token(error) => write!(f, "Token Error: {error}"),
+            Self::Syntax(error) => write!(f, "Syntax Error: {error}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SyntaxError {
+    Expected(&'static str),
+    CannotBePutOn(&'static str, &'static str),
+}
+
+impl Display for SyntaxError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Expected(expected) => write!(f, "expected {expected}"),
+            Self::CannotBePutOn(a, b) => write!(f, "{a} cannot be put on {b}"),
         }
     }
 }

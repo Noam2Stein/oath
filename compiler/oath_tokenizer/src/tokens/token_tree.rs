@@ -1,12 +1,6 @@
-use oath_diagnostics::{Desc, Fill};
-use oath_src::{Span, Spanned};
-use oath_tokenizer_proc_macros::TokenDowncast;
+use crate::*;
 
-use crate::Seal;
-
-use super::{Group, Ident, Keyword, Literal, Punct, TokenType};
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TokenDowncast)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenTree {
     Group(Group),
     Ident(Ident),
@@ -17,6 +11,14 @@ pub enum TokenTree {
 
 impl TokenType for TokenTree {}
 impl Seal for TokenTree {}
+
+impl<'a> TryFrom<&'a TokenTree> for TokenTree {
+    type Error = ();
+    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+        Ok(value.clone())
+    }
+}
+
 impl Spanned for TokenTree {
     #[inline(always)]
     fn span(&self) -> Span {
@@ -27,15 +29,5 @@ impl Spanned for TokenTree {
             Self::Literal(token) => token.span(),
             Self::Punct(token) => token.span(),
         }
-    }
-}
-impl Fill for TokenTree {
-    fn fill(span: Span) -> Self {
-        Self::Keyword(Keyword::fill(span))
-    }
-}
-impl Desc for TokenTree {
-    fn desc() -> &'static str {
-        "a token tree"
     }
 }

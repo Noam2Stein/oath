@@ -1,0 +1,8 @@
+[package]
+edition = "2021"
+name    = "oath_context"
+version = "0.1.0"
+
+[dependencies]
+oath_src        = { path = "../oath_src" }
+string-interner = "0.18.0"

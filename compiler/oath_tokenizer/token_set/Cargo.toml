@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name    = "oath_keywords_puncts"
+name    = "oath_token_set"
 version = "0.1.0"
 
 [lib]

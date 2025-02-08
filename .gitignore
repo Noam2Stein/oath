@@ -18,7 +18,3 @@ node_modules
 client/server
 .vscode-test
 tsconfig.tsbuildinfo
-
-# VSCode files that are auto updated
-vscode-extension/language-configuration.json
-vscode-extension/syntaxes/oath.tmLanguage.json

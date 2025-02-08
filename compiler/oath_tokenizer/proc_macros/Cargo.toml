@@ -7,8 +7,8 @@ version = "0.1.0"
 proc-macro = true
 
 [dependencies]
-derive-syn-parse     = "0.2.0"
-oath_keywords_puncts = { path = "../keywords_puncts" }
-proc-macro2          = "1.0.93"
-quote                = "1.0.38"
-syn                  = "2.0.96"
+derive-syn-parse = "0.2.0"
+oath_token_set   = { path = "../token_set" }
+proc-macro2      = "1.0.93"
+quote            = "1.0.38"
+syn              = "2.0.96"

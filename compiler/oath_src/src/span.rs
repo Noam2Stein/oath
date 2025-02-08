@@ -18,6 +18,13 @@ impl Span {
             end: start + len,
         }
     }
+    #[inline(always)]
+    pub fn from_end_len(end: Position, len: u32) -> Self {
+        Self {
+            start: end - len,
+            end,
+        }
+    }
 
     #[inline(always)]
     pub fn start(self) -> Position {

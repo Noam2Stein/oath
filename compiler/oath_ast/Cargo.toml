@@ -6,4 +6,6 @@ version = "0.1.0"
 [dependencies]
 oath_diagnostics = { path = "../oath_diagnostics" }
 oath_parser      = { path = "../oath_parser" }
+oath_src         = { path = "../oath_src" }
 oath_tokenizer   = { path = "../oath_tokenizer" }
+splat_attribs    = "1.0.0"

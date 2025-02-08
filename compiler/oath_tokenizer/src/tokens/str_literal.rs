@@ -1,50 +1,65 @@
-use oath_diagnostics::{Desc, DiagnosticsHandle, Fill};
-use oath_src::{Span, Spanned};
+use crate::*;
 
-use crate::Seal;
-
-use super::{LiteralType, TokenType};
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StrLiteral {
-    str: String,
+    pub str_id: StrId,
     span: Span,
 }
 
 impl LiteralType for StrLiteral {}
 impl TokenType for StrLiteral {}
 impl Seal for StrLiteral {}
+
+impl TryFrom<TokenTree> for StrLiteral {
+    type Error = ();
+
+    fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Literal(Literal::Str(value)) = value {
+            Ok(value)
+        } else {
+            Err(())
+        }
+    }
+}
+impl<'a> TryFrom<&'a TokenTree> for StrLiteral {
+    type Error = ();
+
+    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
+        if let TokenTree::Literal(Literal::Str(value)) = value {
+            Ok(*value)
+        } else {
+            Err(())
+        }
+    }
+}
+impl TryFrom<Literal> for StrLiteral {
+    type Error = ();
+
+    fn try_from(value: Literal) -> Result<Self, Self::Error> {
+        if let Literal::Str(value) = value {
+            Ok(value)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl Spanned for StrLiteral {
     #[inline(always)]
     fn span(&self) -> Span {
         self.span
     }
 }
-impl Fill for StrLiteral {
-    fn fill(span: Span) -> Self {
-        Self::new("_fill_".to_string(), span)
-    }
-}
-impl Desc for StrLiteral {
-    fn desc() -> &'static str {
-        "an str literal"
-    }
-}
 
 impl StrLiteral {
     #[inline(always)]
-    pub fn new(str: String, span: Span) -> Self {
-        Self { str, span }
+    pub fn new(str_id: StrId, span: Span) -> Self {
+        Self { str_id, span }
     }
 
-    #[inline(always)]
-    pub fn str(&self) -> &str {
-        &self.str
-    }
-
-    pub unsafe fn from_regex_str(str: &str, span: Span, _diagnostics: DiagnosticsHandle) -> Self {
+    pub unsafe fn from_regex_str(str: &str, span: Span, context: ContextHandle) -> Self {
         Self {
-            str: str[1..str.len() - 1].to_string(),
+            str_id: context.intern(&str[1..str.len() - 1]),
             span,
         }
     }
