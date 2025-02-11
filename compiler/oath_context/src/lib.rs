@@ -11,8 +11,8 @@ use string_interner::{
 
 #[derive(Debug)]
 pub struct Context {
-    errors: Vec<Error>,
-    warnings: Vec<Warning>,
+    pub errors: Vec<Error>,
+    pub warnings: Vec<Warning>,
     str_interner: StringInterner<BucketBackend>,
 }
 

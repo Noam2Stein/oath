@@ -1,9 +1,8 @@
 [workspace]
 
 members = [
-    "compiler/oath_ast", "compiler/oath_context",
-    "compiler/oath_diagnostics",
-    "compiler/oath_diagnostics/proc_macros",
+    "compiler/oath_ast",
+    "compiler/oath_context",
     "compiler/oath_fmt",
     "compiler/oath_parser",
     "compiler/oath_parser/proc_macros",

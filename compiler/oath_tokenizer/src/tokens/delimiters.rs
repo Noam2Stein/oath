@@ -28,11 +28,15 @@ with_token_set!(
 pub trait DelimitersType:
     Seal + Send + Sync + Debug + Copy + Eq + Ord + Hash + Spanned + TryFrom<Delimiters>
 {
+    const EXPECTED_GROUP: &str;
+
     fn open_span(self) -> Span;
     fn close_span(self) -> Span;
 }
 
 impl DelimitersType for Delimiters {
+    const EXPECTED_GROUP: &str = "expected a group";
+
     #[inline(always)]
     fn open_span(self) -> Span {
         self.open_span
@@ -54,6 +58,8 @@ impl Spanned for Delimiters {
 with_token_set!(
     $(
         impl DelimitersType for $delim_type {
+            const EXPECTED_GROUP: &str = concat!("expected `", $delim_open, " ", $delim_close, "`");
+
             #[inline(always)]
             fn open_span(self) -> Span {
                 self.open_span

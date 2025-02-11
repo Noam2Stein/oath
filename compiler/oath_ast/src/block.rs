@@ -1,8 +1,5 @@
-use oath_parser::{InBraces, Parse, Peek};
+use crate::*;
 
-#[derive(Parse, Peek)]
 pub struct Block(pub InBraces<()>);
 
-pub enum Stmt {
-    
-}
+pub enum Stmt {}

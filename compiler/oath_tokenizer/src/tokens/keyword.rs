@@ -1,4 +1,7 @@
-use std::{fmt::Debug, hash::Hash};
+use std::{
+    fmt::{self, Debug, Display, Formatter},
+    hash::Hash,
+};
 
 use crate::*;
 
@@ -144,5 +147,24 @@ impl KeywordKind {
                 _ => None,
             }
         }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        with_token_set_expr! {
+            match self {$(
+                Self::$keyword_variant => $keyword,
+            )*}
+        }
+    }
+}
+
+impl Display for KeywordKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+impl Display for Keyword {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }

@@ -1,42 +1,60 @@
-use oath_diagnostics::Desc;
-use oath_parser::{Garbage, InBraces, Parse, Peek, RepEndless};
-use oath_tokenizer::{keyword, punct, Ident};
+use crate::*;
 
-use crate::{Fn, Pub, Struct, Use};
-
-#[derive(Parse, Peek)]
 pub struct Mod {
+    pub vis: Vis,
     pub mod_keyword: keyword!("mod"),
     pub ident: Ident,
-    pub content: ModContent,
+    pub content: Option<ModContent>,
 }
 
-#[derive(Parse)]
-pub enum ModContent {
-    Braces(InBraces<Option<RepEndless<ModItem>>>),
-    Semi(punct!(";")),
+pub struct ModContent {
+    pub items: Vec<Item>,
 }
 
-#[derive(Parse)]
-pub struct ModItem {
-    pub attribs: Vec<ModItemAttrib>,
-    pub content: ModItemContent,
+impl ItemType for Mod {
+    const DESC: &str = "a module";
+
+    fn item_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+        modifiers: &mut ItemModifiers,
+    ) -> Result<Self, ()> {
+        let vis = modifiers.take_vis();
+
+        let mod_keyword = parser.parse(context)?;
+
+        let ident = parser.parse(context)?;
+
+        let content = if parser.peek::<Group<Braces>>(context) {
+            Some(parser.parse::<InBraces<_>>(context).unwrap().inner)
+        } else {
+            parser.parse::<punct!(";")>(context);
+            None
+        };
+
+        Ok(Self {
+            vis,
+            mod_keyword,
+            ident,
+            content,
+        })
+    }
+
+    fn item_peek(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
+        parser.peek::<keyword!("mod")>(context)
+    }
 }
 
-#[derive(Parse, Peek, Desc)]
-#[desc("an item")]
-pub enum ModItemContent {
-    Mod(Mod),
-    Use(Use),
-    Struct(Struct),
-    Fn(Fn),
-    #[dont_peek]
-    Garbage(Garbage<Self>),
-}
-
-#[derive(Parse, Peek)]
-pub enum ModItemAttrib {
-    Pub(Pub),
-    Raw(keyword!("raw")),
-    Con(keyword!("con")),
+impl Parse for ModContent {
+    fn parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        Ok(Self {
+            items: parser.parse_vec_all::<_, false>(context)?,
+        })
+    }
 }

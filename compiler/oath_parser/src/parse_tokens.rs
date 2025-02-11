@@ -1,109 +1,132 @@
-use oath_diagnostics::{Desc, DiagnosticsHandle, Error, Fill};
-use oath_src::Spanned;
-use oath_tokenizer::{
-    with_keywords, with_puncts, CharLiteral, DelimitersType, FloatLiteral, Group, Ident,
-    IntLiteral, Keyword, Literal, Punct, StrLiteral, TokenDowncast, TokenTree,
-};
-
-use crate::{Parse, Parser, Peek, PeekRef};
+use crate::*;
 
 macro_rules! token_impl {
-    ($type:ty) => {
+    ($type:ty => $desc:expr) => {
         impl Parse for $type {
             fn parse(
                 parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-                diagnostics: DiagnosticsHandle,
-            ) -> Self {
+                context: ContextHandle,
+            ) -> Result<Self, ()> {
                 if let Some(token) = parser.next() {
                     let span = token.span();
-                    if let Some(output) = token.downcast() {
-                        output
+                    if let Ok(output) = token.try_into() {
+                        Ok(output)
                     } else {
-                        diagnostics.push_error(Error::Expected(<Self as Desc>::desc()), span);
+                        context.push_error(Error::new($desc, span));
 
-                        Self::fill(span)
+                        Err(())
                     }
                 } else {
-                    diagnostics.push_error(Error::Expected(Self::desc()), parser.end_span());
+                    context.push_error(Error::new($desc, parser.end_span()));
 
-                    Self::fill(parser.end_span())
+                    Err(())
                 }
             }
         }
 
         impl Peek for $type {
-            fn peek(tokens: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
+            fn peek(
+                tokens: &mut Parser<impl Iterator<Item = TokenTree>>,
+                _context: ContextHandle,
+            ) -> bool {
                 if let Some(token) = tokens.peek_next() {
-                    token.downcast_ref::<Self>().is_some()
+                    Self::try_from(token.clone()).is_ok()
                 } else {
                     false
                 }
             }
         }
-
-        impl PeekRef for $type {
-            fn peek_ref(tokens: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self> {
-                if let Some(token) = tokens.peek_next() {
-                    if let Some(token) = token.downcast_ref() {
-                        Some(token)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-        }
     };
 }
-token_impl!(TokenTree);
-token_impl!(Keyword);
-token_impl!(Punct);
-token_impl!(Ident);
-token_impl!(Literal);
-token_impl!(IntLiteral);
-token_impl!(FloatLiteral);
-token_impl!(CharLiteral);
-token_impl!(StrLiteral);
-with_keywords!($(
-    token_impl!(oath_tokenizer::$keyword_type);
-)*);
-with_puncts!($(
-    token_impl!(oath_tokenizer::$punct_type);
-)*);
+token_impl!(TokenTree => "expected a token tree");
+token_impl!(Keyword => "expected a keyword");
+token_impl!(Punct => "expected a punct");
+token_impl!(Literal => "expected a literal");
+token_impl!(IntLiteral => "expected an int literal");
+token_impl!(FloatLiteral => "expected a float literal");
+token_impl!(CharLiteral => "expected a char literal");
+token_impl!(StrLiteral => "expected a string literal");
+with_token_set!(
+    $(
+        token_impl!(oath_tokenizer::$keyword_type => concat!("expected `", $keyword, "`"));
+    )*
+    $(
+        token_impl!(oath_tokenizer::$punct_type => concat!("expected `", $punct, "`"));
+    )*
+);
+
+impl Parse for Ident {
+    fn parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        if let Some(token) = parser.next() {
+            match token {
+                TokenTree::Ident(token) => Ok(token),
+                TokenTree::Keyword(token) => {
+                    context.push_error(Error::new(
+                        format!("expected an ident. `{token}` is a keyword"),
+                        token.span(),
+                    ));
+                    Ok(Ident::new_adjusted(
+                        token.kind.as_str(),
+                        token.span(),
+                        context,
+                    ))
+                }
+                token => {
+                    context.push_error(Error::new("expected an ident", token.span()));
+                    Err(())
+                }
+            }
+        } else {
+            context.push_error(Error::new("expected an ident", parser.end_span()));
+            Err(())
+        }
+    }
+}
+impl Peek for Ident {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, _context: ContextHandle) -> bool {
+        if let Some(TokenTree::Ident(_)) = parser.peek_next() {
+            true
+        } else {
+            false
+        }
+    }
+}
 
 impl<D: DelimitersType> Parse for Group<D> {
     fn parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-    ) -> Self {
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
         if let Some(token) = parser.next() {
             let span = token.span();
-            if let Some(Group { delimiters, tokens }) = token.downcast::<Group>() {
-                if let Some(delimiters) = delimiters.downcast() {
-                    Group { delimiters, tokens }
+            if let TokenTree::Group(Group { delimiters, tokens }) = token {
+                if let Ok(delimiters) = delimiters.try_into() {
+                    Ok(Group { delimiters, tokens })
                 } else {
-                    diagnostics.push_error(Error::Expected(<Self as Desc>::desc()), span);
+                    context.push_error(Error::new(D::EXPECTED_GROUP, span));
 
-                    Self::fill(span)
+                    Err(())
                 }
             } else {
-                diagnostics.push_error(Error::Expected(<Self as Desc>::desc()), span);
+                context.push_error(Error::new(D::EXPECTED_GROUP, span));
 
-                Self::fill(span)
+                Err(())
             }
         } else {
-            diagnostics.push_error(Error::Expected(Self::desc()), parser.end_span());
+            context.push_error(Error::new(D::EXPECTED_GROUP, parser.end_span()));
 
-            Self::fill(parser.end_span())
+            Err(())
         }
     }
 }
 
 impl<D: DelimitersType> Peek for Group<D> {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, _context: ContextHandle) -> bool {
         if let Some(TokenTree::Group(group)) = parser.peek_next() {
-            group.delimiters.downcast_ref::<D>().is_some()
+            D::try_from(group.delimiters).is_ok()
         } else {
             false
         }

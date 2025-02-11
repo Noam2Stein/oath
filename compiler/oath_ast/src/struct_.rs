@@ -2,39 +2,43 @@ use crate::*;
 
 pub struct Struct {
     pub vis: Vis,
-    pub struct_keyword: keyword!("struct"),
     pub ident: Ident,
-    pub generics: Option<GenericParams>,
+    pub generics: GenericParams,
     pub contract: Contract,
-    pub group: Group<Braces>,
+    pub fields: (),
 }
 
-impl ItemParse for Struct {
+impl ItemType for Struct {
+    const DESC: &str = "a struct";
+
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-        tags: Vec<ItemTag>,
+        context: ContextHandle,
+        modifiers: &mut ItemModifiers,
     ) -> Result<Self, ()> {
-        let mut vis = Vis::Priv;
+        let vis = modifiers.take_vis();
 
-        for tag in tags {
-            match tag {
-                ItemTag::Pub(tag) => {
-                    if let Vis::Priv = vis {
-                        vis = Vis::Pub(tag)
-                    } else {
-                        diagnostics.push_error(Error::StaticMessage("multiple `pub`"), tag.span());
-                    }
-                }
-                ItemTag::Con(tag) => diagnostics.push_error(
-                    Error::StaticMessage("`con` cannot be put on structs"),
-                    tag.span(),
-                ),
-                ItemTag::Raw(tag) => diagnostics.push_error(
-                    Error::StaticMessage("`raw` cannot be put on structs"),
-                    tag.span(),
-                ),
-            }
-        }
+        parser.parse::<keyword!("struct")>(context)?;
+
+        let ident = parser.parse(context)?;
+        let generics = parser.parse(context)?;
+        let contract = parser.parse(context)?;
+
+        let _ = parser.parse::<Group<Parens>>(context);
+
+        Ok(Self {
+            contract,
+            fields: (),
+            generics,
+            ident,
+            vis,
+        })
+    }
+
+    fn item_peek(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
+        parser.peek::<keyword!("struct")>(context)
     }
 }

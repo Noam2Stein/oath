@@ -1,9 +1,9 @@
 use std::sync::Mutex;
 
 use oath_ast::ParseAstExt;
-use oath_diagnostics::{Diagnostics, DiagnosticsHandle};
+use oath_context::{Context, ContextHandle};
 use oath_src::{Spanned, SrcFile};
-use oath_tokenizer::{Keyword, SrcFileTokenizeExt};
+use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -44,9 +44,9 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(
-            Keyword::KEYWORDS
+            KEYWORDS
                 .into_iter()
-                .map(|keyword| CompletionItem::new_simple(keyword.str.to_string(), String::new()))
+                .map(|keyword| CompletionItem::new_simple(keyword.to_string(), String::new()))
                 .collect(),
         )))
     }
@@ -59,23 +59,26 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let diagnostics = Mutex::new(Diagnostics::default());
-        let diagnostics_handle = DiagnosticsHandle(&diagnostics);
+        let context = Mutex::new(Context::new());
+        let context_handle = ContextHandle(&context);
 
         let _ = SrcFile::from_str(&params.text_document.text)
-            .tokenize(diagnostics_handle)
-            .parse_ast(diagnostics_handle);
+            .tokenize(context_handle)
+            .parse_ast(context_handle);
 
-        let diagnostics = diagnostics.into_inner().unwrap();
+        let context = context.into_inner().unwrap();
 
         self.client
             .publish_diagnostics(
                 params.text_document.uri,
-                diagnostics
+                context
                     .errors
                     .into_iter()
                     .map(|error| {
-                        Diagnostic::new_simple(span_to_range(error.span()), error.inner.to_string())
+                        Diagnostic::new_simple(
+                            span_to_range(error.span()),
+                            error.message.to_string(),
+                        )
                     })
                     .collect(),
                 Some(params.text_document.version),
@@ -91,21 +94,20 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri;
 
         let src_file = SrcFile::from_str(params.content_changes[0].text.as_str());
-        let diagnostics = Mutex::new(Diagnostics::default());
+        let context = Mutex::new(Context::new());
+        let context_handle = ContextHandle(&context);
 
         self.client
             .log_message(MessageType::INFO, "about to parse")
             .await;
 
-        let _ = src_file
-            .tokenize(DiagnosticsHandle(&diagnostics))
-            .parse_ast(DiagnosticsHandle(&diagnostics));
+        let _ = src_file.tokenize(context_handle).parse_ast(context_handle);
 
         self.client
             .log_message(MessageType::INFO, "parsed!!!!!!")
             .await;
 
-        if diagnostics.lock().unwrap().errors.is_empty() {
+        if context.lock().unwrap().errors.is_empty() {
             self.client
                 .log_message(MessageType::INFO, "No errors found.")
                 .await;
@@ -113,12 +115,12 @@ impl LanguageServer for Backend {
             self.client
                 .log_message(
                     MessageType::INFO,
-                    format!("Found {} errors", diagnostics.lock().unwrap().errors.len()),
+                    format!("Found {} errors", context.lock().unwrap().errors.len()),
                 )
                 .await;
         }
 
-        let diagnostics: Vec<Diagnostic> = diagnostics
+        let diagnostics: Vec<Diagnostic> = context
             .into_inner()
             .unwrap()
             .errors
@@ -135,7 +137,7 @@ impl LanguageServer for Backend {
                     },
                 },
                 severity: Some(DiagnosticSeverity::ERROR),
-                message: error.inner.to_string(),
+                message: error.message.to_string(),
                 ..Default::default()
             })
             .collect();

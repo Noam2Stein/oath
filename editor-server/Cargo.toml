@@ -4,9 +4,9 @@ name    = "editor-server"
 version = "0.1.0"
 
 [dependencies]
-oath_ast         = { path = "../compiler/oath_ast" }
-oath_diagnostics = { path = "../compiler/oath_diagnostics" }
-oath_src         = { path = "../compiler/oath_src" }
-oath_tokenizer   = { path = "../compiler/oath_tokenizer" }
-tokio            = { version = "1.42.0", features = [ "full" ] }
-tower-lsp        = "0.20.0"
+oath_ast       = { path = "../compiler/oath_ast" }
+oath_context   = { path = "../compiler/oath_context" }
+oath_src       = { path = "../compiler/oath_src" }
+oath_tokenizer = { path = "../compiler/oath_tokenizer" }
+tokio          = { version = "1.42.0", features = [ "full" ] }
+tower-lsp      = "0.20.0"

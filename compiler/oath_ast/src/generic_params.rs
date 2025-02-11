@@ -1,25 +1,59 @@
-use oath_parser::{InAngles, Parse, Peek, TrlEndless};
-use oath_tokenizer::{keyword, punct, Ident};
+use crate::*;
 
-#[derive(Debug, Clone, Parse, Peek)]
-pub struct GenericParams(pub InAngles<Option<TrlEndless<GenericParam, punct!(",")>>>);
+pub struct GenericParams(pub Span, pub Vec<GenericParam>);
 
-#[derive(Debug, Clone, Parse, Peek)]
 pub struct GenericParam {
     pub ident: Ident,
-    pub content: GenericParamContent,
+    pub kind: GenericParamKind,
 }
 
-#[derive(Debug, Clone, Parse)]
-pub enum GenericParamContent {
-    Value(GenericValueParam),
-    Type(GenericTypeParam),
+pub enum GenericParamKind {
+    Value,
+    Type,
 }
 
-#[derive(Debug, Clone, Parse)]
-pub struct GenericTypeParam {}
+impl Parse for GenericParams {
+    fn parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        if let Some(group) = parser.parse::<Option<Group<Angles>>>(context)? {
+            Ok(Self(
+                group.span(),
+                group
+                    .into_parser()
+                    .parse_sep_all::<_, punct!(","), false, true>(context)?,
+            ))
+        } else {
+            Ok(Self(
+                Span::from_start_len(parser.next_span().start(), 0),
+                Vec::new(),
+            ))
+        }
+    }
+}
 
-#[derive(Debug, Clone, Parse, Peek)]
-pub struct GenericValueParam {
-    pub val_keyword: keyword!("val"),
+impl Parse for GenericParam {
+    fn parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        let ident = parser.parse(context)?;
+        let kind = parser.parse(context)?;
+
+        Ok(Self { ident, kind })
+    }
+}
+
+impl Parse for GenericParamKind {
+    fn parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        if parser.parse::<Option<keyword!("val")>>(context)?.is_some() {
+            Ok(Self::Value)
+        } else {
+            Ok(Self::Type)
+        }
+    }
 }

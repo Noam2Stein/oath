@@ -1,19 +1,16 @@
-use oath_diagnostics::DiagnosticsHandle;
-use oath_tokenizer::TokenTree;
-
-use crate::{Parse, Parser, Peek};
+use crate::*;
 
 impl<T: Parse> Parse for Box<T> {
     fn parse(
-        parser: &mut crate::Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-    ) -> Self {
-        Box::new(parser.parse(diagnostics))
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Result<Self, ()> {
+        parser.parse(context).map(|ok| Box::new(ok))
     }
 }
 
 impl<T: Peek> Peek for Box<T> {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool {
-        T::peek(parser)
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        T::peek(parser, context)
     }
 }

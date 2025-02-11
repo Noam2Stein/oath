@@ -1,70 +1,49 @@
-use oath_diagnostics::DiagnosticsHandle;
-use oath_tokenizer::TokenTree;
-
 mod parse_box;
 mod parse_tokens;
-mod parse_vec;
 
 mod into_parser;
-mod parse_garbage;
 mod parser;
 mod parsing_types;
 pub use into_parser::*;
-pub use parse_garbage::*;
 pub use parser::*;
 pub use parsing_types::*;
 
 pub use oath_parser_proc_macros::{Parse, Peek};
 
-pub trait Parse {
+use oath_context::*;
+use oath_src::*;
+use oath_tokenizer::*;
+
+pub trait Parse: Sized {
     fn parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-    ) -> Self;
+        context: ContextHandle,
+    ) -> Result<Self, ()>;
 }
 
 pub trait Peek: Parse {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> bool;
-}
-
-pub trait PeekRef: Peek {
-    fn peek_ref(parser: &mut Parser<impl Iterator<Item = TokenTree>>) -> Option<&Self>;
-}
-
-pub trait TryParse: Sized {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-    ) -> Result<Self, ()>;
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool;
 }
 
 impl<T: Peek> Parse for Option<T> {
     #[inline(always)]
     fn parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
-    ) -> Self {
-        if T::peek(parser) {
-            Some(T::parse(parser, diagnostics))
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: Parse> TryParse for T {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        diagnostics: DiagnosticsHandle,
+        context: ContextHandle,
     ) -> Result<Self, ()> {
-        Ok(parser.parse(diagnostics))
+        if T::peek(parser, context) {
+            T::parse(parser, context).map(|ok| Some(ok))
+        } else {
+            Ok(None)
+        }
     }
 }
 
 impl Parse for () {
     fn parse(
         _parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        _diagnostics: DiagnosticsHandle,
-    ) -> Self {
+        _context: ContextHandle,
+    ) -> Result<Self, ()> {
+        Ok(())
     }
 }

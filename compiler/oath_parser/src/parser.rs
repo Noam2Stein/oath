@@ -1,10 +1,6 @@
 use std::iter::Peekable;
 
-use oath_diagnostics::{DiagnosticsHandle, Error};
-use oath_src::{Span, Spanned};
-use oath_tokenizer::TokenTree;
-
-use crate::{Parse, Peek, PeekRef, TryParse};
+use crate::*;
 
 #[derive(Debug, Clone)]
 pub struct Parser<I: Iterator<Item = TokenTree>> {
@@ -35,20 +31,14 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         self.peek_next().is_some()
     }
 
-    pub fn parse<P: Parse>(&mut self, diagnostics: DiagnosticsHandle) -> P {
-        P::parse(self, diagnostics)
+    pub fn parse<P: Parse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+        P::parse(self, context)
     }
-    pub fn peek<P: Peek>(&mut self) -> bool {
-        P::peek(self)
-    }
-    pub fn peek_ref<P: PeekRef>(&mut self) -> Option<&P> {
-        P::peek_ref(self)
-    }
-    pub fn try_parse<P: TryParse>(&mut self, diagnostics: DiagnosticsHandle) -> Result<P, ()> {
-        P::try_parse(self, diagnostics)
+    pub fn peek<P: Peek>(&mut self, context: ContextHandle) -> bool {
+        P::peek(self, context)
     }
 
-    pub fn expect_empty(&mut self, diagnostics: DiagnosticsHandle) {
+    pub fn expect_empty(&mut self, context: ContextHandle) {
         if let Some(next) = self.next() {
             let mut span = next.span();
 
@@ -56,17 +46,148 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
                 span = span.connect(next.span());
             }
 
-            diagnostics.push_error(Error::StaticMessage("unexpected tokens"), span);
+            context.push_error(Error::new("unexpected tokens", span));
         }
     }
-    pub fn parse_all<P: Parse>(&mut self, diagnostics: DiagnosticsHandle) -> P {
-        let output = self.parse(diagnostics);
-        self.expect_empty(diagnostics);
+    pub fn parse_all<P: Parse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+        let output = self.parse(context);
+        self.expect_empty(context);
 
         output
     }
 
     pub fn end_span(&self) -> Span {
         self.end_span
+    }
+    pub fn next_span(&mut self) -> Span {
+        if let Some(next) = self.peek_next() {
+            next.span()
+        } else {
+            self.end_span
+        }
+    }
+
+    pub fn parse_option<T: Peek>(&mut self, context: ContextHandle) -> Option<Result<T, ()>> {
+        if self.peek::<T>(context) {
+            Some(self.parse(context))
+        } else {
+            None
+        }
+    }
+
+    pub fn parse_vec<T: Peek, const DISALLOW_EMPTY: bool>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Result<Vec<T>, ()> {
+        let mut vec = if DISALLOW_EMPTY {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Err(()),
+            }]
+        } else {
+            Vec::new()
+        };
+
+        while self.peek::<T>(context) {
+            if let Ok(value) = self.parse(context) {
+                vec.push(value);
+            }
+        }
+
+        Ok(vec)
+    }
+
+    pub fn parse_vec_all<T: Parse, const DISALLOW_EMPTY: bool>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Result<Vec<T>, ()> {
+        let mut vec = if DISALLOW_EMPTY {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Err(()),
+            }]
+        } else {
+            Vec::new()
+        };
+
+        while self.is_left() {
+            if let Ok(value) = self.parse(context) {
+                vec.push(value);
+            }
+        }
+
+        Ok(vec)
+    }
+
+    pub fn parse_sep<T: Peek, S: Peek, const DISALLOW_EMPTY: bool, const ALLOW_TRAIL: bool>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Result<Vec<T>, ()> {
+        let mut vec = if DISALLOW_EMPTY {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Err(()),
+            }]
+        } else if self.peek::<T>(context) {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Ok(Vec::new()),
+            }]
+        } else {
+            return Ok(Vec::new());
+        };
+
+        while let Ok(Some(_)) = self.parse::<Option<S>>(context) {
+            if ALLOW_TRAIL {
+                if let Ok(value) = self.parse(context) {
+                    match value {
+                        Some(value) => vec.push(value),
+                        None => break,
+                    }
+                }
+            } else if let Ok(value) = self.parse(context) {
+                vec.push(value);
+            }
+        }
+
+        Ok(vec)
+    }
+
+    pub fn parse_sep_all<
+        T: Parse,
+        S: Parse,
+        const DISALLOW_EMPTY: bool,
+        const ALLOW_TRAIL: bool,
+    >(
+        &mut self,
+        context: ContextHandle,
+    ) -> Result<Vec<T>, ()> {
+        let mut vec = if DISALLOW_EMPTY {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Err(()),
+            }]
+        } else if self.is_left() {
+            vec![match self.parse(context) {
+                Ok(first) => first,
+                Err(()) => return Ok(Vec::new()),
+            }]
+        } else {
+            return Ok(Vec::new());
+        };
+
+        while self.is_left() {
+            if self.parse::<S>(context).is_err() {
+                break;
+            }
+
+            if self.is_left() || !ALLOW_TRAIL {
+                if let Ok(value) = self.parse(context) {
+                    vec.push(value);
+                }
+            }
+        }
+
+        Ok(vec)
     }
 }
