@@ -1,12 +1,10 @@
-mod parse_box;
-mod parse_tokens;
+mod box_impl;
+mod token_impl;
 
 mod into_parser;
 mod parser;
-mod parsing_types;
 pub use into_parser::*;
 pub use parser::*;
-pub use parsing_types::*;
 
 pub use oath_parser_proc_macros::{Parse, Peek};
 
@@ -14,36 +12,33 @@ use oath_context::*;
 use oath_src::*;
 use oath_tokenizer::*;
 
-pub trait Parse: Sized {
-    fn parse(
+pub trait Desc: Sized {
+    fn desc() -> &'static str;
+}
+
+pub trait Parse {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self;
+}
+
+pub trait TryParse: Desc {
+    fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()>;
 }
 
-pub trait Peek: Parse {
+pub trait Peek: Desc {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool;
 }
 
-impl<T: Peek> Parse for Option<T> {
-    #[inline(always)]
-    fn parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> Result<Self, ()> {
-        if T::peek(parser, context) {
-            T::parse(parser, context).map(|ok| Some(ok))
-        } else {
-            Ok(None)
-        }
+impl<T: TryParse> Parse for Result<T, ()> {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        parser.try_parse(context)
     }
 }
 
-impl Parse for () {
-    fn parse(
-        _parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        _context: ContextHandle,
-    ) -> Result<Self, ()> {
-        Ok(())
+impl<T: Desc> Desc for Result<T, ()> {
+    fn desc() -> &'static str {
+        T::desc()
     }
 }

@@ -31,8 +31,11 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         self.peek_next().is_some()
     }
 
-    pub fn parse<P: Parse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+    pub fn parse<P: Parse>(&mut self, context: ContextHandle) -> P {
         P::parse(self, context)
+    }
+    pub fn try_parse<P: TryParse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+        P::try_parse(self, context)
     }
     pub fn peek<P: Peek>(&mut self, context: ContextHandle) -> bool {
         P::peek(self, context)
@@ -49,16 +52,19 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
             context.push_error(Error::new("unexpected tokens", span));
         }
     }
-    pub fn parse_all<P: Parse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+    pub fn parse_all<P: Parse>(&mut self, context: ContextHandle) -> P {
         let output = self.parse(context);
         self.expect_empty(context);
 
         output
     }
+    pub fn try_parse_all<P: TryParse>(&mut self, context: ContextHandle) -> Result<P, ()> {
+        let output = self.try_parse(context)?;
+        self.expect_empty(context);
 
-    pub fn end_span(&self) -> Span {
-        self.end_span
+        Ok(output)
     }
+
     pub fn next_span(&mut self) -> Span {
         if let Some(next) = self.peek_next() {
             next.span()
@@ -67,15 +73,44 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         }
     }
 
-    pub fn parse_option<T: Peek>(&mut self, context: ContextHandle) -> Option<Result<T, ()>> {
-        if self.peek::<T>(context) {
-            Some(self.parse(context))
-        } else {
-            None
+    pub fn parse_sep<T: Peek + Parse, S: Peek + Parse>(
+        &mut self,
+        allow_zero: bool,
+        allow_trail: bool,
+        context: ContextHandle,
+    ) -> Vec<T> {
+        let mut vec = Vec::new();
+
+        while self.peek::<T>(context) {
+            vec.push(self.parse(context));
+
+            if self.peek::<S>(context) {
+                self.parse::<S>(context);
+            } else {
+                return vec;
+            }
+        }
+
+        if allow_zero
+
+        loop {
+            if self.peek::<T>(context) {
+                vec.push(self.parse(context));
+
+                if self.peek::<S>(context) {
+                    self.parse::<S>(context);
+                } else {
+                    break vec;
+                }
+            } else {
+                if !allow_trail {
+                    context.push_error(Error::new(format!("trailing `{}`", S::desc()), span));
+                }
+            }
         }
     }
 
-    pub fn parse_vec<T: Peek, const DISALLOW_EMPTY: bool>(
+    pub fn try_parse_vec<T: Peek, const DISALLOW_EMPTY: bool>(
         &mut self,
         context: ContextHandle,
     ) -> Result<Vec<T>, ()> {
