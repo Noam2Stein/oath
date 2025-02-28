@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
     client.start();
 
     // Inform the user that the server has been activated
-    vscode.window.showInformationMessage('Oath Language Server is now active!');
+    vscode.window.showInformationMessage('Oath Language Server activated');
 }
 
 // This will be called when the extension is deactivated

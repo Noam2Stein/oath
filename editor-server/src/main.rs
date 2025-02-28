@@ -34,7 +34,7 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _: InitializedParams) {
         self.client
-            .log_message(MessageType::INFO, "server initialized!")
+            .log_message(MessageType::INFO, "Oath lang server initiated")
             .await;
     }
 
@@ -49,13 +49,6 @@ impl LanguageServer for Backend {
                 .map(|keyword| CompletionItem::new_simple(keyword.to_string(), String::new()))
                 .collect(),
         )))
-    }
-
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
-        Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
-            range: None,
-        }))
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -87,38 +80,13 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "did change")
-            .await;
-
         let uri = params.text_document.uri;
 
         let src_file = SrcFile::from_str(params.content_changes[0].text.as_str());
         let context = Mutex::new(Context::new());
         let context_handle = ContextHandle(&context);
 
-        self.client
-            .log_message(MessageType::INFO, "about to parse")
-            .await;
-
         let _ = src_file.tokenize(context_handle).parse_ast(context_handle);
-
-        self.client
-            .log_message(MessageType::INFO, "parsed!!!!!!")
-            .await;
-
-        if context.lock().unwrap().errors.is_empty() {
-            self.client
-                .log_message(MessageType::INFO, "No errors found.")
-                .await;
-        } else {
-            self.client
-                .log_message(
-                    MessageType::INFO,
-                    format!("Found {} errors", context.lock().unwrap().errors.len()),
-                )
-                .await;
-        }
 
         let diagnostics: Vec<Diagnostic> = context
             .into_inner()
