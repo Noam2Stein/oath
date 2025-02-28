@@ -66,11 +66,7 @@ impl TryParse for Ident {
                         token.span(),
                     ));
 
-                    Ok(Ident::new_adjusted(
-                        token.kind.as_str(),
-                        token.span(),
-                        context,
-                    ))
+                    Err(())
                 }
                 token => {
                     context.push_error(Error::new("expected an ident", token.span()));
