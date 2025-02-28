@@ -1,6 +1,7 @@
 [package]
-name = "oath_src"
-version = "0.1.0"
 edition = "2021"
+name    = "oath_src"
+version = "0.1.0"
 
 [dependencies]
+oath_src_proc_macros = { path = "proc_macros" }

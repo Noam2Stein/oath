@@ -9,6 +9,7 @@ macro_rules! impl_desc {
         }
     };
 }
+
 impl_desc!(TokenTree => "a token tree");
 
 impl_desc!(Ident => "an ident");

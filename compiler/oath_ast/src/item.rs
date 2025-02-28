@@ -2,17 +2,28 @@ use std::mem::take;
 
 use crate::*;
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "an item"]
 pub enum Item {
     Fn(Fn),
     Struct(Struct),
     Mod(Mod),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Desc)]
+#[desc = "item modifiers"]
 pub struct ItemModifiers {
     pub_: Option<keyword!("pub")>,
     con: Option<keyword!("con")>,
     raw: Option<keyword!("raw")>,
+}
+
+pub trait ItemType: Peek + Desc {
+    fn item_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+        modifiers: &mut ItemModifiers,
+    ) -> Result<Self, ()>;
 }
 
 impl ItemModifiers {
@@ -43,47 +54,32 @@ impl ItemModifiers {
     }
 }
 
-pub trait ItemType: Sized {
-    const DESC: &str;
-
-    fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-        modifiers: &mut ItemModifiers,
-    ) -> Result<Self, ()>;
-
-    fn item_peek(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool;
-
-    fn item_parse_option(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-        modifiers: &mut ItemModifiers,
-    ) -> Option<Result<Self, ()>> {
-        if Self::item_peek(parser, context) {
-            let output = Some(Self::item_parse(parser, context, modifiers));
-            modifiers.expect_empty(context, Self::DESC);
-            output
-        } else {
-            None
-        }
-    }
-}
-
-impl Parse for Item {
-    fn parse(
+impl TryParse for Item {
+    fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()> {
-        let mut modifiers = parser.parse::<ItemModifiers>(context).unwrap();
+        fn parse_option_item<T: ItemType>(
+            parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+            context: ContextHandle,
+            modifiers: &mut ItemModifiers,
+        ) -> Option<Result<T, ()>> {
+            if parser.peek::<T>(context) {
+                let output = Some(T::item_parse(parser, context, modifiers));
+                modifiers.expect_empty(context, T::desc());
+                output
+            } else {
+                None
+            }
+        }
 
-        if let Some(value) = ItemType::item_parse_option(parser, context, &mut modifiers) {
+        let mut modifiers = parser.parse::<ItemModifiers>(context);
+
+        if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
             Ok(Self::Fn(value?))
-        } else if let Some(value) = ItemType::item_parse_option(parser, context, &mut modifiers) {
+        } else if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
             Ok(Self::Struct(value?))
-        } else if let Some(value) = ItemType::item_parse_option(parser, context, &mut modifiers) {
+        } else if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
             Ok(Self::Mod(value?))
         } else {
             context.push_error(SyntaxError::Expected(parser.next_span(), "an item"));
@@ -93,26 +89,32 @@ impl Parse for Item {
     }
 }
 
+impl Peek for Item {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<ItemModifiers>(context)
+            || parser.peek::<Fn>(context)
+            || parser.peek::<Struct>(context)
+            || parser.peek::<Mod>(context)
+    }
+}
+
 impl Parse for ItemModifiers {
-    fn parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> Result<Self, ()> {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
         let mut output = Self::default();
         loop {
-            if let Some(pub_) = parser.parse::<Option<keyword!("pub")>>(context).unwrap() {
+            if let Some(pub_) = parser.parse::<Option<keyword!("pub")>>(context) {
                 if output.pub_.is_some() {
                     context.push_error(SyntaxError::Double(pub_.span(), "`pub`"));
                 } else {
                     output.pub_ = Some(pub_);
                 }
-            } else if let Some(con) = parser.parse::<Option<keyword!("con")>>(context).unwrap() {
+            } else if let Some(con) = parser.parse::<Option<keyword!("con")>>(context) {
                 if output.con.is_some() {
                     context.push_error(SyntaxError::Double(con.span(), "`con`"));
                 } else {
                     output.con = Some(con);
                 }
-            } else if let Some(raw) = parser.parse::<Option<keyword!("raw")>>(context).unwrap() {
+            } else if let Some(raw) = parser.parse::<Option<keyword!("raw")>>(context) {
                 if output.raw.is_some() {
                     context.push_error(SyntaxError::Double(raw.span(), "`raw`"));
                 } else {
@@ -123,6 +125,14 @@ impl Parse for ItemModifiers {
             }
         }
 
-        Ok(output)
+        output
+    }
+}
+
+impl Peek for ItemModifiers {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<keyword!("pub")>(context)
+            || parser.peek::<keyword!("con")>(context)
+            || parser.peek::<keyword!("raw")>(context)
     }
 }

@@ -9,8 +9,9 @@ macro_rules! impl_try_parse {
             ) -> Result<Self, ()> {
                 if let Some(token) = parser.next() {
                     let span = token.span();
-                    if let Ok(output) = token.try_into() {
-                        Ok(output)
+                    #[allow(irrefutable_let_patterns)]
+                    if let Ok(token) = token.try_into() {
+                        Ok(token)
                     } else {
                         context.push_error(Error::new(format!("expected {}", <$ty>::desc()), span));
 

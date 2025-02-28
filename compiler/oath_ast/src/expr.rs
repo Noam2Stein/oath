@@ -1,40 +1,107 @@
+use std::{cmp::Ordering, mem::replace};
+
 use crate::*;
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "an expr"]
 pub enum Expr {
     Path(Path),
     Literal(Literal),
-    Tuple(Span, Vec<Expr>),
-    Neg(punct!("-"), Box<Expr>),
-    Not(punct!("!"), Box<Expr>),
-    Deref(punct!("*"), Box<Expr>),
+    Tuple(Span, Vec<PResult<Expr>>),
+    Array(Span, Vec<PResult<Expr>>),
+    Block(Block),
+    ShsOp(ShsOp, Box<Expr>),
+    MhsOp(Box<Expr>, MhsOp, Box<Expr>),
 }
 
-impl Parse for Expr {
-    fn parse(
+#[derive(Debug, Clone, Desc, TryParse, Peek, PeekOk, Spanned)]
+#[desc = "a single side op"]
+pub enum ShsOp {
+    Neg(punct!("-")),
+    Not(punct!("!")),
+    Deref(punct!("*")),
+    Ref(punct!("&")),
+    Eq(punct!("==")),
+    NotEq(punct!("!=")),
+    More(punct!(">")),
+    Less(punct!("<")),
+    MoreEq(punct!(">=")),
+    LessEq(punct!("<=")),
+    Question(punct!("?")),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Desc, TryParse, Peek, PeekOk, Spanned)]
+#[desc = "a multi side op"]
+pub enum MhsOp {
+    Add(punct!("+")),
+    Sub(punct!("-")),
+    Mul(punct!("*")),
+    Div(punct!("/")),
+    Rem(punct!("%")),
+    BitAnd(punct!("&")),
+    BitOr(punct!("|")),
+    BitXor(punct!("^")),
+    LogicAnd(punct!("&&")),
+    LogicOr(punct!("||")),
+    Bound(punct!(":")),
+}
+
+impl Expr {
+    fn fillin() -> Self {
+        Self::Literal(Literal::Char(CharLiteral::new('💪', Span::end_of_file())))
+    }
+}
+
+impl TryParse for Expr {
+    fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
-    ) -> Result<Self, ()> {
-        if let Some(value) = parser.parse(context)? {
-            Ok(Self::Path(value))
-        } else if let Some(value) = parser.parse(context)? {
-            Ok(Self::Literal(value))
-        } else if let Some(group) = parser.parse::<Option<Group<Parens>>>(context).unwrap() {
-            Ok(Self::Tuple(
+    ) -> PResult<Self> {
+        let mut expr = if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
+            Self::Tuple(
                 group.span(),
                 group
                     .into_parser()
-                    .parse_sep_all::<_, punct!(","), false, true>(context)?,
-            ))
-        } else if let Some(op) = parser.parse(context)? {
-            Ok(Self::Neg(op, parser.parse(context)?))
-        } else if let Some(op) = parser.parse(context)? {
-            Ok(Self::Not(op, parser.parse(context)?))
-        } else if let Some(op) = parser.parse(context)? {
-            Ok(Self::Deref(op, parser.parse(context)?))
+                    .try_parse_trl_all::<_, punct!(",")>(context),
+            )
+        } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
+            Self::Array(
+                group.span(),
+                group
+                    .into_parser()
+                    .try_parse_trl_all::<_, punct!(",")>(context),
+            )
+        } else if let Some(value) = parser.try_parse(context)? {
+            Self::Path(value)
+        } else if let Some(value) = parser.try_parse(context)? {
+            Self::Literal(value)
+        } else if let Some(op) = parser.try_parse(context)? {
+            Self::ShsOp(op, parser.try_parse(context)?)
         } else {
             context.push_error(SyntaxError::Expected(parser.next_span(), "an expr"));
-            Err(())
+            return Err(());
+        };
+
+        while let Some(op) = parser.parse::<Option<MhsOp>>(context) {
+            match expr {
+                Expr::MhsOp(_, expr_op, ref mut expr_rhs) if expr_op > op => {
+                    **expr_rhs = Self::MhsOp(
+                        Box::new(replace(&mut *expr_rhs, Self::fillin())),
+                        op,
+                        parser.try_parse(context)?,
+                    )
+                }
+                _ => {
+                    expr = Self::MhsOp(
+                        Box::new(replace(&mut expr, Self::fillin())),
+                        op,
+                        parser.try_parse(context)?,
+                    )
+                }
+            }
         }
+
+        Ok(expr)
     }
 }
 
@@ -52,12 +119,49 @@ impl Peek for Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Deref(a, b) => a.span().connect(b.span()),
-            Self::Literal(a) => a.span(),
-            Self::Neg(a, b) => a.span().connect(b.span()),
-            Self::Not(a, b) => a.span().connect(b.span()),
             Self::Path(a) => a.span(),
+            Self::Literal(a) => a.span(),
             Self::Tuple(span, _) => *span,
+            Self::Array(span, _) => *span,
+            Self::Block(a) => a.span(),
+            Self::ShsOp(a, b) => a.span().connect(b.span()),
+            Self::MhsOp(a, b, c) => a.span().connect(b.span().connect(c.span())),
         }
+    }
+}
+
+impl PartialOrd for MhsOp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for MhsOp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        enum MhsOpLvl {
+            Bound,
+            LogicOr,
+            LogicAnd,
+            BitOr,
+            BitXor,
+            BitAnd,
+            AddSub,
+            MulDivRem,
+        }
+
+        fn to_lvl(op: &MhsOp) -> MhsOpLvl {
+            match op {
+                MhsOp::Bound(_) => MhsOpLvl::Bound,
+                MhsOp::Add(_) | MhsOp::Sub(_) => MhsOpLvl::AddSub,
+                MhsOp::Mul(_) | MhsOp::Div(_) | MhsOp::Rem(_) => MhsOpLvl::MulDivRem,
+                MhsOp::BitAnd(_) => MhsOpLvl::BitAnd,
+                MhsOp::BitOr(_) => MhsOpLvl::BitOr,
+                MhsOp::BitXor(_) => MhsOpLvl::BitXor,
+                MhsOp::LogicAnd(_) => MhsOpLvl::LogicAnd,
+                MhsOp::LogicOr(_) => MhsOpLvl::LogicOr,
+            }
+        }
+
+        to_lvl(self).cmp(&to_lvl(other))
     }
 }

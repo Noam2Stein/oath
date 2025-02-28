@@ -1,27 +1,29 @@
 use crate::*;
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "a fn"]
 pub struct Fn {
     pub vis: Vis,
     pub con: Option<keyword!("con")>,
     pub raw: Option<keyword!("raw")>,
     pub ident: Ident,
     pub generics: GenericParams,
-    pub params: Vec<FnParam>,
-    pub output: Result<Type, ()>,
+    pub params: Vec<PResult<FnParam>>,
+    pub output: Option<PResult<Expr>>,
     pub contract: Contract,
-    pub block: Group<Braces>,
+    pub block: Option<()>,
 }
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "a fn param"]
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Ident,
-    pub type_: Result<Type, ()>,
-    pub bounds: Option<Trait>,
+    pub type_: PResult<Expr>,
+    pub bounds: Option<Expr>,
 }
 
 impl ItemType for Fn {
-    const DESC: &str = "a fn";
-
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
@@ -31,24 +33,28 @@ impl ItemType for Fn {
         let con = modifiers.take_con();
         let raw = modifiers.take_raw();
 
-        parser.parse::<keyword!("fn")>(context)?;
+        parser.try_parse::<keyword!("fn")>(context)?;
 
-        let ident = parser.parse(context)?;
-        let generics = parser.parse(context)?;
+        let ident = parser.try_parse(context)?;
+        let generics = parser.parse(context);
         let params = parser
-            .parse::<Group<Parens>>(context)?
+            .try_parse::<Group<Parens>>(context)?
             .into_parser()
-            .parse_sep_all::<_, punct!(","), false, true>(context)?;
+            .try_parse_trl_all::<_, punct!(",")>(context);
 
-        let output = if let Some(_) = parser.parse::<Option<punct!("->")>>(context)? {
-            parser.parse(context)
+        let output = if let Some(_) = parser.parse::<Option<punct!("->")>>(context) {
+            Some(parser.try_parse(context))
         } else {
-            Ok(Type::Tuple(Vec::new()))
+            None
         };
 
-        let contract = parser.parse(context)?;
+        let contract = parser.parse(context);
 
-        let block = parser.parse(context)?;
+        let block = parser.parse::<Option<Group<Braces>>>(context).map(|_| ());
+
+        if block.is_none() {
+            let _ = parser.try_parse::<punct!(";")>(context);
+        }
 
         Ok(Self {
             block,
@@ -62,24 +68,23 @@ impl ItemType for Fn {
             vis,
         })
     }
+}
 
-    fn item_peek(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool {
+impl Peek for Fn {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<keyword!("fn")>(context)
     }
 }
 
-impl Parse for FnParam {
-    fn parse(
+impl TryParse for FnParam {
+    fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
-    ) -> Result<Self, ()> {
-        let mut_ = parser.parse(context)?;
-        let ident = parser.parse(context)?;
+    ) -> PResult<Self> {
+        let mut_ = parser.parse(context);
+        let ident = parser.try_parse(context)?;
 
-        match parser.parse::<punct!(":")>(context) {
+        match parser.try_parse::<punct!(":")>(context) {
             Ok(value) => value,
             Err(()) => {
                 return Ok(Self {
@@ -91,7 +96,7 @@ impl Parse for FnParam {
             }
         };
 
-        let type_ = match parser.parse::<Type>(context) {
+        let type_ = match parser.try_parse(context) {
             Ok(value) => Ok(value),
             Err(()) => {
                 return Ok(Self {
@@ -103,8 +108,8 @@ impl Parse for FnParam {
             }
         };
 
-        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context)? {
-            match parser.parse(context) {
+        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
+            match parser.try_parse(context) {
                 Ok(value) => Some(value),
                 Err(()) => None,
             }
@@ -118,5 +123,11 @@ impl Parse for FnParam {
             type_,
             bounds,
         })
+    }
+}
+
+impl Peek for FnParam {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<Ident>(context)
     }
 }

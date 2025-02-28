@@ -19,8 +19,6 @@ mod item;
 mod mod_;
 mod path;
 mod struct_;
-mod trait_;
-mod type_;
 mod vis;
 pub use block::*;
 pub use contract::*;
@@ -33,8 +31,6 @@ pub use item::*;
 pub use mod_::*;
 pub use path::*;
 pub use struct_::*;
-pub use trait_::*;
-pub use type_::*;
 pub use vis::*;
 
 trait Seal {}
@@ -49,6 +45,6 @@ pub trait ParseAstExt: Seal {
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {
     fn parse_ast(self, context: ContextHandle) -> SyntaxTree {
-        self.into_parser().parse(context).unwrap()
+        self.into_parser().parse(context)
     }
 }

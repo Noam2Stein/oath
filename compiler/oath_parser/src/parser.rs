@@ -73,156 +73,182 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         }
     }
 
-    pub fn parse_sep<T: Peek + Parse, S: Peek + Parse>(
+    pub fn parse_rep<T: Peek>(&mut self, context: ContextHandle) -> Vec<T>
+    where
+        Option<T>: Parse,
+    {
+        let mut vec = Vec::new();
+
+        while let Some(value) = self.parse(context) {
+            vec.push(value);
+        }
+
+        vec
+    }
+    pub fn parse_sep<T: Peek + Parse, S: Peek>(
         &mut self,
-        allow_zero: bool,
-        allow_trail: bool,
         context: ContextHandle,
-    ) -> Vec<T> {
+    ) -> Result<Vec<T>, ()>
+    where
+        Option<S>: Parse,
+    {
+        if !self.peek::<T>(context) {
+            context.push_error(Error::new(
+                format!("expected {}", T::desc()),
+                self.next_span(),
+            ));
+
+            return Err(());
+        }
+
+        let mut vec = vec![self.parse(context)];
+
+        while let Some(_) = self.parse::<Option<S>>(context) {
+            vec.push(self.parse(context));
+        }
+
+        Ok(vec)
+    }
+    pub fn parse_trl<T: Peek + Parse, S: Peek>(&mut self, context: ContextHandle) -> Vec<T>
+    where
+        Option<S>: Parse,
+    {
         let mut vec = Vec::new();
 
         while self.peek::<T>(context) {
             vec.push(self.parse(context));
 
-            if self.peek::<S>(context) {
-                self.parse::<S>(context);
-            } else {
-                return vec;
-            }
-        }
-
-        if allow_zero
-
-        loop {
-            if self.peek::<T>(context) {
-                vec.push(self.parse(context));
-
-                if self.peek::<S>(context) {
-                    self.parse::<S>(context);
-                } else {
-                    break vec;
-                }
-            } else {
-                if !allow_trail {
-                    context.push_error(Error::new(format!("trailing `{}`", S::desc()), span));
-                }
-            }
-        }
-    }
-
-    pub fn try_parse_vec<T: Peek, const DISALLOW_EMPTY: bool>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Result<Vec<T>, ()> {
-        let mut vec = if DISALLOW_EMPTY {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Err(()),
-            }]
-        } else {
-            Vec::new()
-        };
-
-        while self.peek::<T>(context) {
-            if let Ok(value) = self.parse(context) {
-                vec.push(value);
-            }
-        }
-
-        Ok(vec)
-    }
-
-    pub fn parse_vec_all<T: Parse, const DISALLOW_EMPTY: bool>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Result<Vec<T>, ()> {
-        let mut vec = if DISALLOW_EMPTY {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Err(()),
-            }]
-        } else {
-            Vec::new()
-        };
-
-        while self.is_left() {
-            if let Ok(value) = self.parse(context) {
-                vec.push(value);
-            }
-        }
-
-        Ok(vec)
-    }
-
-    pub fn parse_sep<T: Peek, S: Peek, const DISALLOW_EMPTY: bool, const ALLOW_TRAIL: bool>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Result<Vec<T>, ()> {
-        let mut vec = if DISALLOW_EMPTY {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Err(()),
-            }]
-        } else if self.peek::<T>(context) {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Ok(Vec::new()),
-            }]
-        } else {
-            return Ok(Vec::new());
-        };
-
-        while let Ok(Some(_)) = self.parse::<Option<S>>(context) {
-            if ALLOW_TRAIL {
-                if let Ok(value) = self.parse(context) {
-                    match value {
-                        Some(value) => vec.push(value),
-                        None => break,
-                    }
-                }
-            } else if let Ok(value) = self.parse(context) {
-                vec.push(value);
-            }
-        }
-
-        Ok(vec)
-    }
-
-    pub fn parse_sep_all<
-        T: Parse,
-        S: Parse,
-        const DISALLOW_EMPTY: bool,
-        const ALLOW_TRAIL: bool,
-    >(
-        &mut self,
-        context: ContextHandle,
-    ) -> Result<Vec<T>, ()> {
-        let mut vec = if DISALLOW_EMPTY {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Err(()),
-            }]
-        } else if self.is_left() {
-            vec![match self.parse(context) {
-                Ok(first) => first,
-                Err(()) => return Ok(Vec::new()),
-            }]
-        } else {
-            return Ok(Vec::new());
-        };
-
-        while self.is_left() {
-            if self.parse::<S>(context).is_err() {
+            if let None = self.parse::<Option<S>>(context) {
                 break;
             }
+        }
 
-            if self.is_left() || !ALLOW_TRAIL {
-                if let Ok(value) = self.parse(context) {
-                    vec.push(value);
+        vec
+    }
+
+    pub fn try_parse_rep<T: Peek + TryParse>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Vec<Result<T, ()>> {
+        let mut vec = Vec::new();
+
+        while self.peek::<T>(context) {
+            vec.push(self.try_parse(context));
+        }
+
+        vec
+    }
+    pub fn try_parse_sep<T: Peek + TryParse, S: Peek>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Result<Vec<Result<T, ()>>, ()>
+    where
+        Option<S>: Parse,
+    {
+        if !self.peek::<T>(context) {
+            context.push_error(Error::new(
+                format!("expected {}", T::desc()),
+                self.next_span(),
+            ));
+
+            return Err(());
+        }
+
+        let mut vec = vec![self.try_parse(context)];
+
+        while let Some(_) = self.parse::<Option<S>>(context) {
+            vec.push(self.try_parse(context));
+        }
+
+        Ok(vec)
+    }
+    pub fn try_parse_trl<T: Peek + TryParse, S: Peek>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Vec<Result<T, ()>>
+    where
+        Option<S>: Parse,
+    {
+        let mut vec = Vec::new();
+
+        while self.peek::<T>(context) {
+            vec.push(self.try_parse(context));
+
+            if let None = self.parse::<Option<S>>(context) {
+                break;
+            }
+        }
+
+        vec
+    }
+
+    pub fn parse_rep_all<T: Parse>(&mut self, context: ContextHandle) -> Vec<T> {
+        let mut vec = Vec::new();
+
+        while self.is_left() {
+            vec.push(self.parse(context));
+        }
+
+        vec
+    }
+
+    pub fn try_parse_rep_all<T: TryParse + Peek>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Vec<Result<T, ()>> {
+        let mut vec = Vec::new();
+
+        while self.is_left() {
+            let value = self.try_parse(context);
+            if let Ok(value) = value {
+                vec.push(Ok(value));
+            } else {
+                vec.push(Err(()));
+                while self.is_left() && !self.peek::<T>(context) {
+                    self.next();
                 }
             }
         }
 
-        Ok(vec)
+        vec
+    }
+    pub fn try_parse_trl_all<T: TryParse + Peek, S: TryParse + Peek>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Vec<Result<T, ()>> {
+        let mut vec = Vec::new();
+
+        while self.is_left() {
+            match self.try_parse(context) {
+                Ok(value) => {
+                    vec.push(Ok(value));
+
+                    if self.is_left() {
+                        match self.try_parse::<S>(context) {
+                            Ok(_) => {}
+                            Err(()) => {
+                                while self.is_left() && !self.peek::<S>(context) {
+                                    self.next();
+                                }
+
+                                if self.is_left() {
+                                    let _ = self.try_parse::<S>(context);
+                                }
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                Err(()) => {
+                    vec.push(Err(()));
+                    while self.is_left() && !self.peek::<T>(context) && !self.peek::<S>(context) {
+                        self.next();
+                    }
+                }
+            }
+        }
+
+        vec
     }
 }

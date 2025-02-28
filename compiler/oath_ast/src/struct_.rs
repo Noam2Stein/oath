@@ -1,5 +1,7 @@
 use crate::*;
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "a struct"]
 pub struct Struct {
     pub vis: Vis,
     pub ident: Ident,
@@ -9,8 +11,6 @@ pub struct Struct {
 }
 
 impl ItemType for Struct {
-    const DESC: &str = "a struct";
-
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
@@ -18,13 +18,13 @@ impl ItemType for Struct {
     ) -> Result<Self, ()> {
         let vis = modifiers.take_vis();
 
-        parser.parse::<keyword!("struct")>(context)?;
+        parser.try_parse::<keyword!("struct")>(context)?;
 
-        let ident = parser.parse(context)?;
-        let generics = parser.parse(context)?;
-        let contract = parser.parse(context)?;
+        let ident = parser.try_parse(context)?;
+        let generics = parser.parse(context);
+        let contract = parser.parse(context);
 
-        let _ = parser.parse::<Group<Parens>>(context);
+        let _ = parser.try_parse::<Group<Braces>>(context);
 
         Ok(Self {
             contract,
@@ -34,11 +34,10 @@ impl ItemType for Struct {
             vis,
         })
     }
+}
 
-    fn item_peek(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool {
+impl Peek for Struct {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<keyword!("struct")>(context)
     }
 }

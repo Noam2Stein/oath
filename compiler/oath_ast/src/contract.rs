@@ -1,59 +1,67 @@
 use crate::*;
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default, Desc)]
+#[desc = "a contract"]
 pub struct Contract {
     pub promise: Vec<ContractItem>,
     pub require: Vec<ContractItem>,
 }
 
+#[derive(Debug, Clone, Desc)]
+#[desc = "a contract item"]
 pub struct ContractItem {
     pub target: Expr,
-    pub bounds: Trait,
+    pub bounds: Expr,
 }
 
 impl Parse for Contract {
-    fn parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> Result<Self, ()> {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
         let mut output = Self::default();
 
         loop {
             if parser
-                .parse_option::<keyword!("promise")>(context)
+                .parse::<Option<keyword!("promise")>>(context)
                 .is_some()
             {
-                if let Ok(mut promise) = parser.parse_sep::<_, punct!(","), true, true>(context) {
-                    output.promise.append(&mut promise);
+                for promise in parser
+                    .try_parse_trl::<_, punct!(",")>(context)
+                    .into_iter()
+                    .filter_map(Result::ok)
+                {
+                    output.promise.push(promise);
                 }
             } else if parser
-                .parse_option::<keyword!("require")>(context)
+                .parse::<Option<keyword!("require")>>(context)
                 .is_some()
             {
-                if let Ok(mut require) = parser.parse_sep::<_, punct!(","), true, true>(context) {
-                    output.require.append(&mut require);
+                for require in parser
+                    .try_parse_trl::<_, punct!(",")>(context)
+                    .into_iter()
+                    .filter_map(Result::ok)
+                {
+                    output.require.push(require);
                 }
             } else {
                 break;
             }
         }
 
-        Ok(output)
+        output
     }
 }
 
-impl Parse for ContractItem {
-    fn parse(
+impl TryParse for ContractItem {
+    fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()> {
-        let target = parser.parse(context)?;
+        let target = parser.try_parse(context)?;
 
-        parser.parse::<punct!(":")>(context)?;
+        parser.try_parse::<punct!(":")>(context)?;
 
-        let bounds = parser.parse(context)?;
+        let bounds = parser.try_parse(context)?;
 
-        Ok(Self { bounds, target })
+        Ok(Self { target, bounds })
     }
 }
 impl Peek for ContractItem {

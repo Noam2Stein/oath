@@ -14,19 +14,6 @@ macro_rules! impl_peek {
                 }
             }
         }
-
-        impl Parse for Option<$ty> {
-            fn parse(
-                parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-                context: ContextHandle,
-            ) -> Self {
-                if parser.peek::<$ty>(context) {
-                    Some(parser.try_parse(context).unwrap())
-                } else {
-                    None
-                }
-            }
-        }
     };
 }
 
@@ -49,3 +36,20 @@ impl_peek!(IntLiteral => TokenTree::Literal(Literal::Int(_)));
 impl_peek!(FloatLiteral => TokenTree::Literal(Literal::Float(_)));
 impl_peek!(CharLiteral => TokenTree::Literal(Literal::Char(_)));
 impl_peek!(StrLiteral => TokenTree::Literal(Literal::Str(_)));
+
+impl_peek!(Group => TokenTree::Group(_));
+
+with_token_set!($(
+    impl Peek for Group<$delim_type> {
+        fn peek(
+            tokens: &mut Parser<impl Iterator<Item = TokenTree>>,
+            _context: ContextHandle,
+        ) -> bool {
+            if let Some(TokenTree::Group(group)) = tokens.peek_next() {
+                group.delimiters.kind == DelimiterKind::$delim_type
+            } else {
+                false
+            }
+        }
+    }
+)*);
