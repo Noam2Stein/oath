@@ -112,10 +112,10 @@ fn index_to_pos(str: &str, index: usize) -> Position {
     let mut line = 0;
     let mut last_line_start = 0;
 
-    for newline in str[0..index]
-        .replace("\r", "")
-        .char_indices()
-        .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
+    for newline in
+        str[0..index]
+            .char_indices()
+            .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
     {
         line += 1;
         last_line_start = newline + 1;
