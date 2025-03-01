@@ -8,14 +8,7 @@ pub struct GenericParams(pub Span, pub Vec<Result<GenericParam, ()>>);
 #[desc = "a generic param"]
 pub struct GenericParam {
     pub ident: Ident,
-    pub kind: GenericParamKind,
-}
-
-#[derive(Debug, Clone, Desc)]
-#[desc = "a generic param kind"]
-pub enum GenericParamKind {
-    Value,
-    Type,
+    pub kind: PResult<ItemKind>,
 }
 
 impl Parse for GenericParams {
@@ -41,8 +34,21 @@ impl TryParse for GenericParam {
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()> {
-        let ident = parser.try_parse(context)?;
-        let kind = parser.parse(context);
+        let ident = parser.try_parse::<Ident>(context)?;
+        let kind = match parser.try_parse::<Option<ItemKind>>(context) {
+            Ok(Some(kind)) => {
+                if kind.keywords.len() == 1 {
+                    if let ItemKeyword::Type(keyword) = kind.keywords.first().unwrap() {
+                        context.push_error(Error::new("explicit `type` item-type", keyword.span()));
+                    }
+                }
+                Ok(kind)
+            }
+            Ok(None) => Ok(ItemKind {
+                keywords: vec![ItemKeyword::Type(keyword!("type"(ident.span())))],
+            }),
+            Err(()) => Err(()),
+        };
 
         Ok(Self { ident, kind })
     }
@@ -55,13 +61,3 @@ impl Peek for GenericParam {
 }
 
 impl PeekOk for GenericParam {}
-
-impl Parse for GenericParamKind {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        if parser.parse::<Option<keyword!("val")>>(context).is_some() {
-            Self::Value
-        } else {
-            Self::Type
-        }
-    }
-}

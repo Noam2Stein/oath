@@ -23,17 +23,18 @@ pub struct FnParam {
     pub bounds: Option<Expr>,
 }
 
-impl ItemType for Fn {
+impl ItemParse for Fn {
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-    ) -> Result<Self, ()> {
+        mut target_kind: ItemKind,
+    ) -> PResult<Self> {
         let vis = modifiers.take_vis();
         let con = modifiers.take_con();
         let raw = modifiers.take_raw();
 
-        parser.try_parse::<keyword!("fn")>(context)?;
+        target_kind.expect_empty(context, Self::desc());
 
         let ident = parser.try_parse(context)?;
         let generics = parser.parse(context);
@@ -53,7 +54,12 @@ impl ItemType for Fn {
         let block = parser.parse::<Option<Group<Braces>>>(context).map(|_| ());
 
         if block.is_none() {
-            let _ = parser.try_parse::<punct!(";")>(context);
+            if parser.parse::<Option<punct!(";")>>(context).is_none() {
+                context.push_error(SyntaxError::Expected(
+                    parser.next_span(),
+                    "either `{ }` or `;`",
+                ));
+            }
         }
 
         Ok(Self {

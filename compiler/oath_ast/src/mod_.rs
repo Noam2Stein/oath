@@ -32,15 +32,17 @@ impl Parse for ModContent {
     }
 }
 
-impl ItemType for Mod {
+impl ItemParse for Mod {
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-    ) -> Result<Self, ()> {
+        mut target_kind: ItemKind,
+    ) -> PResult<Self> {
         let vis = modifiers.take_vis();
 
-        let _ = parser.try_parse::<keyword!("mod")>(context)?;
+        target_kind.expect_empty(context, Self::desc());
+
         let ident = parser.try_parse(context)?;
         let content = if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
             Some(group.into_parser().parse(context))

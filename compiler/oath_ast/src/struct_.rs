@@ -10,15 +10,16 @@ pub struct Struct {
     pub fields: (),
 }
 
-impl ItemType for Struct {
+impl ItemParse for Struct {
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-    ) -> Result<Self, ()> {
+        mut target_kind: ItemKind,
+    ) -> PResult<Self> {
         let vis = modifiers.take_vis();
 
-        parser.try_parse::<keyword!("struct")>(context)?;
+        target_kind.expect_empty(context, Self::desc());
 
         let ident = parser.try_parse(context)?;
         let generics = parser.parse(context);

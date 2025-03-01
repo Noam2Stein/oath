@@ -18,12 +18,36 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-pub trait ItemType: Peek + Desc {
+#[derive(Debug, Clone, Desc, Spanned, TryParse, Peek)]
+#[desc = "an item-type"]
+pub enum ItemKeyword {
+    Struct(keyword!("struct")),
+    Enum(keyword!("enum")),
+    Type(keyword!("type")),
+    Spec(keyword!("spec")),
+    Trait(keyword!("trait")),
+    Static(keyword!("static")),
+    Const(keyword!("const")),
+    Fn(keyword!("fn")),
+    Mod(keyword!("mod")),
+    Use(keyword!("use")),
+    Val(keyword!("val")),
+    Alias(keyword!("alias")),
+}
+
+#[derive(Debug, Clone, Desc)]
+#[desc = "an item-type"]
+pub struct ItemKind {
+    pub keywords: Vec<ItemKeyword>,
+}
+
+pub trait ItemParse: Sized {
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-    ) -> Result<Self, ()>;
+        target_kind: ItemKind,
+    ) -> PResult<Self>;
 }
 
 impl ItemModifiers {
@@ -41,7 +65,7 @@ impl ItemModifiers {
         self.take_pub().map_or(Vis::Priv, |pub_| Vis::Pub(pub_))
     }
 
-    fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
+    pub fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
         if let Some(pub_) = self.pub_ {
             context.push_error(SyntaxError::CannotBePutOn(pub_.span(), "`pub`", item_desc));
         }
@@ -54,37 +78,115 @@ impl ItemModifiers {
     }
 }
 
+impl PeekOk for ItemKeyword {}
+
+impl TryParse for ItemKind {
+    fn try_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> PResult<Self> {
+        Ok(Self {
+            keywords: parser
+                .try_parse_sep::<_, punct!("-")>(context)?
+                .into_iter()
+                .collect::<PResult<_>>()?,
+        })
+    }
+}
+impl Peek for ItemKind {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<ItemKeyword>(context)
+    }
+}
+
+impl Spanned for ItemKind {
+    fn span(&self) -> Span {
+        if self.keywords.len() == 0 {
+            Span::end_of_file()
+        } else {
+            self.keywords
+                .iter()
+                .fold(self.keywords.first().unwrap().span(), |span, keyword| {
+                    span.connect(keyword.span())
+                })
+        }
+    }
+}
+
+impl ItemKind {
+    pub fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
+        if self.keywords.len() != 0 {
+            context.push_error(SyntaxError::CannotHaveTarget(self.span(), item_desc));
+        }
+    }
+}
+
 impl TryParse for Item {
     fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()> {
-        fn parse_option_item<T: ItemType>(
-            parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-            context: ContextHandle,
-            modifiers: &mut ItemModifiers,
-        ) -> Option<Result<T, ()>> {
-            if parser.peek::<T>(context) {
-                let output = Some(T::item_parse(parser, context, modifiers));
-                modifiers.expect_empty(context, T::desc());
-                output
-            } else {
-                None
-            }
-        }
-
         let mut modifiers = parser.parse::<ItemModifiers>(context);
+        let mut target_kind = parser.try_parse::<ItemKind>(context)?;
 
-        if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
-            Ok(Self::Fn(value?))
-        } else if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
-            Ok(Self::Struct(value?))
-        } else if let Some(value) = parse_option_item(parser, context, &mut modifiers) {
-            Ok(Self::Mod(value?))
-        } else {
-            context.push_error(SyntaxError::Expected(parser.next_span(), "an item"));
-
-            Err(())
+        match target_kind.keywords.pop().unwrap() {
+            ItemKeyword::Alias(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Val(keyword) => {
+                context.push_error(Error::new(
+                    "`val` is not a standalone item-type",
+                    keyword.span(),
+                ));
+                Err(())
+            }
+            ItemKeyword::Const(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Enum(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Fn(_) => Ok(Self::Fn(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
+            ItemKeyword::Mod(_) => Ok(Self::Mod(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
+            ItemKeyword::Spec(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Static(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Struct(_) => Ok(Self::Struct(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
+            ItemKeyword::Trait(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Type(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
+            ItemKeyword::Use(keyword) => {
+                context.push_error(Error::new("unfinished item type", keyword.span()));
+                Err(())
+            }
         }
     }
 }

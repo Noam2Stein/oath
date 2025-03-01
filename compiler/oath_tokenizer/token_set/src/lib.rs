@@ -31,7 +31,7 @@ macro_rules! define_token_set {
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 define_token_set!(
     keywords: [
-        mod, use, pub, package, super,
+        mod, use, pub, package, super, spec,
         trait, promise, require, neg,
         type, alias, struct, enum, untagged, val, is,
         fn, raw, con, async, panic, lock, undef,

@@ -42,6 +42,10 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
+    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
+        Ok(None)
+    }
+
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(
             KEYWORDS
