@@ -1,6 +1,9 @@
 [package]
-name = "oath_fmt"
-version = "0.1.0"
 edition = "2021"
+name    = "oath_fmt"
+version = "0.1.0"
 
 [dependencies]
+oath_context   = { path = "../oath_context" }
+oath_src       = { path = "../oath_src" }
+oath_tokenizer = { path = "../oath_tokenizer" }
