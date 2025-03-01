@@ -20,6 +20,7 @@ mod mod_;
 mod path;
 mod spec;
 mod struct_;
+mod trait_;
 mod vis;
 pub use block::*;
 pub use contract::*;
@@ -33,6 +34,7 @@ pub use mod_::*;
 pub use path::*;
 pub use spec::*;
 pub use struct_::*;
+pub use trait_::*;
 pub use vis::*;
 
 trait Seal {}

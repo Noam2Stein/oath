@@ -7,6 +7,7 @@ use crate::*;
 pub enum Item {
     Fn(Fn),
     Struct(Struct),
+    Trait(Trait),
     Mod(Mod),
     Spec(Spec),
 }
@@ -178,10 +179,12 @@ impl TryParse for Item {
                 &mut modifiers,
                 target_kind,
             )?)),
-            ItemKeyword::Trait(keyword) => {
-                context.push_error(Error::new("unfinished item type", keyword.span()));
-                Err(())
-            }
+            ItemKeyword::Trait(_) => Ok(Self::Trait(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
             ItemKeyword::Type(keyword) => {
                 context.push_error(Error::new("unfinished item type", keyword.span()));
                 Err(())
