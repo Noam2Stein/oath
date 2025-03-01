@@ -8,6 +8,7 @@ pub enum Item {
     Fn(Fn),
     Struct(Struct),
     Mod(Mod),
+    Spec(Spec),
 }
 
 #[derive(Debug, Clone, Default, Desc)]
@@ -161,10 +162,12 @@ impl TryParse for Item {
                 &mut modifiers,
                 target_kind,
             )?)),
-            ItemKeyword::Spec(keyword) => {
-                context.push_error(Error::new("unfinished item type", keyword.span()));
-                Err(())
-            }
+            ItemKeyword::Spec(_) => Ok(Self::Spec(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
             ItemKeyword::Static(keyword) => {
                 context.push_error(Error::new("unfinished item type", keyword.span()));
                 Err(())

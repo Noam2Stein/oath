@@ -18,6 +18,7 @@ mod generic_params;
 mod item;
 mod mod_;
 mod path;
+mod spec;
 mod struct_;
 mod vis;
 pub use block::*;
@@ -30,6 +31,7 @@ pub use generic_params::*;
 pub use item::*;
 pub use mod_::*;
 pub use path::*;
+pub use spec::*;
 pub use struct_::*;
 pub use vis::*;
 
