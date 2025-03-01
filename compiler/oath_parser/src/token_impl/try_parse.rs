@@ -13,13 +13,16 @@ macro_rules! impl_try_parse {
                     if let Ok(token) = token.try_into() {
                         Ok(token)
                     } else {
-                        context.push_error(Error::new(format!("expected {}", <$ty>::desc()), span));
+                        context.push_error(Error::new(
+                            format!("Syntax Error: expected {}", <$ty>::desc()),
+                            span,
+                        ));
 
                         Err(())
                     }
                 } else {
                     context.push_error(Error::new(
-                        format!("expected {}", <$ty>::desc()),
+                        format!("Syntax Error: expected {}", <$ty>::desc()),
                         parser.next_span(),
                     ));
 
@@ -62,20 +65,23 @@ impl TryParse for Ident {
                 TokenTree::Ident(token) => Ok(token),
                 TokenTree::Keyword(token) => {
                     context.push_error(Error::new(
-                        format!("expected an ident. `{token}` is a keyword"),
+                        format!("Syntax Error: expected an ident. `{token}` is a keyword"),
                         token.span(),
                     ));
 
                     Err(())
                 }
                 token => {
-                    context.push_error(Error::new("expected an ident", token.span()));
+                    context.push_error(Error::new("Syntax Error: expected an ident", token.span()));
 
                     Err(())
                 }
             }
         } else {
-            context.push_error(Error::new("expected an ident", parser.next_span()));
+            context.push_error(Error::new(
+                "Syntax Error: expected an ident",
+                parser.next_span(),
+            ));
 
             Err(())
         }

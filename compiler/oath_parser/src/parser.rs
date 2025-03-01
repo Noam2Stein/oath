@@ -49,7 +49,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
                 span = span.connect(next.span());
             }
 
-            context.push_error(Error::new("unexpected tokens", span));
+            context.push_error(Error::new("Syntax Error: unexpected tokens", span));
         }
     }
     pub fn parse_all<P: Parse>(&mut self, context: ContextHandle) -> P {
@@ -94,7 +94,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     {
         if !self.peek::<T>(context) {
             context.push_error(Error::new(
-                format!("expected {}", T::desc()),
+                format!("Syntax Error: expected {}", T::desc()),
                 self.next_span(),
             ));
 
@@ -147,7 +147,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     {
         if !self.peek::<T>(context) {
             context.push_error(Error::new(
-                format!("expected {}", T::desc()),
+                format!("Syntax Error: expected {}", T::desc()),
                 self.next_span(),
             ));
 
