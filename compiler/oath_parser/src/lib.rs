@@ -35,6 +35,29 @@ pub trait Peek {
 
 pub trait PeekOk: Peek {}
 
+impl Desc for () {
+    fn desc() -> &'static str {
+        "nothing"
+    }
+}
+
+impl Parse for () {
+    fn parse(
+        _parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        _context: ContextHandle,
+    ) -> Self {
+    }
+}
+
+impl TryParse for () {
+    fn try_parse(
+        _parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        _context: ContextHandle,
+    ) -> PResult<Self> {
+        Ok(())
+    }
+}
+
 impl<T: Peek + TryParse> TryParse for Option<T> {
     fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,

@@ -10,6 +10,7 @@ pub enum Item {
     Trait(Trait),
     Mod(Mod),
     Spec(Spec),
+    Impl(Impl),
 }
 
 #[derive(Debug, Clone, Default, Desc)]
@@ -35,6 +36,7 @@ pub enum ItemKeyword {
     Use(keyword!("use")),
     Val(keyword!("val")),
     Alias(keyword!("alias")),
+    Impl(keyword!("impl")),
 }
 
 #[derive(Debug, Clone, Desc)]
@@ -116,7 +118,7 @@ impl Spanned for ItemKind {
 }
 
 impl ItemKind {
-    pub fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
+    pub fn expect_empty(self, context: ContextHandle, item_desc: &'static str) {
         if self.keywords.len() != 0 {
             context.push_error(SyntaxError::CannotHaveTarget(self.span(), item_desc));
         }
@@ -132,6 +134,12 @@ impl TryParse for Item {
         let mut target_kind = parser.try_parse::<ItemKind>(context)?;
 
         match target_kind.keywords.pop().unwrap() {
+            ItemKeyword::Impl(_) => Ok(Self::Impl(ItemParse::item_parse(
+                parser,
+                context,
+                &mut modifiers,
+                target_kind,
+            )?)),
             ItemKeyword::Alias(keyword) => {
                 context.push_error(Error::new("unfinished item type", keyword.span()));
                 Err(())

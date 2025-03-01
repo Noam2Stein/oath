@@ -11,7 +11,7 @@ pub struct Fn {
     pub params: Vec<PResult<FnParam>>,
     pub output: Option<PResult<Expr>>,
     pub contract: Contract,
-    pub block: Option<()>,
+    pub block: BracesOrSemi<()>,
 }
 
 #[derive(Debug, Clone, Desc)]
@@ -28,7 +28,7 @@ impl ItemParse for Fn {
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-        mut target_kind: ItemKind,
+        target_kind: ItemKind,
     ) -> PResult<Self> {
         let vis = modifiers.take_vis();
         let con = modifiers.take_con();
@@ -50,28 +50,18 @@ impl ItemParse for Fn {
         };
 
         let contract = parser.parse(context);
-
-        let block = parser.parse::<Option<Group<Braces>>>(context).map(|_| ());
-
-        if block.is_none() {
-            if parser.parse::<Option<punct!(";")>>(context).is_none() {
-                context.push_error(SyntaxError::Expected(
-                    parser.next_span(),
-                    "either `{ }` or `;`",
-                ));
-            }
-        }
+        let block = parser.parse(context);
 
         Ok(Self {
-            block,
+            raw,
+            vis,
             con,
             contract,
             generics,
             ident,
-            output,
             params,
-            raw,
-            vis,
+            output,
+            block,
         })
     }
 }

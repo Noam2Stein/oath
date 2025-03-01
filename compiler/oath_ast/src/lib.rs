@@ -9,12 +9,14 @@ splat_attribs! {
 }
 
 mod block;
+mod braces_or_semi;
 mod contract;
 mod error;
 mod expr;
 mod fn_;
 mod generic_args;
 mod generic_params;
+mod impl_;
 mod item;
 mod mod_;
 mod path;
@@ -23,12 +25,14 @@ mod struct_;
 mod trait_;
 mod vis;
 pub use block::*;
+pub use braces_or_semi::*;
 pub use contract::*;
 pub use error::*;
 pub use expr::*;
 pub use fn_::*;
 pub use generic_args::*;
 pub use generic_params::*;
+pub use impl_::*;
 pub use item::*;
 pub use mod_::*;
 pub use path::*;

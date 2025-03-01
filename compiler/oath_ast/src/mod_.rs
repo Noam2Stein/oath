@@ -37,7 +37,7 @@ impl ItemParse for Mod {
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
         modifiers: &mut ItemModifiers,
-        mut target_kind: ItemKind,
+        target_kind: ItemKind,
     ) -> PResult<Self> {
         let vis = modifiers.take_vis();
 
