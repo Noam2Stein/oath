@@ -4,8 +4,9 @@ name    = "oath_ast"
 version = "0.1.0"
 
 [dependencies]
-oath_context   = { path = "../oath_context" }
-oath_parser    = { path = "../oath_parser" }
-oath_src       = { path = "../oath_src" }
-oath_tokenizer = { path = "../oath_tokenizer" }
-splat_attribs  = "1.0.0"
+oath_ast_proc_macros = { path = "proc_macros" }
+oath_context         = { path = "../oath_context" }
+oath_parser          = { path = "../oath_parser" }
+oath_src             = { path = "../oath_src" }
+oath_tokenizer       = { path = "../oath_tokenizer" }
+splat_attribs        = "1.0.0"

@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "oath_parser_derive_macro_utils"
+version = "0.1.0"
+
+[dependencies]
+proc-macro2 = "1.0.93"
+quote       = "1.0.38"
+syn         = "2.0.96"

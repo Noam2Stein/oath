@@ -29,7 +29,7 @@ pub trait TryParse: Desc {
     ) -> PResult<Self>;
 }
 
-pub trait Peek {
+pub trait Peek: Desc {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool;
 }
 

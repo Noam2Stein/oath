@@ -5,6 +5,7 @@ members = [
     "compiler/oath_context",
     "compiler/oath_fmt",
     "compiler/oath_parser",
+    "compiler/oath_parser/derive_macro_utils",
     "compiler/oath_parser/proc_macros",
     "compiler/oath_src",
     "compiler/oath_tokenizer",
