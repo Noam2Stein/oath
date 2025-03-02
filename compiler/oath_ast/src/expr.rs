@@ -14,7 +14,7 @@ pub enum Expr {
     MhsOp(Box<Expr>, MhsOp, Box<Expr>),
 }
 
-#[derive(Debug, Clone, Desc, TryParse, Peek, PeekOk, Spanned)]
+#[derive(Debug, Clone, Peek, PeekOk, Spanned)]
 #[desc = "a single side op"]
 pub enum ShsOp {
     Neg(punct!("-")),
@@ -30,7 +30,7 @@ pub enum ShsOp {
     Question(punct!("?")),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Desc, TryParse, Peek, PeekOk, Spanned)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Peek, PeekOk, Spanned)]
 #[desc = "a multi side op"]
 pub enum MhsOp {
     Add(punct!("+")),

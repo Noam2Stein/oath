@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::{DataEnum, DataStruct, Fields, spanned::Spanned};
 
-use crate::impl_parser_trait;
+use crate::{impl_parser_trait, peek_fields};
 
 pub fn impl_parse(input: TokenStream) -> TokenStream {
     impl_parser_trait(
@@ -23,8 +23,8 @@ pub fn impl_parse(input: TokenStream) -> TokenStream {
     )
 }
 
-fn parse_struct(data: DataStruct) -> TokenStream {
-    match data.fields {
+pub fn parse_fields(path: TokenStream, fields: Fields) -> TokenStream {
+    match fields {
         Fields::Named(fields) => {
             let fields = fields.named.into_iter().map(|field| {
                 let ident = field.ident.unwrap();
@@ -67,97 +67,90 @@ fn parse_struct(data: DataStruct) -> TokenStream {
             });
 
             quote! {
-                Self {
+                #path {
                     #(#fields,)*
                 }
             }
         }
         Fields::Unit => quote! {
-            Self
+            #path
         },
         Fields::Unnamed(fields) => {
             let field_types = fields.unnamed.iter().map(|field| &field.ty);
 
             quote! {
-                Self(#(<#field_types as oath_parser::Parse>::parse(parser, diagnostics)), *)
+                #path(#(<#field_types as oath_parser::Parse>::parse(parser, context)), *)
             }
         }
     }
 }
 
-fn parse_enum(data: DataEnum) -> TokenStream {
+fn parse_struct(data: DataStruct) -> TokenStream {
+    parse_fields(quote! { Self }, data.fields)
+}
+
+pub fn parse_enum(data: DataEnum) -> TokenStream {
     if data.variants.len() == 0 {
         return quote! {
             compile_error!("`Parse` cannot be derived for empty enums")
         };
     };
 
-    let (last_variant, non_last_variants) = {
-        let mut variants = data.variants.into_iter().collect::<Vec<_>>();
-        (variants.pop().unwrap(), variants)
+    let fallback_variant = data.variants.iter().find(|variant| {
+        variant
+            .attrs
+            .iter()
+            .any(|attr| attr.path().is_ident("fallback"))
+    });
+
+    let variants = {
+        let mut variants = data.variants.iter().collect::<Vec<_>>();
+        if let Some(fallback_variant) = fallback_variant {
+            variants.retain(|variant| variant.ident != fallback_variant.ident);
+        }
+
+        variants
     };
 
-    let peek_variants = non_last_variants.into_iter().map(|variant| {
+    let variant_ifs = variants.iter().zip(0..).map(|(variant, variant_index)| {
+        let option_else = if variant_index > 0 {
+            Some(quote! { else })
+        } else {
+            None
+        };
+
+        let peek_variant = peek_fields(variant.fields.clone(), &variant.attrs, variant.span());
         let variant_ident = &variant.ident;
+        let parse_variant = parse_fields(quote! { Self::#variant_ident }, variant.fields.clone());
 
-        match &variant.fields {
-            Fields::Named(_) => {
-                quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-            },
-            Fields::Unit => {
-                quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-            },
-            Fields::Unnamed(fields) => {
-                if fields.unnamed.len() != 1 {
-                    quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-                } else {
-                    quote_spanned! {
-                        variant.span() =>
-
-                        if let Some(value) = parser.parse(context) {
-                            return Self::#variant_ident(value);
-                        }
-                    }
-                }
+        quote! {
+            #option_else if #peek_variant {
+                #parse_variant
             }
         }
     });
 
-    let last_variant_ident = &last_variant.ident;
-    let parse_last_variant = match &last_variant.fields {
-        Fields::Named(fields) => {
-            if fields.named.len() == 0 {
-                quote_spanned! {
-                    last_variant.span() =>
-
-                    Self::#last_variant_ident {}
-                }
-            } else {
-                quote_spanned! { last_variant.span() => compile_error!("expected a single unnamed field") }
-            }
-        }
-        Fields::Unit => {
-            quote_spanned! {
-                last_variant.span() =>
-
-                Self::#last_variant_ident
-            }
-        }
-        Fields::Unnamed(fields) => {
-            if fields.unnamed.len() != 1 {
-                quote_spanned! { last_variant.span() => compile_error!("expected a single unnamed field") }
-            } else {
-                quote_spanned! {
-                    last_variant.span() =>
-
-                    Self::#last_variant_ident(parser.parse(context))
-                }
-            }
+    let fallback = if let Some(fallback_variant) = fallback_variant {
+        let variant_ident = &fallback_variant.ident;
+        parse_fields(
+            quote! { Self::#variant_ident },
+            fallback_variant.fields.clone(),
+        )
+    } else {
+        quote! {
+            context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.next_span()));
+            return Err(())
         }
     };
 
-    quote! {
-        #(#peek_variants)*
-        #parse_last_variant
+    if variants.len() > 0 {
+        quote! {
+            #(#variant_ifs)*
+            else {
+                #fallback
+            }
+        }
+    } else {
+        fallback
     }
 }

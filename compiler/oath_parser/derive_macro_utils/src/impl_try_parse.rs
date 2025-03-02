@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
-use syn::{DataEnum, Fields, spanned::Spanned};
+use quote::quote;
+use syn::DataEnum;
 
-use crate::impl_parser_trait;
+use crate::{impl_parser_trait, parse_enum};
 
 pub fn impl_try_parse(input: TokenStream) -> TokenStream {
     impl_parser_trait(
@@ -24,34 +24,11 @@ pub fn impl_try_parse(input: TokenStream) -> TokenStream {
 }
 
 fn try_parse_enum(data: DataEnum) -> TokenStream {
-    let peek_variants = data.variants.into_iter().map(|variant| {
-        let variant_ident = &variant.ident;
-
-        match &variant.fields {
-            Fields::Named(_) => {
-                quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-            },
-            Fields::Unit => {
-                quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-            },
-            Fields::Unnamed(fields) => {
-                if fields.unnamed.len() != 1 {
-                    quote_spanned! { variant.span() => compile_error!("expected a single unnamed field"); }
-                } else {
-                    quote_spanned! {
-                        variant.span() =>
-
-                        if let Some(value) = parser.parse(context) {
-                            return Ok(Self::#variant_ident(value));
-                        }
-                    }
-                }
-            }
-        }
-    });
+    let parse = parse_enum(data);
 
     quote! {
-        #(#peek_variants)*
-        return Err(());
+        Ok({
+            #parse
+        })
     }
 }

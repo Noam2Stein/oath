@@ -1,70 +1,48 @@
-use oath_parser_derive_macro_utils::{derives, impl_desc, impl_parse, impl_peek, impl_try_parse};
-use proc_macro2::Span;
+use oath_parser_derive_macro_utils::{impl_desc, impl_parse, impl_peek, impl_try_parse};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Error};
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Desc, attributes(desc))]
 pub fn derive_desc(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    if derives(input.clone().into())
-        .iter()
-        .any(|str| str == "Parse" || str == "TryParse" || str == "Peek")
-    {
-        return Error::new(Span::call_site(), "`Desc` is auto-derived")
-            .into_compile_error()
-            .into();
-    }
-
     impl_desc(input.into()).into()
 }
 
-#[proc_macro_derive(Parse, attributes(desc, try_parse))]
+#[proc_macro_derive(Parse, attributes(desc, try_parse, fallback))]
 pub fn derive_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let impl_desc = impl_desc(input.clone().into());
     let impl_try_parse = impl_try_parse(input.clone().into());
-    let impl_parse = impl_parse(input.clone().into());
-
-    let derives = derives(input.into());
+    let impl_parse = impl_parse(input.into());
 
     quote! {
         #impl_desc
         #impl_try_parse
         #impl_parse
-
-        const FG: &[&str] = [#(#derives), *];
-        const GUF: &str = stringify!(#input);
     }
     .into()
 }
 
-#[proc_macro_derive(TryParse, attributes(desc, try_parse))]
-pub fn derive_try_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    if derives(input.clone().into())
-        .iter()
-        .any(|str| str == "Parse")
-    {
-        return Error::new(Span::call_site(), "`TryParse` is auto-derived")
-            .into_compile_error()
-            .into();
-    }
+#[proc_macro_derive(Peek, attributes(desc, try_parse, fallback))]
+pub fn derive_peek(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let impl_desc = impl_desc(input.clone().into());
+    let impl_try_parse = impl_try_parse(input.clone().into());
+    let impl_peek = impl_peek(input.into());
 
+    quote! {
+        #impl_desc
+        #impl_try_parse
+        #impl_peek
+    }
+    .into()
+}
+
+#[proc_macro_derive(TryParse, attributes(desc, try_parse, fallback))]
+pub fn derive_try_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let impl_desc = impl_desc(input.clone().into());
     let impl_try_parse = impl_try_parse(input.into());
 
     quote! {
         #impl_desc
         #impl_try_parse
-    }
-    .into()
-}
-
-#[proc_macro_derive(Peek, attributes(dont_peek))]
-pub fn derive_peek(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let impl_desc = impl_desc(input.clone().into());
-    let impl_peek = impl_peek(input.into());
-
-    quote! {
-        #impl_desc
-        #impl_peek
     }
     .into()
 }

@@ -21,7 +21,7 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-#[derive(Debug, Clone, Desc, Spanned, TryParse, Peek)]
+#[derive(Debug, Clone, Spanned, Peek)]
 #[desc = "an item-type"]
 pub enum ItemKeyword {
     Struct(keyword!("struct")),

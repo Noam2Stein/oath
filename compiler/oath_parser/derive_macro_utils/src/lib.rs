@@ -1,9 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    Data, DataEnum, DataStruct, DataUnion, DeriveInput, Ident, Meta, Token, parse::Parser, parse2,
-    punctuated::Punctuated,
-};
+use syn::{Data, DataEnum, DataStruct, DataUnion, DeriveInput, parse2};
 
 mod impl_desc;
 mod impl_parse;
@@ -65,34 +62,4 @@ pub fn impl_parser_trait(
         }
     }
     .into()
-}
-
-pub fn derives(input: TokenStream) -> Vec<String> {
-    let DeriveInput {
-        attrs,
-        vis: _,
-        ident: _,
-        generics: _,
-        data: _,
-    } = parse2(input).unwrap();
-
-    attrs
-        .iter()
-        .map(|attr| {
-            if attr.path().is_ident("derive") {
-                match &attr.meta {
-                    Meta::List(meta) => Punctuated::<Ident, Token![,]>::parse_terminated
-                        .parse2(meta.tokens.clone())
-                        .unwrap()
-                        .into_iter()
-                        .map(|ident| ident.to_string())
-                        .collect(),
-                    _ => Vec::new(),
-                }
-            } else {
-                Vec::new()
-            }
-        })
-        .flatten()
-        .collect()
 }
