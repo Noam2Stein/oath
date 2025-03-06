@@ -9,7 +9,7 @@ pub enum Item {
     Struct(Struct),
     Trait(Trait),
     Mod(Mod),
-    Spec(Spec),
+    Spec(Sys),
     Impl(Impl),
 }
 
@@ -27,7 +27,7 @@ pub enum ItemKeyword {
     Struct(keyword!("struct")),
     Enum(keyword!("enum")),
     Type(keyword!("type")),
-    Spec(keyword!("spec")),
+    Sys(keyword!("sys")),
     Trait(keyword!("trait")),
     Static(keyword!("static")),
     Const(keyword!("const")),
@@ -171,7 +171,7 @@ impl TryParse for Item {
                 &mut modifiers,
                 target_kind,
             )?)),
-            ItemKeyword::Spec(_) => Ok(Self::Spec(ItemParse::item_parse(
+            ItemKeyword::Sys(_) => Ok(Self::Spec(ItemParse::item_parse(
                 parser,
                 context,
                 &mut modifiers,

@@ -2,13 +2,13 @@ use crate::*;
 
 #[derive(Debug, Clone, Desc)]
 #[desc = "a spec"]
-pub struct Spec {
+pub struct Sys {
     pub vis: Vis,
     pub ident: Ident,
     pub generics: GenericParams,
 }
 
-impl ItemParse for Spec {
+impl ItemParse for Sys {
     fn item_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
