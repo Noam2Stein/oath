@@ -43,6 +43,12 @@ pub enum MhsOp {
     BitXor(punct!("^")),
     LogicAnd(punct!("&&")),
     LogicOr(punct!("||")),
+    Eq(punct!("==")),
+    NotEq(punct!("!=")),
+    More(punct!(">")),
+    Less(punct!("<")),
+    MoreEq(punct!(">=")),
+    LessEq(punct!("<=")),
     Bound(punct!(":")),
 }
 
@@ -139,6 +145,8 @@ impl Ord for MhsOp {
     fn cmp(&self, other: &Self) -> Ordering {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         enum MhsOpLvl {
+            EqNotEq,
+            Cmp,
             Bound,
             LogicOr,
             LogicAnd,
@@ -151,7 +159,6 @@ impl Ord for MhsOp {
 
         fn to_lvl(op: &MhsOp) -> MhsOpLvl {
             match op {
-                MhsOp::Bound(_) => MhsOpLvl::Bound,
                 MhsOp::Add(_) | MhsOp::Sub(_) => MhsOpLvl::AddSub,
                 MhsOp::Mul(_) | MhsOp::Div(_) | MhsOp::Rem(_) => MhsOpLvl::MulDivRem,
                 MhsOp::BitAnd(_) => MhsOpLvl::BitAnd,
@@ -159,6 +166,11 @@ impl Ord for MhsOp {
                 MhsOp::BitXor(_) => MhsOpLvl::BitXor,
                 MhsOp::LogicAnd(_) => MhsOpLvl::LogicAnd,
                 MhsOp::LogicOr(_) => MhsOpLvl::LogicOr,
+                MhsOp::Eq(_) | MhsOp::NotEq(_) => MhsOpLvl::EqNotEq,
+                MhsOp::More(_) | MhsOp::Less(_) | MhsOp::MoreEq(_) | MhsOp::LessEq(_) => {
+                    MhsOpLvl::Cmp
+                }
+                MhsOp::Bound(_) => MhsOpLvl::Bound,
             }
         }
 
