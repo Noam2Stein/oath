@@ -19,7 +19,6 @@ pub struct Fn {
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Ident,
-    pub type_: PResult<Expr>,
     pub bounds: Option<Expr>,
 }
 
@@ -80,35 +79,8 @@ impl TryParse for FnParam {
         let mut_ = parser.parse(context);
         let ident = parser.try_parse(context)?;
 
-        match parser.try_parse::<punct!(":")>(context) {
-            Ok(value) => value,
-            Err(()) => {
-                return Ok(Self {
-                    mut_,
-                    ident,
-                    type_: Err(()),
-                    bounds: None,
-                });
-            }
-        };
-
-        let type_ = match parser.try_parse(context) {
-            Ok(value) => Ok(value),
-            Err(()) => {
-                return Ok(Self {
-                    mut_,
-                    ident,
-                    type_: Err(()),
-                    bounds: None,
-                })
-            }
-        };
-
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            match parser.try_parse(context) {
-                Ok(value) => Some(value),
-                Err(()) => None,
-            }
+            parser.try_parse(context).ok()
         } else {
             None
         };
@@ -116,7 +88,6 @@ impl TryParse for FnParam {
         Ok(Self {
             mut_,
             ident,
-            type_,
             bounds,
         })
     }
