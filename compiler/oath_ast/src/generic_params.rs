@@ -9,6 +9,7 @@ pub struct GenericParams(pub Span, pub Vec<Result<GenericParam, ()>>);
 pub struct GenericParam {
     pub ident: Ident,
     pub kind: PResult<ItemKind>,
+    pub bounds: Option<Expr>,
 }
 
 impl Parse for GenericParams {
@@ -35,6 +36,7 @@ impl TryParse for GenericParam {
         context: ContextHandle,
     ) -> Result<Self, ()> {
         let ident = parser.try_parse::<Ident>(context)?;
+
         let kind = match parser.try_parse::<Option<ItemKind>>(context) {
             Ok(Some(kind)) => {
                 if kind.keywords.len() == 1 {
@@ -50,7 +52,17 @@ impl TryParse for GenericParam {
             Err(()) => Err(()),
         };
 
-        Ok(Self { ident, kind })
+        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
+            parser.try_parse(context).ok()
+        } else {
+            None
+        };
+
+        Ok(Self {
+            ident,
+            kind,
+            bounds,
+        })
     }
 }
 
