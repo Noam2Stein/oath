@@ -3,7 +3,7 @@
 members = [
     "compiler/oath_ast",
     "compiler/oath_context",
-    "compiler/oath_fmt",
+    "compiler/oath_fmt", "compiler/oath_nameres",
     "compiler/oath_parser",
     "compiler/oath_parser/derive_macro_utils",
     "compiler/oath_parser/proc_macros",

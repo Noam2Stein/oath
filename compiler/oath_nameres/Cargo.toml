@@ -1,0 +1,8 @@
+[package]
+edition = "2024"
+name    = "oath_nameres"
+version = "0.1.0"
+
+[dependencies]
+oath_ast     = { path = "../oath_ast" }
+oath_context = { path = "../oath_context" }
