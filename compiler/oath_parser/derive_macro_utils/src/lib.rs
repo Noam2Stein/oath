@@ -36,15 +36,24 @@ pub fn impl_parser_trait(
     let eval = match data {
         Data::Struct(data) => match eval_struct {
             Some(fn_) => fn_(data),
-            None => quote! { compile_error!("`{}` cannot be derived for structs", #trait_ident) },
+            None => {
+                let error_message = format!("`{}` cannot be derived for structs", trait_ident);
+                quote! { compile_error!(#error_message) }
+            }
         },
         Data::Enum(data) => match eval_enum {
             Some(fn_) => fn_(data),
-            None => quote! { compile_error!("`{}` cannot be derived for enums", #trait_ident) },
+            None => {
+                let error_message = format!("`{}` cannot be derived for enums", trait_ident);
+                quote! { compile_error!(#error_message) }
+            }
         },
         Data::Union(data) => match eval_union {
             Some(fn_) => fn_(data),
-            None => quote! { compile_error!("`{}` cannot be derived for unions", #trait_ident) },
+            None => {
+                let error_message = format!("`{}` cannot be derived for unions", trait_ident);
+                quote! { compile_error!(#error_message) }
+            }
         },
     };
 
