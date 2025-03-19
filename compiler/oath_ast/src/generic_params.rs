@@ -8,7 +8,7 @@ pub struct GenericParams(pub Span, pub Vec<Result<GenericParam, ()>>);
 #[desc = "a generic param"]
 pub struct GenericParam {
     pub ident: Ident,
-    pub kind: PResult<ItemKind>,
+    pub type_: PResult<Expr>,
     pub bounds: Option<Expr>,
 }
 
@@ -37,19 +37,14 @@ impl TryParse for GenericParam {
     ) -> Result<Self, ()> {
         let ident = parser.try_parse::<Ident>(context)?;
 
-        let kind = match parser.try_parse::<Option<ItemKind>>(context) {
-            Ok(Some(kind)) => {
-                if kind.keywords.len() == 1 {
-                    if let ItemKeyword::Type(keyword) = kind.keywords.first().unwrap() {
-                        context.push_error(Error::new("explicit `type` item-type", keyword.span()));
-                    }
-                }
-                Ok(kind)
-            }
-            Ok(None) => Ok(ItemKind {
-                keywords: vec![ItemKeyword::Type(keyword!("type"(ident.span())))],
-            }),
-            Err(()) => Err(()),
+        let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
+            parser.try_parse(context)
+        } else {
+            context.push_error(SyntaxError::Expected(
+                parser.next_span(),
+                "`Param_Ident-Param_Type`",
+            ));
+            Err(())
         };
 
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
@@ -60,7 +55,7 @@ impl TryParse for GenericParam {
 
         Ok(Self {
             ident,
-            kind,
+            type_,
             bounds,
         })
     }

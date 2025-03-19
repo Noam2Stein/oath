@@ -1,5 +1,7 @@
 use std::mem::take;
 
+use derive_more::Display;
+
 use crate::*;
 
 #[derive(Debug, Clone, Desc)]
@@ -21,7 +23,7 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-#[derive(Debug, Clone, Spanned, Peek)]
+#[derive(Debug, Clone, Spanned, Peek, Display)]
 #[desc = "an item-type"]
 pub enum ItemKeyword {
     Struct(keyword!("struct")),

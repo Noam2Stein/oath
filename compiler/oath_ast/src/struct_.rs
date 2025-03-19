@@ -21,7 +21,8 @@ pub enum Fields {
 #[desc = "a named fiend"]
 pub struct NamedField {
     pub ident: Ident,
-    pub bounds: PResult<Expr>,
+    pub type_: PResult<Expr>,
+    pub bounds: Option<Expr>,
 }
 
 impl ItemParse for Struct {
@@ -93,13 +94,27 @@ impl TryParse for NamedField {
     ) -> PResult<Self> {
         let ident = parser.try_parse(context)?;
 
-        let bounds = if let Ok(_) = parser.try_parse::<punct!(":")>(context) {
+        let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
             parser.try_parse(context)
         } else {
+            context.push_error(SyntaxError::Expected(
+                parser.next_span(),
+                "`Param_Ident-Param_Type`",
+            ));
             Err(())
         };
 
-        Ok(Self { ident, bounds })
+        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
+            parser.try_parse(context).ok()
+        } else {
+            None
+        };
+
+        Ok(Self {
+            ident,
+            type_,
+            bounds,
+        })
     }
 }
 

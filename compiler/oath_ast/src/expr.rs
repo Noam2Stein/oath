@@ -6,6 +6,9 @@ use crate::*;
 #[desc = "an expr"]
 pub enum Expr {
     Path(Path),
+    Type(keyword!("type")),
+    Sys(keyword!("sys")),
+    Trait(keyword!("trait"), ItemKind),
     Literal(Literal),
     Tuple(Span, Vec<PResult<Expr>>),
     Array(Span, Vec<PResult<Expr>>),
@@ -70,6 +73,27 @@ impl TryParse for Expr {
                     .into_parser()
                     .try_parse_trl_all::<_, punct!(",")>(context),
             )
+        } else if let Some(mut value) = parser.try_parse::<Option<ItemKind>>(context)? {
+            match value.keywords.pop().unwrap() {
+                ItemKeyword::Type(keyword) => {
+                    value.expect_empty(context, TypeKeyword::desc());
+                    Self::Type(keyword)
+                }
+                ItemKeyword::Sys(keyword) => {
+                    value.expect_empty(context, TypeKeyword::desc());
+                    Self::Sys(keyword)
+                }
+                ItemKeyword::Trait(keyword) => Self::Trait(keyword, value),
+                keyword => {
+                    context.push_error(Error::new(
+                        format!("`{keyword}` is not a valid expr"),
+                        keyword.span(),
+                    ));
+                    return Err(());
+                }
+            }
+        } else if let Some(value) = parser.parse(context) {
+            Self::Sys(value)
         } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
             Self::Array(
                 group.span(),
@@ -114,6 +138,8 @@ impl TryParse for Expr {
 impl Peek for Expr {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Path>(context)
+            || parser.peek::<keyword!("type")>(context)
+            || parser.peek::<keyword!("sys")>(context)
             || parser.peek::<Literal>(context)
             || parser.peek::<Group>(context)
             || parser.peek::<punct!("-")>(context)
@@ -126,6 +152,9 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Path(a) => a.span(),
+            Self::Type(a) => a.span(),
+            Self::Sys(a) => a.span(),
+            Self::Trait(a, b) => a.span().connect(b.span()),
             Self::Literal(a) => a.span(),
             Self::Tuple(span, _) => *span,
             Self::Array(span, _) => *span,

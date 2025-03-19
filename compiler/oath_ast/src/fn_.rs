@@ -19,6 +19,7 @@ pub struct Fn {
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Ident,
+    pub type_: PResult<Expr>,
     pub bounds: Option<Expr>,
 }
 
@@ -79,6 +80,16 @@ impl TryParse for FnParam {
         let mut_ = parser.parse(context);
         let ident = parser.try_parse(context)?;
 
+        let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
+            parser.try_parse(context)
+        } else {
+            context.push_error(SyntaxError::Expected(
+                parser.next_span(),
+                "`param_ident-Param_Type`",
+            ));
+            Err(())
+        };
+
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
             parser.try_parse(context).ok()
         } else {
@@ -88,6 +99,7 @@ impl TryParse for FnParam {
         Ok(Self {
             mut_,
             ident,
+            type_,
             bounds,
         })
     }

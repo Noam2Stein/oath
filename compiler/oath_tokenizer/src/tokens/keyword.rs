@@ -114,6 +114,12 @@ with_token_set!($(
             self.0
         }
     }
+
+    impl Display for $keyword_type {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            write!(f, $keyword)
+        }
+    }    
 )*);
 
 pub const KEYWORDS: &[&str] = with_token_set_expr! {
