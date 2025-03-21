@@ -8,6 +8,11 @@ pub struct Parser<I: Iterator<Item = TokenTree>> {
     end_span: Span,
 }
 
+pub struct ParserUntilIter<'p, I: Iterator<Item = TokenTree>, F: Fn(&mut Parser<I>) -> bool> {
+    parser: &'p mut Parser<I>,
+    f: F,
+}
+
 impl<I: Iterator<Item = TokenTree>> Iterator for Parser<I> {
     type Item = TokenTree;
 
@@ -19,6 +24,16 @@ impl<I: Iterator<Item = TokenTree>> Iterator for Parser<I> {
 impl<I: Iterator<Item = TokenTree>> Parser<I> {
     pub fn new(iter: Peekable<I>, end_span: Span) -> Self {
         Self { iter, end_span }
+    }
+
+    pub fn until<'p, F: Fn(&mut Self) -> bool + 'p>(
+        &'p mut self,
+        f: F,
+    ) -> Parser<impl Iterator<Item = TokenTree> + 'p> {
+        Parser {
+            end_span: self.end_span,
+            iter: ParserUntilIter { parser: self, f }.peekable(),
+        }
     }
 
     pub fn peek_next(&mut self) -> Option<&TokenTree> {
@@ -282,5 +297,19 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         }
 
         vec
+    }
+}
+
+impl<'p, I: Iterator<Item = TokenTree>, F: Fn(&mut Parser<I>) -> bool> Iterator
+    for ParserUntilIter<'p, I, F>
+{
+    type Item = TokenTree;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if (self.f)(self.parser) {
+            None
+        } else {
+            self.parser.next()
+        }
     }
 }

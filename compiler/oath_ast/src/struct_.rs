@@ -7,7 +7,7 @@ pub struct Struct {
     pub ident: Ident,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
-    pub fields: PResult<Fields>,
+    pub fields: Fields,
 }
 
 #[derive(Debug, Clone, Desc)]
@@ -15,6 +15,7 @@ pub struct Struct {
 pub enum Fields {
     Named(Vec<NamedField>),
     Unnamed(Vec<UnnamedField>),
+    Unknown,
 }
 
 #[derive(Debug, Clone, Desc)]
@@ -48,7 +49,7 @@ impl ItemParse for Struct {
         let ident = parser.try_parse(context)?;
         let generics = parser.parse(context);
         let contract = parser.parse(context);
-        let fields = parser.try_parse(context);
+        let fields = parser.parse(context);
 
         Ok(Self {
             vis,
@@ -66,31 +67,31 @@ impl Peek for Struct {
     }
 }
 
-impl TryParse for Fields {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> PResult<Self> {
-        let group = parser.try_parse::<Group>(context)?;
-        match group.delimiters.kind {
-            DelimiterKind::Braces => Ok(Self::Named(
+impl Parse for Fields {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
+            Self::Named(
                 group
                     .into_parser()
                     .parse_trl_all::<_, punct!(",")>(context)
                     .into_iter()
                     .collect(),
-            )),
-            DelimiterKind::Parens => Ok(Self::Unnamed(
+            )
+        } else if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
+            Self::Unnamed(
                 group
                     .into_parser()
                     .parse_trl_all::<_, punct!(",")>(context)
                     .into_iter()
                     .collect(),
-            )),
-            _ => {
-                context.push_error(SyntaxError::Expected(group.span(), "either `{ }` or `( )`"));
-                Err(())
-            }
+            )
+        } else {
+            context.push_error(SyntaxError::Expected(
+                parser.next_span(),
+                "either `{ }` or `( )`",
+            ));
+
+            Self::Unknown
         }
     }
 }

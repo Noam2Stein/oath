@@ -12,6 +12,7 @@ pub enum Expr {
     Array(Vec<Expr>, Span),
     Block(Block),
     Field(Box<Expr>, FieldIdent),
+    Index(Box<Expr>, Box<Expr>, Span),
     Call(Box<Expr>, Vec<Expr>, Span),
     Generics(Box<Expr>, GenericArgs),
     ShsOp(ShsOp, Box<Expr>),
@@ -78,6 +79,13 @@ impl Expr {
                     Box::new(replace(&mut expr, Self::fillin())),
                     parser.parse(context),
                 )
+            } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
+                let span = expr.span().connect(group.span());
+                expr = Self::Index(
+                    Box::new(replace(&mut expr, Self::fillin())),
+                    group.into_parser().parse_all(context),
+                    span,
+                )
             } else if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
                 let span = expr.span().connect(group.span());
                 expr = Self::Call(
@@ -119,7 +127,9 @@ impl Expr {
                     group.into_parser().parse_trl_all::<_, punct!(",")>(context),
                     span,
                 ),
-                DelimiterKind::Braces => todo!(),
+                DelimiterKind::Braces => {
+                    Self::Block(Block::parse_inner(&mut group.into_parser(), context))
+                }
                 DelimiterKind::Angles => {
                     context.push_error(SyntaxError::Expected(group.span(), Self::desc()));
                     Self::Unknown(group.span())
@@ -191,6 +201,7 @@ impl Spanned for Expr {
             Self::Block(a) => a.span(),
             Self::Generics(a, b) => a.span().connect(b.span()),
             Self::Field(a, b) => a.span().connect(b.span()),
+            Self::Index(_, _, span) => *span,
             Self::Call(_, _, span) => *span,
             Self::ShsOp(a, b) => a.span().connect(b.span()),
             Self::MhsOp(a, b, c) => a.span().connect(b.span().connect(c.span())),

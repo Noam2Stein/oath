@@ -16,6 +16,8 @@ pub struct ContractItem {
 
 impl Parse for Contract {
     fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let parser = &mut parser.until(|parser| parser.peek::<Group<Braces>>(context));
+
         let mut output = Self::default();
 
         loop {
@@ -23,16 +25,16 @@ impl Parse for Contract {
                 .parse::<Option<keyword!("promise")>>(context)
                 .is_some()
             {
-                for promise in parser.parse_trl::<_, punct!(",")>(context).into_iter() {
-                    output.promise.push(promise);
-                }
+                output
+                    .promise
+                    .append(&mut parser.parse_trl::<_, punct!(",")>(context));
             } else if parser
                 .parse::<Option<keyword!("require")>>(context)
                 .is_some()
             {
-                for require in parser.parse_trl::<_, punct!(",")>(context).into_iter() {
-                    output.require.push(require);
-                }
+                output
+                    .require
+                    .append(&mut parser.parse_trl::<_, punct!(",")>(context));
             } else {
                 break;
             }
@@ -63,6 +65,6 @@ impl Parse for ContractItem {
 }
 impl Peek for ContractItem {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<Expr>(context)
+        parser.peek::<Expr>(context) && !parser.peek::<Group<Braces>>(context)
     }
 }

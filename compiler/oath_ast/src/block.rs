@@ -22,3 +22,16 @@ pub struct VarStmt {
     #[span]
     span: Span,
 }
+
+impl Block {
+    pub fn parse_inner(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        _context: ContextHandle,
+    ) -> Self {
+        Self {
+            stmts: Vec::new(),
+            ditch: false,
+            span: parser.next_span(),
+        }
+    }
+}
