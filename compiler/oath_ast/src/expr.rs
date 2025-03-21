@@ -13,7 +13,8 @@ pub enum Expr {
     Tuple(Span, Vec<PResult<Expr>>),
     Array(Span, Vec<PResult<Expr>>),
     Block(Block),
-    ShsOp(ShsOp, Box<Expr>),
+    Field(Box<Expr>, PResult<Ident>),
+    ShsOp(ShsOp, PResult<Box<Expr>>),
     MhsOp(Box<Expr>, MhsOp, Box<Expr>),
 }
 
@@ -59,6 +60,75 @@ impl Expr {
     fn fillin() -> Self {
         Self::Literal(Literal::Char(CharLiteral::new('💪', Span::end_of_file())))
     }
+
+    fn try_parse_base(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> PResult<Self> {
+        Ok(
+            if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
+                Self::Tuple(
+                    group.span(),
+                    group
+                        .into_parser()
+                        .try_parse_trl_all::<_, punct!(",")>(context),
+                )
+            } else if let Some(mut value) = parser.try_parse::<Option<ItemKind>>(context)? {
+                match value.keywords.pop().unwrap() {
+                    ItemKeyword::Type(keyword) => {
+                        value.expect_empty(context, TypeKeyword::desc());
+                        Self::Type(keyword)
+                    }
+                    ItemKeyword::Sys(keyword) => {
+                        value.expect_empty(context, TypeKeyword::desc());
+                        Self::Sys(keyword)
+                    }
+                    ItemKeyword::Trait(keyword) => Self::Trait(keyword, value),
+                    keyword => {
+                        context.push_error(Error::new(
+                            format!("`{keyword}` is not a valid expr"),
+                            keyword.span(),
+                        ));
+                        return Err(());
+                    }
+                }
+            } else if let Some(value) = parser.parse(context) {
+                Self::Sys(value)
+            } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
+                Self::Array(
+                    group.span(),
+                    group
+                        .into_parser()
+                        .try_parse_trl_all::<_, punct!(",")>(context),
+                )
+            } else if let Some(value) = parser.try_parse(context)? {
+                Self::Path(value)
+            } else if let Some(value) = parser.try_parse(context)? {
+                Self::Literal(value)
+            } else if let Some(op) = parser.try_parse(context)? {
+                Self::ShsOp(op, Self::try_parse_no_mhs(parser, context).map(Box::new))
+            } else {
+                context.push_error(SyntaxError::Expected(parser.next_span(), "an expr"));
+                return Err(());
+            },
+        )
+    }
+
+    fn try_parse_no_mhs(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> PResult<Self> {
+        let mut expr = Self::try_parse_base(parser, context)?;
+
+        while let Some(_) = parser.parse::<Option<punct!(".")>>(context) {
+            expr = Self::Field(
+                Box::new(replace(&mut expr, Self::fillin())),
+                parser.try_parse(context),
+            )
+        }
+
+        Ok(expr)
+    }
 }
 
 impl TryParse for Expr {
@@ -66,51 +136,7 @@ impl TryParse for Expr {
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> PResult<Self> {
-        let mut expr = if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
-            Self::Tuple(
-                group.span(),
-                group
-                    .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context),
-            )
-        } else if let Some(mut value) = parser.try_parse::<Option<ItemKind>>(context)? {
-            match value.keywords.pop().unwrap() {
-                ItemKeyword::Type(keyword) => {
-                    value.expect_empty(context, TypeKeyword::desc());
-                    Self::Type(keyword)
-                }
-                ItemKeyword::Sys(keyword) => {
-                    value.expect_empty(context, TypeKeyword::desc());
-                    Self::Sys(keyword)
-                }
-                ItemKeyword::Trait(keyword) => Self::Trait(keyword, value),
-                keyword => {
-                    context.push_error(Error::new(
-                        format!("`{keyword}` is not a valid expr"),
-                        keyword.span(),
-                    ));
-                    return Err(());
-                }
-            }
-        } else if let Some(value) = parser.parse(context) {
-            Self::Sys(value)
-        } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
-            Self::Array(
-                group.span(),
-                group
-                    .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context),
-            )
-        } else if let Some(value) = parser.try_parse(context)? {
-            Self::Path(value)
-        } else if let Some(value) = parser.try_parse(context)? {
-            Self::Literal(value)
-        } else if let Some(op) = parser.try_parse(context)? {
-            Self::ShsOp(op, parser.try_parse(context)?)
-        } else {
-            context.push_error(SyntaxError::Expected(parser.next_span(), "an expr"));
-            return Err(());
-        };
+        let mut expr = Self::try_parse_no_mhs(parser, context)?;
 
         while let Some(op) = parser.parse::<Option<MhsOp>>(context) {
             match expr {
@@ -159,7 +185,8 @@ impl Spanned for Expr {
             Self::Tuple(span, _) => *span,
             Self::Array(span, _) => *span,
             Self::Block(a) => a.span(),
-            Self::ShsOp(a, b) => a.span().connect(b.span()),
+            Self::Field(a, b) => a.span().connect(b.map_or(a.span(), |b| b.span())),
+            Self::ShsOp(a, b) => a.span().connect(b.as_ref().map_or(a.span(), |b| b.span())),
             Self::MhsOp(a, b, c) => a.span().connect(b.span().connect(c.span())),
         }
     }

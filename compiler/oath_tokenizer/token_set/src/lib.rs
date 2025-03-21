@@ -32,7 +32,7 @@ macro_rules! define_token_set {
 define_token_set!(
     keywords: [
         mod, use, pub, package, super, sys, impl,
-        trait, promise, require, neg,
+        trait, promise, require,
         type, alias, struct, enum, untagged, val, is,
         fn, raw, con, async, panic, lock, undef,
         macro,

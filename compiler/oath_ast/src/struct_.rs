@@ -14,13 +14,22 @@ pub struct Struct {
 #[desc = "fields"]
 pub enum Fields {
     Named(Vec<NamedField>),
-    Unnamed(Vec<PResult<Expr>>),
+    Unnamed(Vec<UnnamedField>),
 }
 
 #[derive(Debug, Clone, Desc)]
 #[desc = "a named fiend"]
 pub struct NamedField {
-    pub ident: Ident,
+    pub vis: Vis,
+    pub ident: PResult<Ident>,
+    pub type_: PResult<Expr>,
+    pub bounds: Option<Expr>,
+}
+
+#[derive(Debug, Clone, Desc)]
+#[desc = "an unnamed fiend"]
+pub struct UnnamedField {
+    pub vis: Vis,
     pub type_: PResult<Expr>,
     pub bounds: Option<Expr>,
 }
@@ -67,15 +76,14 @@ impl TryParse for Fields {
             DelimiterKind::Braces => Ok(Self::Named(
                 group
                     .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context)
+                    .parse_trl_all::<_, punct!(",")>(context)
                     .into_iter()
-                    .filter_map(Result::ok)
                     .collect(),
             )),
             DelimiterKind::Parens => Ok(Self::Unnamed(
                 group
                     .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context)
+                    .parse_trl_all::<_, punct!(",")>(context)
                     .into_iter()
                     .collect(),
             )),
@@ -87,22 +95,45 @@ impl TryParse for Fields {
     }
 }
 
-impl TryParse for NamedField {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> PResult<Self> {
-        let ident = parser.try_parse(context)?;
+impl Parse for NamedField {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let vis = parser.parse(context);
+
+        let ident = match parser.try_parse(context) {
+            Ok(ok) => Ok(ok),
+            Err(_) => {
+                while parser.peek_next().is_some() && !parser.peek::<punct!(",")>(context) {
+                    parser.next();
+                }
+
+                return Self {
+                    vis,
+                    ident: Err(()),
+                    type_: Err(()),
+                    bounds: None,
+                };
+            }
+        };
 
         let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
             parser.try_parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
                 parser.next_span(),
-                "`Param_Ident-Param_Type`",
+                "`ParamIdent-ParamType`",
             ));
+
             Err(())
         };
+
+        if type_.is_err() {
+            while parser.peek_next().is_some()
+                && !parser.peek::<punct!(",")>(context)
+                && !parser.peek::<punct!(":")>(context)
+            {
+                parser.next();
+            }
+        }
 
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
             parser.try_parse(context).ok()
@@ -110,16 +141,48 @@ impl TryParse for NamedField {
             None
         };
 
-        Ok(Self {
+        Self {
+            vis,
             ident,
             type_,
             bounds,
-        })
+        }
     }
 }
 
 impl Peek for NamedField {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Ident>(context)
+    }
+}
+
+impl Parse for UnnamedField {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let vis = parser.parse(context);
+
+        let type_ = parser.try_parse(context);
+
+        if type_.is_err() {
+            while parser.peek_next().is_some()
+                && !parser.peek::<punct!(",")>(context)
+                && !parser.peek::<punct!(":")>(context)
+            {
+                parser.next();
+            }
+        }
+
+        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
+            parser.try_parse(context).ok()
+        } else {
+            None
+        };
+
+        Self { vis, type_, bounds }
+    }
+}
+
+impl Peek for UnnamedField {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<Expr>(context)
     }
 }

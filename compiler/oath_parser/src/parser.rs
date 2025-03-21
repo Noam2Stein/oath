@@ -126,10 +126,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         vec
     }
 
-    pub fn try_parse_rep<T: Peek + TryParse>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Vec<Result<T, ()>> {
+    pub fn try_parse_rep<T: Peek + TryParse>(&mut self, context: ContextHandle) -> Vec<PResult<T>> {
         let mut vec = Vec::new();
 
         while self.peek::<T>(context) {
@@ -141,7 +138,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     pub fn try_parse_sep<T: Peek + TryParse, S: Peek>(
         &mut self,
         context: ContextHandle,
-    ) -> Result<Vec<Result<T, ()>>, ()>
+    ) -> PResult<Vec<PResult<T>>>
     where
         Option<S>: Parse,
     {
@@ -165,7 +162,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     pub fn try_parse_trl<T: Peek + TryParse, S: Peek>(
         &mut self,
         context: ContextHandle,
-    ) -> Vec<Result<T, ()>>
+    ) -> Vec<PResult<T>>
     where
         Option<S>: Parse,
     {
@@ -191,11 +188,40 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
 
         vec
     }
+    pub fn parse_trl_all<T: Parse + Peek, S: TryParse + Peek>(
+        &mut self,
+        context: ContextHandle,
+    ) -> Vec<T> {
+        let mut vec = Vec::new();
+
+        while self.is_left() {
+            vec.push(self.parse(context));
+
+            if self.is_left() {
+                match self.try_parse::<S>(context) {
+                    Ok(_) => {}
+                    Err(()) => {
+                        while self.is_left() && !self.peek::<S>(context) {
+                            self.next();
+                        }
+
+                        if self.is_left() {
+                            let _ = self.try_parse::<S>(context);
+                        }
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+
+        vec
+    }
 
     pub fn try_parse_rep_all<T: TryParse + Peek>(
         &mut self,
         context: ContextHandle,
-    ) -> Vec<Result<T, ()>> {
+    ) -> Vec<PResult<T>> {
         let mut vec = Vec::new();
 
         while self.is_left() {
@@ -215,7 +241,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     pub fn try_parse_trl_all<T: TryParse + Peek, S: TryParse + Peek>(
         &mut self,
         context: ContextHandle,
-    ) -> Vec<Result<T, ()>> {
+    ) -> Vec<PResult<T>> {
         let mut vec = Vec::new();
 
         while self.is_left() {
