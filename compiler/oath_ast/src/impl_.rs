@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Debug, Clone, Desc)]
 #[desc = "an impl"]
 pub struct Impl {
-    pub generics: GenericParams,
+    pub generics: Option<GenericParams>,
     pub item: Expr,
     pub target: Option<Expr>,
     pub contract: Contract,
@@ -20,9 +20,9 @@ impl ItemParse for Impl {
         target_kind.expect_empty(context, Self::desc());
 
         let generics = parser.parse(context);
-        let item = parser.try_parse(context)?;
+        let item = parser.parse(context);
         let target = if let Some(_) = parser.parse::<Option<keyword!("for")>>(context) {
-            parser.try_parse(context)?
+            Some(parser.parse(context))
         } else {
             None
         };

@@ -1,6 +1,9 @@
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::{ToTokens, quote, quote_spanned};
-use syn::{Attribute, DataEnum, DataStruct, Error, Fields, Meta, spanned::Spanned};
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Meta, parse2,
+    spanned::Spanned,
+};
 
 use crate::impl_parser_trait;
 
@@ -87,9 +90,32 @@ pub fn peek_enum(data: DataEnum) -> TokenStream {
     let peek_variants = data
         .variants
         .iter()
+        .filter(|variant| {
+            !variant
+                .attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("error_fallback"))
+        })
         .map(|variant| peek_fields(variant.fields.clone(), &variant.attrs, variant.span()));
 
     quote! {
         #((#peek_variants))||*
+    }
+}
+
+pub fn is_peek_parse(input: TokenStream) -> bool {
+    let input = match parse2::<DeriveInput>(input) {
+        Ok(ok) => ok,
+        Err(_) => return false,
+    };
+
+    match input.data {
+        Data::Enum(data) => data.variants.iter().any(|variant| {
+            variant
+                .attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("error_fallback"))
+        }),
+        _ => false,
     }
 }

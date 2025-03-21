@@ -73,6 +73,12 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         }
     }
 
+    pub fn skip_until(&mut self, peek: impl Fn(&mut Self) -> bool) {
+        while self.peek_next().is_some() && !peek(self) {
+            self.next();
+        }
+    }
+
     pub fn parse_rep<T: Peek>(&mut self, context: ContextHandle) -> Vec<T>
     where
         Option<T>: Parse,

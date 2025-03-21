@@ -5,7 +5,7 @@ use crate::*;
 pub struct Struct {
     pub vis: Vis,
     pub ident: Ident,
-    pub generics: GenericParams,
+    pub generics: Option<GenericParams>,
     pub contract: Contract,
     pub fields: PResult<Fields>,
 }
@@ -22,7 +22,7 @@ pub enum Fields {
 pub struct NamedField {
     pub vis: Vis,
     pub ident: PResult<Ident>,
-    pub type_: PResult<Expr>,
+    pub type_: Expr,
     pub bounds: Option<Expr>,
 }
 
@@ -30,7 +30,7 @@ pub struct NamedField {
 #[desc = "an unnamed fiend"]
 pub struct UnnamedField {
     pub vis: Vis,
-    pub type_: PResult<Expr>,
+    pub type_: Expr,
     pub bounds: Option<Expr>,
 }
 
@@ -109,34 +109,25 @@ impl Parse for NamedField {
                 return Self {
                     vis,
                     ident: Err(()),
-                    type_: Err(()),
+                    type_: Expr::Unknown(parser.next_span()),
                     bounds: None,
                 };
             }
         };
 
         let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
-            parser.try_parse(context)
+            parser.parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
                 parser.next_span(),
                 "`ParamIdent-ParamType`",
             ));
 
-            Err(())
+            Expr::Unknown(parser.next_span())
         };
 
-        if type_.is_err() {
-            while parser.peek_next().is_some()
-                && !parser.peek::<punct!(",")>(context)
-                && !parser.peek::<punct!(":")>(context)
-            {
-                parser.next();
-            }
-        }
-
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            parser.try_parse(context).ok()
+            Some(parser.parse(context))
         } else {
             None
         };
@@ -160,19 +151,10 @@ impl Parse for UnnamedField {
     fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
         let vis = parser.parse(context);
 
-        let type_ = parser.try_parse(context);
-
-        if type_.is_err() {
-            while parser.peek_next().is_some()
-                && !parser.peek::<punct!(",")>(context)
-                && !parser.peek::<punct!(":")>(context)
-            {
-                parser.next();
-            }
-        }
+        let type_ = parser.parse(context);
 
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            parser.try_parse(context).ok()
+            Some(parser.parse(context))
         } else {
             None
         };

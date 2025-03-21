@@ -39,9 +39,12 @@ pub enum ItemKeyword {
     Val(keyword!("val")),
     Alias(keyword!("alias")),
     Impl(keyword!("impl")),
+    #[display("unknown")]
+    #[error_fallback]
+    Unknown(Span),
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, Desc, PeekOk)]
 #[desc = "an item-type"]
 pub struct ItemKind {
     pub keywords: Vec<ItemKeyword>,
@@ -84,18 +87,13 @@ impl ItemModifiers {
     }
 }
 
-impl PeekOk for ItemKeyword {}
-
 impl TryParse for ItemKind {
     fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> PResult<Self> {
         Ok(Self {
-            keywords: parser
-                .try_parse_sep::<_, punct!("-")>(context)?
-                .into_iter()
-                .collect::<PResult<_>>()?,
+            keywords: parser.parse_sep::<_, punct!("-")>(context)?,
         })
     }
 }
@@ -203,6 +201,7 @@ impl TryParse for Item {
                 context.push_error(Error::new("unfinished item type", keyword.span()));
                 Err(())
             }
+            ItemKeyword::Unknown(_) => return Err(()),
         }
     }
 }

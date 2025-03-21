@@ -5,7 +5,7 @@ use crate::*;
 pub struct Sys {
     pub vis: Vis,
     pub ident: Ident,
-    pub generics: GenericParams,
+    pub generics: Option<GenericParams>,
 }
 
 impl ItemParse for Sys {

@@ -1,63 +1,79 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, Desc, PeekOk)]
 #[desc = "generic params"]
-pub struct GenericParams(pub Span, pub Vec<Result<GenericParam, ()>>);
+pub struct GenericParams(pub Vec<GenericParam>, pub Span);
 
 #[derive(Debug, Clone, Desc)]
 #[desc = "a generic param"]
 pub struct GenericParam {
-    pub ident: Ident,
-    pub type_: PResult<Expr>,
+    pub ident: PResult<Ident>,
+    pub type_: Expr,
     pub bounds: Option<Expr>,
 }
 
-impl Parse for GenericParams {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        if let Some(group) = parser.parse::<Option<Group<Angles>>>(context) {
-            Self(
-                group.span(),
-                group
-                    .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context),
-            )
-        } else {
-            Self(
-                Span::from_start_len(parser.next_span().start(), 0),
-                Vec::new(),
-            )
-        }
-    }
-}
-
-impl TryParse for GenericParam {
+impl TryParse for GenericParams {
     fn try_parse(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
-    ) -> Result<Self, ()> {
-        let ident = parser.try_parse::<Ident>(context)?;
+    ) -> PResult<Self> {
+        let group = parser.try_parse::<Group<Angles>>(context)?;
+
+        let span = group.span();
+
+        Ok(Self(
+            group.into_parser().parse_trl_all::<_, punct!(",")>(context),
+            span,
+        ))
+    }
+}
+
+impl Peek for GenericParams {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<Group<Angles>>(context)
+    }
+}
+
+impl Spanned for GenericParams {
+    fn span(&self) -> Span {
+        self.1
+    }
+}
+
+impl Parse for GenericParam {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let ident = match parser.try_parse(context) {
+            Ok(ok) => Ok(ok),
+            Err(()) => {
+                parser.skip_until(|parser| parser.peek::<punct!(",")>(context));
+                return Self {
+                    ident: Err(()),
+                    type_: Expr::Unknown(parser.next_span()),
+                    bounds: None,
+                };
+            }
+        };
 
         let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
-            parser.try_parse(context)
+            parser.parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
                 parser.next_span(),
                 "`Param_Ident-Param_Type`",
             ));
-            Err(())
+
+            Expr::Unknown(parser.next_span())
         };
 
-        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            parser.try_parse(context).ok()
-        } else {
-            None
-        };
+        let bounds = parser
+            .parse::<Option<punct!(":")>>(context)
+            .map(|_| parser.parse(context));
 
-        Ok(Self {
+        Self {
             ident,
             type_,
             bounds,
-        })
+        }
     }
 }
 

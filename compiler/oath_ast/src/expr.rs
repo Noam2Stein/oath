@@ -5,17 +5,26 @@ use crate::*;
 #[derive(Debug, Clone, Desc)]
 #[desc = "an expr"]
 pub enum Expr {
-    Path(Path),
-    Type(keyword!("type")),
-    Sys(keyword!("sys")),
-    Trait(keyword!("trait"), ItemKind),
+    Ident(Ident),
+    ItemKind(ItemKind),
     Literal(Literal),
-    Tuple(Span, Vec<PResult<Expr>>),
-    Array(Span, Vec<PResult<Expr>>),
+    Tuple(Vec<Expr>, Span),
+    Array(Vec<Expr>, Span),
     Block(Block),
-    Field(Box<Expr>, PResult<Ident>),
-    ShsOp(ShsOp, PResult<Box<Expr>>),
+    Field(Box<Expr>, FieldIdent),
+    Call(Box<Expr>, Vec<Expr>, Span),
+    Generics(Box<Expr>, GenericArgs),
+    ShsOp(ShsOp, Box<Expr>),
     MhsOp(Box<Expr>, MhsOp, Box<Expr>),
+    Unknown(Span),
+}
+
+#[derive(Debug, Clone, Spanned, Desc)]
+#[desc = "a field ident"]
+pub enum FieldIdent {
+    Ident(Ident),
+    Int(IntLiteral),
+    Unknown(Span),
 }
 
 #[derive(Debug, Clone, Peek, PeekOk, Spanned)]
@@ -57,86 +66,86 @@ pub enum MhsOp {
 }
 
 impl Expr {
+    pub fn parse_no_mhs(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> Self {
+        let mut expr = Self::parse_base(parser, context);
+
+        loop {
+            if let Some(_) = parser.parse::<Option<punct!(".")>>(context) {
+                expr = Self::Field(
+                    Box::new(replace(&mut expr, Self::fillin())),
+                    parser.parse(context),
+                )
+            } else if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
+                let span = expr.span().connect(group.span());
+                expr = Self::Call(
+                    Box::new(replace(&mut expr, Self::fillin())),
+                    group.into_parser().parse_trl_all::<_, punct!(",")>(context),
+                    span,
+                )
+            } else if let Some(generics) = parser.parse::<Option<GenericArgs>>(context) {
+                expr = Self::Generics(Box::new(replace(&mut expr, Self::fillin())), generics)
+            } else {
+                break;
+            }
+        }
+
+        expr
+    }
+
     fn fillin() -> Self {
         Self::Literal(Literal::Char(CharLiteral::new('💪', Span::end_of_file())))
     }
 
-    fn try_parse_base(
+    fn parse_base(
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
-    ) -> PResult<Self> {
-        Ok(
-            if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
-                Self::Tuple(
-                    group.span(),
-                    group
-                        .into_parser()
-                        .try_parse_trl_all::<_, punct!(",")>(context),
-                )
-            } else if let Some(mut value) = parser.try_parse::<Option<ItemKind>>(context)? {
-                match value.keywords.pop().unwrap() {
-                    ItemKeyword::Type(keyword) => {
-                        value.expect_empty(context, TypeKeyword::desc());
-                        Self::Type(keyword)
-                    }
-                    ItemKeyword::Sys(keyword) => {
-                        value.expect_empty(context, TypeKeyword::desc());
-                        Self::Sys(keyword)
-                    }
-                    ItemKeyword::Trait(keyword) => Self::Trait(keyword, value),
-                    keyword => {
-                        context.push_error(Error::new(
-                            format!("`{keyword}` is not a valid expr"),
-                            keyword.span(),
-                        ));
-                        return Err(());
-                    }
+    ) -> Self {
+        if let Some(value) = parser.parse(context) {
+            Self::Ident(value)
+        } else if let Some(value) = parser.parse(context) {
+            Self::Literal(value)
+        } else if let Some(group) = parser.parse::<Option<Group>>(context) {
+            let span = group.span();
+
+            match group.delimiters.kind {
+                DelimiterKind::Parens => Self::Tuple(
+                    group.into_parser().parse_trl_all::<_, punct!(",")>(context),
+                    span,
+                ),
+                DelimiterKind::Brackets => Self::Array(
+                    group.into_parser().parse_trl_all::<_, punct!(",")>(context),
+                    span,
+                ),
+                DelimiterKind::Braces => todo!(),
+                DelimiterKind::Angles => {
+                    context.push_error(SyntaxError::Expected(group.span(), Self::desc()));
+                    Self::Unknown(group.span())
                 }
-            } else if let Some(value) = parser.parse(context) {
-                Self::Sys(value)
-            } else if let Some(group) = parser.parse::<Option<Group<Brackets>>>(context) {
-                Self::Array(
-                    group.span(),
-                    group
-                        .into_parser()
-                        .try_parse_trl_all::<_, punct!(",")>(context),
-                )
-            } else if let Some(value) = parser.try_parse(context)? {
-                Self::Path(value)
-            } else if let Some(value) = parser.try_parse(context)? {
-                Self::Literal(value)
-            } else if let Some(op) = parser.try_parse(context)? {
-                Self::ShsOp(op, Self::try_parse_no_mhs(parser, context).map(Box::new))
-            } else {
-                context.push_error(SyntaxError::Expected(parser.next_span(), "an expr"));
-                return Err(());
-            },
-        )
-    }
+            }
+        } else if let Some(value) = parser.parse::<Option<ItemKind>>(context) {
+            Self::ItemKind(value)
+        } else if let Some(op) = parser.parse(context) {
+            Self::ShsOp(op, Box::new(Self::parse_no_mhs(parser, context)))
+        } else {
+            let span = parser.next_span();
 
-    fn try_parse_no_mhs(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> PResult<Self> {
-        let mut expr = Self::try_parse_base(parser, context)?;
+            context.push_error(SyntaxError::Expected(span, Self::desc()));
 
-        while let Some(_) = parser.parse::<Option<punct!(".")>>(context) {
-            expr = Self::Field(
-                Box::new(replace(&mut expr, Self::fillin())),
-                parser.try_parse(context),
-            )
+            parser.skip_until(|parser| {
+                parser.peek::<punct!(":")>(context) || parser.peek::<punct!(",")>(context)
+            });
+
+            return Self::Unknown(span);
         }
-
-        Ok(expr)
     }
 }
 
-impl TryParse for Expr {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> PResult<Self> {
-        let mut expr = Self::try_parse_no_mhs(parser, context)?;
+impl Parse for Expr {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let mut expr = Self::parse_no_mhs(parser, context);
 
         while let Some(op) = parser.parse::<Option<MhsOp>>(context) {
             match expr {
@@ -144,50 +153,68 @@ impl TryParse for Expr {
                     **expr_rhs = Self::MhsOp(
                         Box::new(replace(&mut *expr_rhs, Self::fillin())),
                         op,
-                        parser.try_parse(context)?,
+                        Box::new(Self::parse_no_mhs(parser, context)),
                     )
                 }
                 _ => {
                     expr = Self::MhsOp(
                         Box::new(replace(&mut expr, Self::fillin())),
                         op,
-                        parser.try_parse(context)?,
+                        Box::new(Self::parse_no_mhs(parser, context)),
                     )
                 }
             }
         }
 
-        Ok(expr)
+        expr
     }
 }
 
 impl Peek for Expr {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<Path>(context)
-            || parser.peek::<keyword!("type")>(context)
-            || parser.peek::<keyword!("sys")>(context)
+        parser.peek::<Ident>(context)
+            || parser.peek::<ItemKind>(context)
             || parser.peek::<Literal>(context)
             || parser.peek::<Group>(context)
-            || parser.peek::<punct!("-")>(context)
-            || parser.peek::<punct!("!")>(context)
-            || parser.peek::<punct!("*")>(context)
+            || parser.peek::<ShsOp>(context)
     }
 }
 
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Path(a) => a.span(),
-            Self::Type(a) => a.span(),
-            Self::Sys(a) => a.span(),
-            Self::Trait(a, b) => a.span().connect(b.span()),
+            Self::Ident(a) => a.span(),
+            Self::ItemKind(a) => a.span(),
             Self::Literal(a) => a.span(),
-            Self::Tuple(span, _) => *span,
-            Self::Array(span, _) => *span,
+            Self::Tuple(_, span) => *span,
+            Self::Array(_, span) => *span,
             Self::Block(a) => a.span(),
-            Self::Field(a, b) => a.span().connect(b.map_or(a.span(), |b| b.span())),
-            Self::ShsOp(a, b) => a.span().connect(b.as_ref().map_or(a.span(), |b| b.span())),
+            Self::Generics(a, b) => a.span().connect(b.span()),
+            Self::Field(a, b) => a.span().connect(b.span()),
+            Self::Call(_, _, span) => *span,
+            Self::ShsOp(a, b) => a.span().connect(b.span()),
             Self::MhsOp(a, b, c) => a.span().connect(b.span().connect(c.span())),
+            Self::Unknown(span) => *span,
+        }
+    }
+}
+
+impl Parse for FieldIdent {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        if let Some(value) = parser.parse(context) {
+            Self::Ident(value)
+        } else if let Some(value) = parser.parse::<Option<IntLiteral>>(context) {
+            if value.suffix().is_some() {
+                context.push_error(SyntaxError::Expected(value.span(), "no suffix"));
+            }
+            Self::Int(value)
+        } else {
+            let span = parser.next_span();
+
+            context.push_error(SyntaxError::Expected(span, Self::desc()));
+
+            parser.next();
+            Self::Unknown(span)
         }
     }
 }

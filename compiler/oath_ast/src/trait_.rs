@@ -6,7 +6,7 @@ pub struct Trait {
     pub vis: Vis,
     pub target: ItemKind,
     pub ident: Ident,
-    pub generics: GenericParams,
+    pub generics: Option<GenericParams>,
     pub contract: Contract,
     pub items: BracesOrSemi<ModContent>,
 }

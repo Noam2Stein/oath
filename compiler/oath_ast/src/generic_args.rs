@@ -1,29 +1,33 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, Desc, PeekOk)]
 #[desc = "generic args"]
-pub struct GenericArgs(pub Span, pub Vec<Result<Expr, ()>>);
+pub struct GenericArgs(pub Vec<Expr>, pub Span);
 
-impl Parse for GenericArgs {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        if let Some(group) = parser.parse::<Option<Group<Angles>>>(context) {
-            Self(
-                group.span(),
-                group
-                    .into_parser()
-                    .try_parse_trl_all::<_, punct!(",")>(context),
-            )
-        } else {
-            Self(
-                Span::from_start_len(parser.next_span().start(), 0),
-                Vec::new(),
-            )
-        }
+impl TryParse for GenericArgs {
+    fn try_parse(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> PResult<Self> {
+        let group = parser.try_parse::<Group<Angles>>(context)?;
+
+        let span = group.span();
+
+        Ok(Self(
+            group.into_parser().parse_trl_all::<_, punct!(",")>(context),
+            span,
+        ))
+    }
+}
+
+impl Peek for GenericArgs {
+    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+        parser.peek::<Group<Angles>>(context)
     }
 }
 
 impl Spanned for GenericArgs {
     fn span(&self) -> Span {
-        self.0
+        self.1
     }
 }

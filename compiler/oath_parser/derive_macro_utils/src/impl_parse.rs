@@ -118,7 +118,7 @@ fn parse_field(field: &Field) -> TokenStream {
 
     let parse_expr = if let Some(parse_attr) = parse_attr {
         let parse_fn = &parse_attr.meta.require_list().unwrap().tokens;
-        let try_parse_error = try_parse_attr.map(|try_parse_attr| {
+        let try_error_fallback = try_parse_attr.map(|try_parse_attr| {
             Error::new(
                 try_parse_attr.span(),
                 "`try_parse` is not allowed with `parse`",
@@ -128,7 +128,7 @@ fn parse_field(field: &Field) -> TokenStream {
 
         quote! {
             {
-                { #try_parse_error }
+                { #try_error_fallback }
                 (#parse_fn)()
             }
         }
@@ -160,12 +160,45 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
         };
     };
 
-    let fallback_variant = data.variants.iter().find(|variant| {
-        variant
-            .attrs
+    let (fallback_variant, fallback_is_error, fallback_errors) = {
+        let fallbacks = data
+            .variants
             .iter()
-            .any(|attr| attr.path().is_ident("fallback"))
-    });
+            .filter_map(|variant| {
+                if variant
+                    .attrs
+                    .iter()
+                    .any(|attr| attr.path().is_ident("fallback"))
+                {
+                    Some((variant, false))
+                } else if variant
+                    .attrs
+                    .iter()
+                    .any(|attr| attr.path().is_ident("error_fallback"))
+                {
+                    Some((variant, true))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if let Some((fallback, fallback_is_error)) = fallbacks.first() {
+            (
+                Some(*fallback),
+                *fallback_is_error,
+                fallbacks[1..]
+                    .iter()
+                    .map(|fallback| {
+                        Error::new(fallback.0.span(), "only one variant can be a fallback")
+                            .to_compile_error()
+                    })
+                    .collect(),
+            )
+        } else {
+            (None, false, Vec::new())
+        }
+    };
 
     let variants = {
         let mut variants = data.variants.iter().collect::<Vec<_>>();
@@ -195,7 +228,17 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
 
     let fallback = if let Some(fallback_variant) = fallback_variant {
         let variant_ident = &fallback_variant.ident;
-        parse_fields(quote! { Self::#variant_ident }, &fallback_variant.fields)
+        if fallback_is_error {
+            quote! {
+                context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.next_span()));
+
+                let span = parser.next_span();
+                parser.next();
+                Self::#variant_ident(span)
+            }
+        } else {
+            parse_fields(quote! { Self::#variant_ident }, &fallback_variant.fields)
+        }
     } else {
         quote! {
             context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.next_span()));
@@ -209,8 +252,14 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
             else {
                 #fallback
             }
+
+            #(#fallback_errors;)*
         }
     } else {
-        fallback
+        quote! {
+            #fallback
+
+            #(#fallback_errors;)*
+        }
     }
 }

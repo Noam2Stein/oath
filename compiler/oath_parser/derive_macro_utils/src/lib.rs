@@ -72,3 +72,23 @@ pub fn impl_parser_trait(
     }
     .into()
 }
+
+pub fn impl_peek_ok(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        attrs: _,
+        vis: _,
+        ident,
+        generics,
+        data: _,
+    } = match parse2(input) {
+        Ok(ok) => ok,
+        Err(error) => return error.to_compile_error(),
+    };
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote! {
+        impl # impl_generics ::oath_parser::PeekOk for #ident #ty_generics #where_clause {}
+    }
+    .into()
+}

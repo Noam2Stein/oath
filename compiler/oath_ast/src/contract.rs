@@ -23,22 +23,14 @@ impl Parse for Contract {
                 .parse::<Option<keyword!("promise")>>(context)
                 .is_some()
             {
-                for promise in parser
-                    .try_parse_trl::<_, punct!(",")>(context)
-                    .into_iter()
-                    .filter_map(Result::ok)
-                {
+                for promise in parser.parse_trl::<_, punct!(",")>(context).into_iter() {
                     output.promise.push(promise);
                 }
             } else if parser
                 .parse::<Option<keyword!("require")>>(context)
                 .is_some()
             {
-                for require in parser
-                    .try_parse_trl::<_, punct!(",")>(context)
-                    .into_iter()
-                    .filter_map(Result::ok)
-                {
+                for require in parser.parse_trl::<_, punct!(",")>(context).into_iter() {
                     output.require.push(require);
                 }
             } else {
@@ -50,18 +42,23 @@ impl Parse for Contract {
     }
 }
 
-impl TryParse for ContractItem {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> Result<Self, ()> {
-        let target = parser.try_parse(context)?;
+impl Parse for ContractItem {
+    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        let target = Expr::parse_no_mhs(parser, context);
 
-        parser.try_parse::<punct!(":")>(context)?;
+        match parser.try_parse::<punct!(":")>(context) {
+            Ok(ok) => ok,
+            Err(()) => {
+                return Self {
+                    target,
+                    bounds: Expr::Unknown(parser.next_span()),
+                }
+            }
+        };
 
-        let bounds = parser.try_parse(context)?;
+        let bounds = parser.parse(context);
 
-        Ok(Self { target, bounds })
+        Self { target, bounds }
     }
 }
 impl Peek for ContractItem {
