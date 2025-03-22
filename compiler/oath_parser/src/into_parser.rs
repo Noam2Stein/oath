@@ -1,4 +1,4 @@
-use oath_src::Span;
+use oath_src::Position;
 use oath_tokenizer::{DelimitersType, Group, TokenFile, TokenTree};
 
 use crate::Parser;
@@ -11,13 +11,13 @@ impl<D: DelimitersType> IntoParser for Group<D> {
     fn into_parser(self) -> Parser<Self::IntoIter> {
         Parser::new(
             self.tokens.into_iter().peekable(),
-            self.delimiters.close_span(),
+            self.delimiters.span().start(),
         )
     }
 }
 
 impl IntoParser for TokenFile {
     fn into_parser(self) -> Parser<Self::IntoIter> {
-        Parser::new(self.into_iter().peekable(), Span::end_of_file())
+        Parser::new(self.into_iter().peekable(), Position::new(0, 0))
     }
 }

@@ -105,15 +105,11 @@ impl Peek for ItemKind {
 
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
-        if self.keywords.len() == 0 {
-            Span::end_of_file()
-        } else {
-            self.keywords
-                .iter()
-                .fold(self.keywords.first().unwrap().span(), |span, keyword| {
-                    span.connect(keyword.span())
-                })
-        }
+        self.keywords
+            .iter()
+            .fold(self.keywords.first().unwrap().span(), |span, keyword| {
+                span.connect(keyword.span())
+            })
     }
 }
 

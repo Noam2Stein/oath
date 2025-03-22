@@ -104,7 +104,10 @@ impl Expr {
     }
 
     fn fillin() -> Self {
-        Self::Literal(Literal::Char(CharLiteral::new('💪', Span::end_of_file())))
+        Self::Literal(Literal::Char(CharLiteral::new(
+            '💪',
+            Span::from_start_len(Position::new(0, 0), 1),
+        )))
     }
 
     fn parse_base(
@@ -140,7 +143,7 @@ impl Expr {
         } else if let Some(op) = parser.parse(context) {
             Self::ShsOp(op, Box::new(Self::parse_no_mhs(parser, context)))
         } else {
-            let span = parser.next_span();
+            let span = parser.peek_span();
 
             context.push_error(SyntaxError::Expected(span, Self::desc()));
 
@@ -220,7 +223,7 @@ impl Parse for FieldIdent {
             }
             Self::Int(value)
         } else {
-            let span = parser.next_span();
+            let span = parser.peek_span();
 
             context.push_error(SyntaxError::Expected(span, Self::desc()));
 

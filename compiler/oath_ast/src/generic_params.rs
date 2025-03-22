@@ -48,7 +48,7 @@ impl Parse for GenericParam {
                 parser.skip_until(|parser| parser.peek::<punct!(",")>(context));
                 return Self {
                     ident: Err(()),
-                    type_: Expr::Unknown(parser.next_span()),
+                    type_: Expr::Unknown(parser.peek_span()),
                     bounds: None,
                 };
             }
@@ -58,11 +58,11 @@ impl Parse for GenericParam {
             parser.parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
-                parser.next_span(),
+                parser.peek_span(),
                 "`Param_Ident-Param_Type`",
             ));
 
-            Expr::Unknown(parser.next_span())
+            Expr::Unknown(parser.peek_span())
         };
 
         let bounds = parser

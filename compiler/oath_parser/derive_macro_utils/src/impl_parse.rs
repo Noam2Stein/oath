@@ -230,9 +230,9 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
         let variant_ident = &fallback_variant.ident;
         if fallback_is_error {
             quote! {
-                context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.next_span()));
+                context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.peek_span()));
 
-                let span = parser.next_span();
+                let span = parser.peek_span();
                 parser.next();
                 Self::#variant_ident(span)
             }
@@ -241,7 +241,7 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
         }
     } else {
         quote! {
-            context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.next_span()));
+            context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.peek_span()));
             return Err(())
         }
     };

@@ -7,23 +7,12 @@ macro_rules! impl_try_parse {
                 parser: &mut Parser<impl Iterator<Item = TokenTree>>,
                 context: ContextHandle,
             ) -> Result<Self, ()> {
-                if let Some(token) = parser.next() {
-                    let span = token.span();
-                    #[allow(irrefutable_let_patterns)]
-                    if let Ok(token) = token.try_into() {
-                        Ok(token)
-                    } else {
-                        context.push_error(Error::new(
-                            format!("Syntax Error: expected {}", <$ty>::desc()),
-                            span,
-                        ));
-
-                        Err(())
-                    }
+                if parser.peek::<Self>(context) {
+                    Ok(parser.next().unwrap().try_into().unwrap())
                 } else {
                     context.push_error(Error::new(
                         format!("Syntax Error: expected {}", <$ty>::desc()),
-                        parser.next_span(),
+                        parser.peek_span(),
                     ));
 
                     Err(())
@@ -60,19 +49,22 @@ impl TryParse for Ident {
         parser: &mut Parser<impl Iterator<Item = TokenTree>>,
         context: ContextHandle,
     ) -> Result<Self, ()> {
-        if let Some(token) = parser.next() {
+        if let Some(token) = parser.peek_next() {
             match token {
-                TokenTree::Ident(token) => Ok(token),
+                TokenTree::Ident(_) => Ok(parser.next().unwrap().try_into().unwrap()),
                 TokenTree::Keyword(token) => {
                     context.push_error(Error::new(
                         format!("Syntax Error: expected an ident. `{token}` is a keyword"),
-                        token.span(),
+                        parser.peek_span(),
                     ));
 
                     Err(())
                 }
-                token => {
-                    context.push_error(Error::new("Syntax Error: expected an ident", token.span()));
+                _ => {
+                    context.push_error(Error::new(
+                        "Syntax Error: expected an ident",
+                        parser.peek_span(),
+                    ));
 
                     Err(())
                 }
@@ -80,7 +72,7 @@ impl TryParse for Ident {
         } else {
             context.push_error(Error::new(
                 "Syntax Error: expected an ident",
-                parser.next_span(),
+                parser.peek_span(),
             ));
 
             Err(())

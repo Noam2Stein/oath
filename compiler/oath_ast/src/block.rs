@@ -31,7 +31,7 @@ impl Block {
         Self {
             stmts: Vec::new(),
             ditch: false,
-            span: parser.next_span(),
+            span: parser.peek_span(),
         }
     }
 }

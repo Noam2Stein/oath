@@ -42,12 +42,4 @@ impl Span {
             end: self.end.max(other.end),
         }
     }
-
-    #[inline(always)]
-    pub fn end_of_file() -> Self {
-        Self {
-            start: Position::end_of_file(),
-            end: Position::end_of_file(),
-        }
-    }
 }

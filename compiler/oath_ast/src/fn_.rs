@@ -83,7 +83,7 @@ impl Parse for FnParam {
                 return Self {
                     mut_,
                     ident: Err(()),
-                    type_: Expr::Unknown(parser.next_span()),
+                    type_: Expr::Unknown(parser.peek_span()),
                     bounds: None,
                 };
             }
@@ -93,11 +93,11 @@ impl Parse for FnParam {
             parser.parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
-                parser.next_span(),
+                parser.peek_span(),
                 "`param_ident-Param_Type`",
             ));
 
-            Expr::Unknown(parser.next_span())
+            Expr::Unknown(parser.peek_span())
         };
 
         let bounds = parser

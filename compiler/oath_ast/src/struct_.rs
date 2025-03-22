@@ -48,16 +48,43 @@ impl ItemParse for Struct {
 
         let ident = parser.try_parse(context)?;
         let generics = parser.parse(context);
-        let contract = parser.parse(context);
-        let fields = parser.parse(context);
+        let contract = parser.parse::<Contract>(context);
 
-        Ok(Self {
-            vis,
-            ident,
-            generics,
-            contract,
-            fields,
-        })
+        if contract.is_not_empty() {
+            let fields = if let Ok(group) = parser.try_parse::<Group<Braces>>(context) {
+                Fields::Named(group.into_parser().parse_trl_all::<_, punct!(",")>(context))
+            } else {
+                Fields::Unknown
+            };
+
+            Ok(Self {
+                vis,
+                ident,
+                generics,
+                contract,
+                fields,
+            })
+        } else {
+            let fields = parser.parse(context);
+
+            let contract = if let Fields::Unnamed(_) = fields {
+                parser.parse(context)
+            } else {
+                contract
+            };
+
+            if let Fields::Unnamed(_) = fields {
+                let _ = parser.try_parse::<punct!(";")>(context);
+            };
+
+            Ok(Self {
+                vis,
+                ident,
+                generics,
+                contract,
+                fields,
+            })
+        }
     }
 }
 
@@ -69,6 +96,8 @@ impl Peek for Struct {
 
 impl Parse for Fields {
     fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
+        dbg!("fields start");
+
         if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
             Self::Named(
                 group
@@ -87,9 +116,12 @@ impl Parse for Fields {
             )
         } else {
             context.push_error(SyntaxError::Expected(
-                parser.next_span(),
+                parser.peek_span(),
                 "either `{ }` or `( )`",
             ));
+
+            dbg!("fields end");
+            dbg!(parser.peek_span(), parser.peek_next().unwrap().span());
 
             Self::Unknown
         }
@@ -110,7 +142,7 @@ impl Parse for NamedField {
                 return Self {
                     vis,
                     ident: Err(()),
-                    type_: Expr::Unknown(parser.next_span()),
+                    type_: Expr::Unknown(parser.peek_span()),
                     bounds: None,
                 };
             }
@@ -120,11 +152,11 @@ impl Parse for NamedField {
             parser.parse(context)
         } else {
             context.push_error(SyntaxError::Expected(
-                parser.next_span(),
+                parser.peek_span(),
                 "`ParamIdent-ParamType`",
             ));
 
-            Expr::Unknown(parser.next_span())
+            Expr::Unknown(parser.peek_span())
         };
 
         let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {

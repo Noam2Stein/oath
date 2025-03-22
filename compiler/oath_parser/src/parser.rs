@@ -5,7 +5,7 @@ use crate::*;
 #[derive(Debug, Clone)]
 pub struct Parser<I: Iterator<Item = TokenTree>> {
     iter: Peekable<I>,
-    end_span: Span,
+    last_span: Span,
 }
 
 pub struct ParserUntilIter<'p, I: Iterator<Item = TokenTree>, F: Fn(&mut Parser<I>) -> bool> {
@@ -17,27 +17,51 @@ impl<I: Iterator<Item = TokenTree>> Iterator for Parser<I> {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        dbg!(self.iter.peek());
+        if let Some(next) = self.iter.next() {
+            self.last_span = next.span();
+            Some(next)
+        } else {
+            None
+        }
     }
 }
 
 impl<I: Iterator<Item = TokenTree>> Parser<I> {
-    pub fn new(iter: Peekable<I>, end_span: Span) -> Self {
-        Self { iter, end_span }
+    pub fn new(iter: Peekable<I>, start: Position) -> Self {
+        Self {
+            iter,
+            last_span: Span::from_start_len(start, 1),
+        }
     }
 
     pub fn until<'p, F: Fn(&mut Self) -> bool + 'p>(
         &'p mut self,
         f: F,
-    ) -> Parser<impl Iterator<Item = TokenTree> + 'p> {
+    ) -> Parser<ParserUntilIter<'p, I, F>> {
         Parser {
-            end_span: self.end_span,
+            last_span: self.last_span,
             iter: ParserUntilIter { parser: self, f }.peekable(),
         }
     }
 
     pub fn peek_next(&mut self) -> Option<&TokenTree> {
         self.iter.peek()
+    }
+    pub fn peek_span(&mut self) -> Span {
+        if let Some(next) = self.peek_next() {
+            let span = next.span();
+            if span.start().line == self.last_span.end().line {
+                dbg!("return span");
+                span
+            } else {
+                dbg!("return last");
+                Span::from_start_len(self.last_span.end(), 1)
+            }
+        } else {
+            dbg!("return last");
+            Span::from_start_len(self.last_span.end(), 1)
+        }
     }
     pub fn is_empty(&mut self) -> bool {
         self.peek_next().is_none()
@@ -80,14 +104,6 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         Ok(output)
     }
 
-    pub fn next_span(&mut self) -> Span {
-        if let Some(next) = self.peek_next() {
-            next.span()
-        } else {
-            self.end_span
-        }
-    }
-
     pub fn skip_until(&mut self, peek: impl Fn(&mut Self) -> bool) {
         while self.peek_next().is_some() && !peek(self) {
             self.next();
@@ -116,7 +132,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         if !self.peek::<T>(context) {
             context.push_error(Error::new(
                 format!("Syntax Error: expected {}", T::desc()),
-                self.next_span(),
+                self.peek_span(),
             ));
 
             return Err(());
@@ -166,7 +182,7 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
         if !self.peek::<T>(context) {
             context.push_error(Error::new(
                 format!("Syntax Error: expected {}", T::desc()),
-                self.next_span(),
+                self.peek_span(),
             ));
 
             return Err(());

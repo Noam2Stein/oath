@@ -53,7 +53,7 @@ impl Parse for ContractItem {
             Err(()) => {
                 return Self {
                     target,
-                    bounds: Expr::Unknown(parser.next_span()),
+                    bounds: Expr::Unknown(parser.peek_span()),
                 }
             }
         };
@@ -65,6 +65,12 @@ impl Parse for ContractItem {
 }
 impl Peek for ContractItem {
     fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<Expr>(context) && !parser.peek::<Group<Braces>>(context)
+        parser.peek::<Expr>(context)
+    }
+}
+
+impl Contract {
+    pub fn is_not_empty(&self) -> bool {
+        self.promise.len() > 0 || self.require.len() > 0
     }
 }

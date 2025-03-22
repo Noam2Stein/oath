@@ -14,7 +14,7 @@ impl<T: Parse> Parse for BracesOrSemi<T> {
             } else {
                 if let None = parser.parse::<Option<punct!(";")>>(context) {
                     context.push_error(SyntaxError::Expected(
-                        parser.next_span(),
+                        parser.peek_span(),
                         "either `{ }` or `;`",
                     ));
                 }
@@ -35,7 +35,7 @@ impl<T: TryParse> TryParse for BracesOrSemi<T> {
             } else {
                 if let None = parser.parse::<Option<punct!(";")>>(context) {
                     context.push_error(SyntaxError::Expected(
-                        parser.next_span(),
+                        parser.peek_span(),
                         "either `{ }` or `;`",
                     ));
                 }
