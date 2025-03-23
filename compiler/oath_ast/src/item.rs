@@ -4,7 +4,7 @@ use derive_more::Display;
 
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item"]
 pub enum Item {
     Fn(Fn),
@@ -15,7 +15,7 @@ pub enum Item {
     Impl(Impl),
 }
 
-#[derive(Debug, Clone, Default, Desc)]
+#[derive(Debug, Clone, Default, ParseDesc)]
 #[desc = "item modifiers"]
 pub struct ItemModifiers {
     pub_: Option<keyword!("pub")>,
@@ -97,8 +97,11 @@ impl TryParse for ItemKind {
         })
     }
 }
-impl Peek for ItemKind {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for ItemKind {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<ItemKeyword>(context)
     }
 }
@@ -202,8 +205,11 @@ impl TryParse for Item {
     }
 }
 
-impl Peek for Item {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for Item {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<ItemModifiers>(context)
             || parser.peek::<Fn>(context)
             || parser.peek::<Struct>(context)
@@ -242,8 +248,11 @@ impl Parse for ItemModifiers {
     }
 }
 
-impl Peek for ItemModifiers {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for ItemModifiers {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<keyword!("pub")>(context)
             || parser.peek::<keyword!("con")>(context)
             || parser.peek::<keyword!("raw")>(context)

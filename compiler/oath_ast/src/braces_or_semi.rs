@@ -1,46 +1,31 @@
 use crate::*;
 
-#[derive(Debug, Clone, Default, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "either `{ }` or `;`"]
-pub struct BracesOrSemi<T> {
-    pub inner: Option<T>,
+pub enum BracesOrSemi<T> {
+    Braces(T),
+    Semi,
 }
 
 impl<T: Parse> Parse for BracesOrSemi<T> {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        Self {
-            inner: if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
-                Some(group.into_parser().parse_all(context))
-            } else {
-                if let None = parser.parse::<Option<punct!(";")>>(context) {
-                    context.push_error(SyntaxError::Expected(
-                        parser.peek_span(),
-                        "either `{ }` or `;`",
-                    ));
-                }
-                None
-            },
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
+            Self::Braces(T::parse(&mut group.into_parser(parser.context())))
+        } else {
+            if let None = <Option<punct!(";")>>::parse(parser) {
+                parser.context().push_error(SyntaxError::Expected(
+                    parser.peek_span(),
+                    "either `{ }` or `;`",
+                ));
+            }
+
+            Self::Semi
         }
     }
 }
 
-impl<T: TryParse> TryParse for BracesOrSemi<T> {
-    fn try_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> PResult<Self> {
-        Ok(Self {
-            inner: if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
-                Some(group.into_parser().try_parse_all(context)?)
-            } else {
-                if let None = parser.parse::<Option<punct!(";")>>(context) {
-                    context.push_error(SyntaxError::Expected(
-                        parser.peek_span(),
-                        "either `{ }` or `;`",
-                    ));
-                }
-                None
-            },
-        })
+impl<T> Detect for BracesOrSemi<T> {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        <Group<Braces>>::detect(parser) || <punct!(";")>::detect(parser)
     }
 }

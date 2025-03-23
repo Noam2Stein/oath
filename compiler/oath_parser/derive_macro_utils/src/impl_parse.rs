@@ -11,8 +11,7 @@ pub fn impl_parse(input: TokenStream) -> TokenStream {
         "Parse",
         "parse",
         quote! {
-            parser: &mut ::oath_parser::Parser<impl Iterator<Item = ::oath_tokenizer::TokenTree>>,
-            context: ::oath_context::ContextHandle,
+            parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>,
         },
         quote! {
             Self
@@ -135,12 +134,12 @@ fn parse_field(field: &Field) -> TokenStream {
     } else if try_parse_attr.is_some() {
         quote_spanned! {
             ty.span() =>
-            <#ty as ::oath_parser::TryParse>::try_parse(parser, context)?
+            <#ty as ::oath_parser::TryParse>::try_parse(parser)?
         }
     } else {
         quote_spanned! {
             ty.span() =>
-            <#ty as ::oath_parser::Parse>::parse(parser, context)
+            <#ty as ::oath_parser::Parse>::parse(parser)
         }
     };
 
@@ -230,9 +229,9 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
         let variant_ident = &fallback_variant.ident;
         if fallback_is_error {
             quote! {
-                context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.peek_span()));
+                context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::ParseDesc>::desc()), parser.detect_span()));
 
-                let span = parser.peek_span();
+                let span = parser.detect_span();
                 parser.next();
                 Self::#variant_ident(span)
             }
@@ -241,7 +240,7 @@ pub fn parse_enum(data: DataEnum) -> TokenStream {
         }
     } else {
         quote! {
-            context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::Desc>::desc()), parser.peek_span()));
+            context.push_error(::oath_context::Error::new(format!("expected {}", <Self as ::oath_parser::ParseDesc>::desc()), parser.detect_span()));
             return Err(())
         }
     };

@@ -1,23 +1,31 @@
+use oath_context::ContextHandle;
 use oath_src::Position;
 use oath_tokenizer::{DelimitersType, Group, TokenFile, TokenTree};
 
-use crate::Parser;
+use crate::{Parser, ParserIterator};
 
-pub trait IntoParser: IntoIterator<Item = TokenTree> {
-    fn into_parser(self) -> Parser<Self::IntoIter>;
+pub trait IntoParser {
+    type Iter: ParserIterator;
+
+    fn into_parser<'ctx>(self, context: ContextHandle<'ctx>) -> Parser<'ctx, Self::Iter>;
 }
 
 impl<D: DelimitersType> IntoParser for Group<D> {
-    fn into_parser(self) -> Parser<Self::IntoIter> {
-        Parser::new(
-            self.tokens.into_iter().peekable(),
-            self.delimiters.span().start(),
-        )
+    type Iter = Vec<TokenTree>;
+
+    fn into_parser<'ctx>(mut self, context: ContextHandle<'ctx>) -> Parser<'ctx, Self::Iter> {
+        self.tokens.reverse();
+
+        Parser::new(self.tokens, context, self.delimiters.span().start())
     }
 }
 
 impl IntoParser for TokenFile {
-    fn into_parser(self) -> Parser<Self::IntoIter> {
-        Parser::new(self.into_iter().peekable(), Position::new(0, 0))
+    type Iter = Vec<TokenTree>;
+
+    fn into_parser<'ctx>(mut self, context: ContextHandle<'ctx>) -> Parser<'ctx, Self::Iter> {
+        self.tokens.reverse();
+
+        Parser::new(self.tokens, context, Position::new(0, 0))
     }
 }

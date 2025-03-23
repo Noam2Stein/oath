@@ -2,7 +2,7 @@ use std::{cmp::Ordering, mem::replace};
 
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "an expr"]
 pub enum Expr {
     Ident(Ident),
@@ -20,7 +20,7 @@ pub enum Expr {
     Unknown(Span),
 }
 
-#[derive(Debug, Clone, Spanned, Desc)]
+#[derive(Debug, Clone, Spanned, ParseDesc)]
 #[desc = "a field ident"]
 pub enum FieldIdent {
     Ident(Ident),
@@ -28,7 +28,7 @@ pub enum FieldIdent {
     Unknown(Span),
 }
 
-#[derive(Debug, Clone, Peek, PeekOk, Spanned)]
+#[derive(Debug, Clone, Spanned, ParseDesc, )]
 #[desc = "a single side op"]
 pub enum ShsOp {
     Neg(punct!("-")),
@@ -67,10 +67,7 @@ pub enum MhsOp {
 }
 
 impl Expr {
-    pub fn parse_no_mhs(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> Self {
+    pub fn parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Self {
         let mut expr = Self::parse_base(parser, context);
 
         loop {
@@ -183,8 +180,11 @@ impl Parse for Expr {
     }
 }
 
-impl Peek for Expr {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for Expr {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<Ident>(context)
             || parser.peek::<ItemKind>(context)
             || parser.peek::<Literal>(context)

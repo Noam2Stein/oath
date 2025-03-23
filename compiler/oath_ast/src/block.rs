@@ -24,10 +24,7 @@ pub struct VarStmt {
 }
 
 impl Block {
-    pub fn parse_inner(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        _context: ContextHandle,
-    ) -> Self {
+    pub fn parse_inner(parser: &mut Parser<impl ParserIterator>) -> Self {
         Self {
             stmts: Vec::new(),
             ditch: false,

@@ -21,7 +21,7 @@ pub fn impl_desc(input: TokenStream) -> TokenStream {
     let desc = eval_desc(&input);
 
     quote! {
-        impl #impl_generics ::oath_parser::Desc for #ident #ty_generics #where_clause {
+        impl #impl_generics ::oath_parser::ParseDesc for #ident #ty_generics #where_clause {
             fn desc() -> &'static str {
                 #desc
             }

@@ -20,8 +20,8 @@ impl TryParse for GenericArgs {
     }
 }
 
-impl Peek for GenericArgs {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for GenericArgs {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Group<Angles>>(context)
     }
 }

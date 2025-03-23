@@ -66,8 +66,8 @@ impl ItemParse for Fn {
     }
 }
 
-impl Peek for Fn {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for Fn {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<keyword!("fn")>(context)
     }
 }
@@ -113,8 +113,8 @@ impl Parse for FnParam {
     }
 }
 
-impl Peek for FnParam {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for FnParam {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Ident>(context)
     }
 }

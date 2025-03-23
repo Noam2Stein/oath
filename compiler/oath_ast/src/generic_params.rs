@@ -28,8 +28,8 @@ impl TryParse for GenericParams {
     }
 }
 
-impl Peek for GenericParams {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for GenericParams {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Group<Angles>>(context)
     }
 }
@@ -77,10 +77,10 @@ impl Parse for GenericParam {
     }
 }
 
-impl Peek for GenericParam {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for GenericParam {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<Ident>(context)
     }
 }
 
-impl PeekOk for GenericParam {}
+impl OptionParse for GenericParam {}

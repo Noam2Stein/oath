@@ -88,8 +88,11 @@ impl ItemParse for Struct {
     }
 }
 
-impl Peek for Struct {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for Struct {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<keyword!("struct")>(context)
     }
 }
@@ -121,7 +124,6 @@ impl Parse for Fields {
             ));
 
             dbg!("fields end");
-            dbg!(parser.peek_span(), parser.peek_next().unwrap().span());
 
             Self::Unknown
         }
@@ -174,8 +176,11 @@ impl Parse for NamedField {
     }
 }
 
-impl Peek for NamedField {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for NamedField {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<Ident>(context)
     }
 }
@@ -196,8 +201,11 @@ impl Parse for UnnamedField {
     }
 }
 
-impl Peek for UnnamedField {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for UnnamedField {
+    fn detect(
+        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
+        context: ContextHandle,
+    ) -> bool {
         parser.peek::<Expr>(context)
     }
 }

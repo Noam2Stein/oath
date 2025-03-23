@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a spec"]
 pub struct Sys {
     pub vis: Vis,

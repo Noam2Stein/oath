@@ -59,8 +59,8 @@ impl ItemParse for Mod {
     }
 }
 
-impl Peek for Mod {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
+impl Detect for Mod {
+    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
         parser.peek::<keyword!("mod")>(context)
     }
 }

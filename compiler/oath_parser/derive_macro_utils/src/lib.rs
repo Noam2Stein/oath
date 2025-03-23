@@ -3,12 +3,12 @@ use quote::{format_ident, quote};
 use syn::{Data, DataEnum, DataStruct, DataUnion, DeriveInput, parse2};
 
 mod impl_desc;
+mod impl_detect;
 mod impl_parse;
-mod impl_peek;
 mod impl_try_parse;
 pub use impl_desc::*;
+pub use impl_detect::*;
 pub use impl_parse::*;
-pub use impl_peek::*;
 pub use impl_try_parse::*;
 
 pub fn impl_parser_trait(

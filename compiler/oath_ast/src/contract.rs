@@ -1,13 +1,13 @@
 use crate::*;
 
-#[derive(Debug, Clone, Default, Desc)]
+#[derive(Debug, Clone, Default, ParseDesc)]
 #[desc = "a contract"]
 pub struct Contract {
     pub promise: Vec<ContractItem>,
     pub require: Vec<ContractItem>,
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc, Detect)]
 #[desc = "a contract item"]
 pub struct ContractItem {
     pub target: Expr,
@@ -15,26 +15,20 @@ pub struct ContractItem {
 }
 
 impl Parse for Contract {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        let parser = &mut parser.until(|parser| parser.peek::<Group<Braces>>(context));
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        let parser = &mut parser.until(|parser| <BracesOrSemi<()>>::detect(parser));
 
         let mut output = Self::default();
 
         loop {
-            if parser
-                .parse::<Option<keyword!("promise")>>(context)
-                .is_some()
-            {
+            if let Some(_) = <Option<keyword!("promise")>>::parse(parser) {
                 output
                     .promise
-                    .append(&mut parser.parse_trl::<_, punct!(",")>(context));
-            } else if parser
-                .parse::<Option<keyword!("require")>>(context)
-                .is_some()
-            {
+                    .append(&mut parser.parse_trl::<_, punct!(",")>());
+            } else if let Some(_) = <Option<keyword!("require")>>::parse(parser) {
                 output
                     .require
-                    .append(&mut parser.parse_trl::<_, punct!(",")>(context));
+                    .append(&mut parser.parse_trl::<_, punct!(",")>());
             } else {
                 break;
             }
@@ -45,12 +39,12 @@ impl Parse for Contract {
 }
 
 impl Parse for ContractItem {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        let target = Expr::parse_no_mhs(parser, context);
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        let target = Expr::parse_no_mhs(parser);
 
-        match parser.try_parse::<punct!(":")>(context) {
-            Ok(ok) => ok,
-            Err(()) => {
+        match <Try<punct!(":")>>::parse(parser) {
+            Try::Success(_) => {}
+            Try::Failure => {
                 return Self {
                     target,
                     bounds: Expr::Unknown(parser.peek_span()),
@@ -58,18 +52,16 @@ impl Parse for ContractItem {
             }
         };
 
-        let bounds = parser.parse(context);
+        let bounds = Parse::parse(parser);
 
         Self { target, bounds }
     }
 }
-impl Peek for ContractItem {
-    fn peek(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<Expr>(context)
-    }
-}
 
 impl Contract {
+    pub fn is_empty(&self) -> bool {
+        self.promise.len() == 0 && self.require.len() == 0
+    }
     pub fn is_not_empty(&self) -> bool {
         self.promise.len() > 0 || self.require.len() > 0
     }

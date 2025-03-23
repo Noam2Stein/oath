@@ -1,23 +1,38 @@
-use std::iter::Peekable;
+use std::mem::{replace, MaybeUninit};
 
-use crate::*;
+use crate::{
+    parse_traits::{Detect, Parse},
+    *,
+};
 
 #[derive(Debug, Clone)]
-pub struct Parser<I: Iterator<Item = TokenTree>> {
-    iter: Peekable<I>,
+pub struct Parser<'ctx, I: ParserIterator> {
+    iter: I,
+    context: ContextHandle<'ctx>,
     last_span: Span,
 }
 
-pub struct ParserUntilIter<'p, I: Iterator<Item = TokenTree>, F: Fn(&mut Parser<I>) -> bool> {
-    parser: &'p mut Parser<I>,
-    f: F,
+pub trait ParserIterator {
+    fn next(&mut self) -> Option<TokenTree>;
+
+    fn peek(&self) -> Option<&TokenTree>;
 }
 
-impl<I: Iterator<Item = TokenTree>> Iterator for Parser<I> {
-    type Item = TokenTree;
+pub struct ParserUntil<'ctx, 'p, I: ParserIterator> {
+    parser: &'p mut Parser<'ctx, I>,
+    f: fn(&Parser<'ctx, I>) -> bool,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        dbg!(self.iter.peek());
+impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
+    pub fn new(iter: I, context: ContextHandle<'ctx>, start: Position) -> Self {
+        Self {
+            iter,
+            context,
+            last_span: Span::from_start_len(start, 1),
+        }
+    }
+
+    pub fn next(&mut self) -> Option<TokenTree> {
         if let Some(next) = self.iter.next() {
             self.last_span = next.span();
             Some(next)
@@ -25,290 +40,91 @@ impl<I: Iterator<Item = TokenTree>> Iterator for Parser<I> {
             None
         }
     }
-}
-
-impl<I: Iterator<Item = TokenTree>> Parser<I> {
-    pub fn new(iter: Peekable<I>, start: Position) -> Self {
-        Self {
-            iter,
-            last_span: Span::from_start_len(start, 1),
-        }
-    }
-
-    pub fn until<'p, F: Fn(&mut Self) -> bool + 'p>(
-        &'p mut self,
-        f: F,
-    ) -> Parser<ParserUntilIter<'p, I, F>> {
-        Parser {
-            last_span: self.last_span,
-            iter: ParserUntilIter { parser: self, f }.peekable(),
-        }
-    }
-
-    pub fn peek_next(&mut self) -> Option<&TokenTree> {
+    pub fn peek(&self) -> Option<&TokenTree> {
         self.iter.peek()
     }
-    pub fn peek_span(&mut self) -> Span {
-        if let Some(next) = self.peek_next() {
+    pub fn context(&self) -> ContextHandle<'ctx> {
+        self.context
+    }
+
+    pub fn peek_span(&self) -> Span {
+        if let Some(next) = self.peek() {
             let span = next.span();
+
             if span.start().line == self.last_span.end().line {
-                dbg!("return span");
                 span
             } else {
-                dbg!("return last");
                 Span::from_start_len(self.last_span.end(), 1)
             }
         } else {
-            dbg!("return last");
             Span::from_start_len(self.last_span.end(), 1)
         }
     }
-    pub fn is_empty(&mut self) -> bool {
-        self.peek_next().is_none()
+    pub fn is_empty(&self) -> bool {
+        self.peek().is_none()
     }
-    pub fn is_left(&mut self) -> bool {
-        self.peek_next().is_some()
-    }
-
-    pub fn parse<P: Parse>(&mut self, context: ContextHandle) -> P {
-        P::parse(self, context)
-    }
-    pub fn try_parse<P: TryParse>(&mut self, context: ContextHandle) -> Result<P, ()> {
-        P::try_parse(self, context)
-    }
-    pub fn peek<P: Peek>(&mut self, context: ContextHandle) -> bool {
-        P::peek(self, context)
-    }
-
-    pub fn expect_empty(&mut self, context: ContextHandle) {
-        if let Some(next) = self.next() {
-            let mut span = next.span();
-
-            while let Some(next) = self.next() {
-                span = span.connect(next.span());
-            }
-
-            context.push_error(Error::new("Syntax Error: unexpected tokens", span));
-        }
-    }
-    pub fn parse_all<P: Parse>(&mut self, context: ContextHandle) -> P {
-        let output = self.parse(context);
-        self.expect_empty(context);
-
-        output
-    }
-    pub fn try_parse_all<P: TryParse>(&mut self, context: ContextHandle) -> Result<P, ()> {
-        let output = self.try_parse(context)?;
-        self.expect_empty(context);
-
-        Ok(output)
+    pub fn is_not_empty(&self) -> bool {
+        self.peek().is_some()
     }
 
     pub fn skip_until(&mut self, peek: impl Fn(&mut Self) -> bool) {
-        while self.peek_next().is_some() && !peek(self) {
+        while self.peek().is_some() && !peek(self) {
             self.next();
         }
     }
 
-    pub fn parse_rep<T: Peek>(&mut self, context: ContextHandle) -> Vec<T>
+    pub fn until<'p>(&'p mut self, f: fn(&Self) -> bool) -> Parser<'ctx, ParserUntil<'ctx, 'p, I>> {
+        Parser {
+            context: self.context,
+            last_span: self.last_span,
+            iter: ParserUntil { parser: self, f },
+        }
+    }
+
+    pub fn parse_rep<T: Detect>(&mut self) -> Vec<T>
     where
         Option<T>: Parse,
     {
         let mut vec = Vec::new();
 
-        while let Some(value) = self.parse(context) {
+        while let Some(value) = Parse::parse(self) {
             vec.push(value);
         }
 
         vec
     }
-    pub fn parse_sep<T: Peek + Parse, S: Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Result<Vec<T>, ()>
+    pub fn parse_sep<T: Detect + Parse, S: Detect>(&mut self) -> Try<Vec<T>>
     where
         Option<S>: Parse,
     {
-        if !self.peek::<T>(context) {
-            context.push_error(Error::new(
+        if !T::detect(self) {
+            self.context().push_error(Error::new(
                 format!("Syntax Error: expected {}", T::desc()),
                 self.peek_span(),
             ));
 
-            return Err(());
+            return Try::Failure;
         }
 
-        let mut vec = vec![self.parse(context)];
+        let mut vec = vec![T::parse(self)];
 
-        while let Some(_) = self.parse::<Option<S>>(context) {
-            vec.push(self.parse(context));
+        while let Some(_) = Option::<S>::parse(self) {
+            vec.push(T::parse(self));
         }
 
-        Ok(vec)
+        Try::Success(vec)
     }
-    pub fn parse_trl<T: Peek + Parse, S: Peek>(&mut self, context: ContextHandle) -> Vec<T>
+    pub fn parse_trl<T: Detect + Parse, S: Detect>(&mut self) -> Vec<T>
     where
         Option<S>: Parse,
     {
         let mut vec = Vec::new();
 
-        while self.peek::<T>(context) {
-            vec.push(self.parse(context));
+        while let Some(value) = Option::<T>::parse(self) {
+            vec.push(value);
 
-            if let None = self.parse::<Option<S>>(context) {
+            if let None = Option::<S>::parse(self) {
                 break;
-            }
-        }
-
-        vec
-    }
-
-    pub fn try_parse_rep<T: Peek + TryParse>(&mut self, context: ContextHandle) -> Vec<PResult<T>> {
-        let mut vec = Vec::new();
-
-        while self.peek::<T>(context) {
-            vec.push(self.try_parse(context));
-        }
-
-        vec
-    }
-    pub fn try_parse_sep<T: Peek + TryParse, S: Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> PResult<Vec<PResult<T>>>
-    where
-        Option<S>: Parse,
-    {
-        if !self.peek::<T>(context) {
-            context.push_error(Error::new(
-                format!("Syntax Error: expected {}", T::desc()),
-                self.peek_span(),
-            ));
-
-            return Err(());
-        }
-
-        let mut vec = vec![self.try_parse(context)];
-
-        while let Some(_) = self.parse::<Option<S>>(context) {
-            vec.push(self.try_parse(context));
-        }
-
-        Ok(vec)
-    }
-    pub fn try_parse_trl<T: Peek + TryParse, S: Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Vec<PResult<T>>
-    where
-        Option<S>: Parse,
-    {
-        let mut vec = Vec::new();
-
-        while self.peek::<T>(context) {
-            vec.push(self.try_parse(context));
-
-            if let None = self.parse::<Option<S>>(context) {
-                break;
-            }
-        }
-
-        vec
-    }
-
-    pub fn parse_rep_all<T: Parse>(&mut self, context: ContextHandle) -> Vec<T> {
-        let mut vec = Vec::new();
-
-        while self.is_left() {
-            vec.push(self.parse(context));
-        }
-
-        vec
-    }
-    pub fn parse_trl_all<T: Parse + Peek, S: TryParse + Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Vec<T> {
-        let mut vec = Vec::new();
-
-        while self.is_left() {
-            vec.push(self.parse(context));
-
-            if self.is_left() {
-                match self.try_parse::<S>(context) {
-                    Ok(_) => {}
-                    Err(()) => {
-                        while self.is_left() && !self.peek::<S>(context) {
-                            self.next();
-                        }
-
-                        if self.is_left() {
-                            let _ = self.try_parse::<S>(context);
-                        }
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-
-        vec
-    }
-
-    pub fn try_parse_rep_all<T: TryParse + Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Vec<PResult<T>> {
-        let mut vec = Vec::new();
-
-        while self.is_left() {
-            let value = self.try_parse(context);
-            if let Ok(value) = value {
-                vec.push(Ok(value));
-            } else {
-                vec.push(Err(()));
-                while self.is_left() && !self.peek::<T>(context) {
-                    self.next();
-                }
-            }
-        }
-
-        vec
-    }
-    pub fn try_parse_trl_all<T: TryParse + Peek, S: TryParse + Peek>(
-        &mut self,
-        context: ContextHandle,
-    ) -> Vec<PResult<T>> {
-        let mut vec = Vec::new();
-
-        while self.is_left() {
-            match self.try_parse(context) {
-                Ok(value) => {
-                    vec.push(Ok(value));
-
-                    if self.is_left() {
-                        match self.try_parse::<S>(context) {
-                            Ok(_) => {}
-                            Err(()) => {
-                                while self.is_left() && !self.peek::<S>(context) {
-                                    self.next();
-                                }
-
-                                if self.is_left() {
-                                    let _ = self.try_parse::<S>(context);
-                                }
-                            }
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                Err(()) => {
-                    vec.push(Err(()));
-                    while self.is_left() && !self.peek::<T>(context) && !self.peek::<S>(context) {
-                        self.next();
-                    }
-                }
             }
         }
 
@@ -316,16 +132,56 @@ impl<I: Iterator<Item = TokenTree>> Parser<I> {
     }
 }
 
-impl<'p, I: Iterator<Item = TokenTree>, F: Fn(&mut Parser<I>) -> bool> Iterator
-    for ParserUntilIter<'p, I, F>
-{
-    type Item = TokenTree;
+impl<'ctx, I: ParserIterator> Drop for Parser<'ctx, I> {
+    #[allow(dropping_copy_types)]
+    #[allow(invalid_value)]
+    fn drop(&mut self) {
+        if let Some(next) = self.next() {
+            let mut span = next.span();
+            while let Some(next) = self.next() {
+                span = span.connect(next.span())
+            }
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if (self.f)(self.parser) {
+            self.context
+                .push_error(Error::new("Syntax Error: unexpected tokens", span));
+        }
+
+        drop(replace(&mut self.iter, unsafe {
+            MaybeUninit::uninit().assume_init()
+        }));
+        drop(replace(&mut self.context, unsafe {
+            MaybeUninit::uninit().assume_init()
+        }));
+        drop(replace(&mut self.last_span, unsafe {
+            MaybeUninit::uninit().assume_init()
+        }));
+    }
+}
+
+impl<'ctx, 'p, I: ParserIterator> ParserIterator for ParserUntil<'ctx, 'p, I> {
+    fn next(&mut self) -> Option<TokenTree> {
+        if (self.f)(&self.parser) {
             None
         } else {
             self.parser.next()
         }
+    }
+
+    fn peek(&self) -> Option<&TokenTree> {
+        if (self.f)(&self.parser) {
+            None
+        } else {
+            self.parser.peek()
+        }
+    }
+}
+
+impl ParserIterator for Vec<TokenTree> {
+    fn next(&mut self) -> Option<TokenTree> {
+        self.pop()
+    }
+
+    fn peek(&self) -> Option<&TokenTree> {
+        self.last()
     }
 }
