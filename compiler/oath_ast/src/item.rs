@@ -23,7 +23,7 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-#[derive(Debug, Clone, Spanned, Peek, Display)]
+#[derive(Debug, Clone, Spanned, ParseDesc, Parse, Detect, Display)]
 #[desc = "an item-type"]
 pub enum ItemKeyword {
     Struct(keyword!("struct")),
@@ -44,7 +44,7 @@ pub enum ItemKeyword {
     Unknown(Span),
 }
 
-#[derive(Debug, Clone, Desc, PeekOk)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item-type"]
 pub struct ItemKind {
     pub keywords: Vec<ItemKeyword>,
@@ -52,11 +52,10 @@ pub struct ItemKind {
 
 pub trait ItemParse: Sized {
     fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
+        parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
         target_kind: ItemKind,
-    ) -> PResult<Self>;
+    ) -> Self;
 }
 
 impl ItemModifiers {

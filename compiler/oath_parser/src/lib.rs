@@ -11,4 +11,4 @@ use oath_context::*;
 use oath_src::*;
 use oath_tokenizer::*;
 
-pub use oath_parser_proc_macros::{Detect, Parse, ParseDesc, PeekOk, TryParse};
+pub use oath_parser_proc_macros::{Detect, Parse, ParseDesc};
