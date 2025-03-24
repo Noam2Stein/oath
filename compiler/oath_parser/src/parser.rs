@@ -139,7 +139,7 @@ impl<'ctx, I: ParserIterator> Drop for Parser<'ctx, I> {
         if let Some(next) = self.next() {
             let mut span = next.span();
             while let Some(next) = self.next() {
-                span = span.connect(next.span())
+                span = span + next.span()
             }
 
             self.context

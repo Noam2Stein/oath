@@ -76,24 +76,13 @@ fn detect_struct(data: DataStruct) -> TokenStream {
 }
 
 pub fn detect_enum(data: DataEnum) -> TokenStream {
-    if let Some(attr) = data.variants.iter().find_map(|variant| {
-        variant
-            .attrs
-            .iter()
-            .find(|attr| attr.path().is_ident("fallback"))
-    }) {
-        return Error::new(attr.span(), "`fallback` is not allowed in detectable enums")
-            .to_compile_error();
-    };
-
     let detect_variants = data
         .variants
         .iter()
         .filter(|variant| {
-            !variant
-                .attrs
-                .iter()
-                .any(|attr| attr.path().is_ident("error_fallback"))
+            !variant.attrs.iter().any(|attr| {
+                attr.path().is_ident("error_fallback") || attr.path().is_ident("fallback")
+            })
         })
         .map(|variant| detect_fields(variant.fields.clone(), &variant.attrs, variant.span()));
 

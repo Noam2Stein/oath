@@ -1,12 +1,12 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a fn"]
 pub struct Fn {
     pub vis: Vis,
     pub con: Option<keyword!("con")>,
     pub raw: Option<keyword!("raw")>,
-    pub ident: Ident,
+    pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub params: Vec<FnParam>,
     pub output: Option<Expr>,
@@ -14,45 +14,73 @@ pub struct Fn {
     pub block: BracesOrSemi<()>,
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a fn param"]
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
-    pub ident: PResult<Ident>,
+    pub ident: Try<Ident>,
     pub type_: Expr,
     pub bounds: Option<Expr>,
 }
 
 impl ItemParse for Fn {
     fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
+        parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
         target_kind: ItemKind,
-    ) -> PResult<Self> {
+    ) -> Self {
         let vis = modifiers.take_vis();
         let con = modifiers.take_con();
         let raw = modifiers.take_raw();
 
-        target_kind.expect_empty(context, Self::desc());
+        target_kind.expect_empty(parser.context(), Self::desc());
 
-        let ident = parser.try_parse(context)?;
-        let generics = parser.parse(context);
-        let params = parser
-            .try_parse::<Group<Parens>>(context)?
-            .into_parser()
-            .parse_trl_all::<_, punct!(",")>(context);
+        let ident = match Parse::parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => {
+                parser.skip_until(|parser| <punct!(",")>::detect(parser));
 
-        let output = if let Some(_) = parser.parse::<Option<punct!("->")>>(context) {
-            Some(parser.parse(context))
-        } else {
-            None
+                return Self {
+                    vis,
+                    con,
+                    raw,
+                    ident: Try::Failure,
+                    generics: None,
+                    params: Vec::new(),
+                    output: None,
+                    contract: Default::default(),
+                    block: BracesOrSemi::Semi,
+                };
+            }
         };
 
-        let contract = parser.parse(context);
-        let block = parser.parse(context);
+        let generics = Parse::parse(parser);
 
-        Ok(Self {
+        let params = match <Try<Group<Parens>>>::parse(parser) {
+            Try::Success(group) => group
+                .into_parser(parser.context())
+                .parse_trl::<_, punct!(",")>(),
+            Try::Failure => {
+                return Self {
+                    vis,
+                    con,
+                    raw,
+                    ident,
+                    generics,
+                    params: Vec::new(),
+                    output: None,
+                    contract: Default::default(),
+                    block: BracesOrSemi::Semi,
+                }
+            }
+        };
+
+        let output = <Option<punct!("->")>>::parse(parser).map(|_| Parse::parse(parser));
+
+        let contract = Parse::parse(parser);
+        let block = Parse::parse(parser);
+
+        Self {
             raw,
             vis,
             con,
@@ -62,47 +90,40 @@ impl ItemParse for Fn {
             params,
             output,
             block,
-        })
-    }
-}
-
-impl Detect for Fn {
-    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<keyword!("fn")>(context)
+        }
     }
 }
 
 impl Parse for FnParam {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        let mut_ = parser.parse(context);
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        let mut_ = Parse::parse(parser);
 
-        let ident = match parser.try_parse(context) {
-            Ok(ok) => Ok(ok),
-            Err(()) => {
-                parser.skip_until(|parser| parser.peek::<punct!(",")>(context));
+        let ident = match Parse::parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => {
+                parser.skip_until(|parser| <punct!(",")>::detect(parser));
+
                 return Self {
                     mut_,
-                    ident: Err(()),
-                    type_: Expr::Unknown(parser.peek_span()),
+                    ident: Try::Failure,
+                    type_: Expr::Unknown,
                     bounds: None,
                 };
             }
         };
 
-        let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
-            parser.parse(context)
+        let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
+            Parse::parse(parser)
         } else {
-            context.push_error(SyntaxError::Expected(
+            parser.context().push_error(SyntaxError::Expected(
                 parser.peek_span(),
-                "`param_ident-Param_Type`",
+                "`param_ident-ParamType`",
             ));
 
-            Expr::Unknown(parser.peek_span())
+            Expr::Unknown
         };
 
-        let bounds = parser
-            .parse::<Option<punct!(":")>>(context)
-            .map(|_| parser.parse(context));
+        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
 
         Self {
             mut_,
@@ -114,7 +135,7 @@ impl Parse for FnParam {
 }
 
 impl Detect for FnParam {
-    fn detect(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> bool {
-        parser.peek::<Ident>(context)
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Ident::detect(parser) || <keyword!("mut")>::detect(parser)
     }
 }

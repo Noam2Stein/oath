@@ -12,30 +12,25 @@ pub struct Impl {
 
 impl ItemParse for Impl {
     fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
+        parser: &mut Parser<impl ParserIterator>,
         _modifiers: &mut ItemModifiers,
         target_kind: ItemKind,
-    ) -> PResult<Self> {
-        target_kind.expect_empty(context, Self::desc());
+    ) -> Self {
+        target_kind.expect_empty(parser.context(), Self::desc());
 
-        let generics = parser.parse(context);
-        let item = parser.parse(context);
-        let target = if let Some(_) = parser.parse::<Option<keyword!("for")>>(context) {
-            Some(parser.parse(context))
-        } else {
-            None
-        };
-        let contract = parser.parse(context);
+        let generics = Parse::parse(parser);
+        let item = Parse::parse(parser);
+        let target = <Option<keyword!("for")>>::parse(parser).map(|_| Parse::parse(parser));
+        let contract = Parse::parse(parser);
 
-        let items = parser.parse(context);
+        let items = Parse::parse(parser);
 
-        Ok(Self {
+        Self {
             item,
             target,
             generics,
             contract,
             items,
-        })
+        }
     }
 }

@@ -2,22 +2,21 @@ use std::{cmp::Ordering, mem::replace};
 
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, Spanned, ParseDesc)]
 #[desc = "an expr"]
 pub enum Expr {
     Ident(Ident),
     ItemKind(ItemKind),
     Literal(Literal),
-    Tuple(Vec<Expr>, Span),
-    Array(Vec<Expr>, Span),
+    Tuple(Vec<Expr>, #[span] Span),
+    Array(Vec<Expr>, #[span] Span),
     Block(Block),
     Field(Box<Expr>, FieldIdent),
-    Index(Box<Expr>, Box<Expr>, Span),
-    Call(Box<Expr>, Vec<Expr>, Span),
+    Index(Box<Expr>, Box<Expr>, #[span] Span),
+    Call(Box<Expr>, Vec<Expr>, #[span] Span),
     Generics(Box<Expr>, GenericArgs),
     ShsOp(ShsOp, Box<Expr>),
     MhsOp(Box<Expr>, MhsOp, Box<Expr>),
-    Unknown(Span),
 }
 
 #[derive(Debug, Clone, Spanned, ParseDesc)]
@@ -81,19 +80,19 @@ impl Expr {
                     Parse::parse(parser),
                 )
             } else if let Some(group) = <Option<Group<Brackets>>>::parse(parser) {
-                let span = expr.span().connect(group.span());
+                let span = expr.span() + group.span();
                 expr = Self::Index(
                     Box::new(replace(&mut expr, Self::fillin())),
                     Parse::parse(&mut group.into_parser(parser.context())),
                     span,
                 )
             } else if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
-                let span = expr.span().connect(group.span());
+                let span = expr.span() + group.span();
                 expr = Self::Call(
                     Box::new(replace(&mut expr, Self::fillin())),
                     group
                         .into_parser(parser.context())
-                        .parse_trl_all::<_, punct!(",")>(),
+                        .parse_trl::<_, punct!(",")>(),
                     span,
                 )
             } else if let Some(generics) = <Option<GenericArgs>>::parse(parser) {
@@ -125,13 +124,13 @@ impl Expr {
                 DelimiterKind::Parens => Self::Tuple(
                     group
                         .into_parser(parser.context())
-                        .parse_trl_all::<_, punct!(",")>(parser),
+                        .parse_trl::<_, punct!(",")>(),
                     span,
                 ),
                 DelimiterKind::Brackets => Self::Array(
                     group
                         .into_parser(parser.context())
-                        .parse_trl_all::<_, punct!(",")>(parser),
+                        .parse_trl::<_, punct!(",")>(),
                     span,
                 ),
                 DelimiterKind::Braces => {
@@ -142,7 +141,7 @@ impl Expr {
                         .context()
                         .push_error(SyntaxError::Expected(group.span(), Self::desc()));
 
-                    Self::Unknown(group.span())
+                    Self::Unknown
                 }
             }
         } else if let Some(value) = <Option<ItemKind>>::parse(parser) {
@@ -160,7 +159,7 @@ impl Expr {
                 <punct!(":")>::detect(parser) || <punct!(",")>::detect(parser)
             });
 
-            return Self::Unknown(span);
+            return Self::Unknown;
         }
     }
 }
@@ -201,26 +200,6 @@ impl Detect for Expr {
             || Group::<Braces>::detect(parser)
             || Group::<Brackets>::detect(parser)
             || ShsOp::detect(parser)
-    }
-}
-
-impl Spanned for Expr {
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(a) => a.span(),
-            Self::ItemKind(a) => a.span(),
-            Self::Literal(a) => a.span(),
-            Self::Tuple(_, span) => *span,
-            Self::Array(_, span) => *span,
-            Self::Block(a) => a.span(),
-            Self::Generics(a, b) => a.span().connect(b.span()),
-            Self::Field(a, b) => a.span().connect(b.span()),
-            Self::Index(_, _, span) => *span,
-            Self::Call(_, _, span) => *span,
-            Self::ShsOp(a, b) => a.span().connect(b.span()),
-            Self::MhsOp(a, b, c) => a.span().connect(b.span().connect(c.span())),
-            Self::Unknown(span) => *span,
-        }
     }
 }
 

@@ -9,3 +9,9 @@ impl Spanned for Span {
         *self
     }
 }
+
+impl<T: Spanned> Spanned for Box<T> {
+    fn span(&self) -> Span {
+        T::span(&self)
+    }
+}

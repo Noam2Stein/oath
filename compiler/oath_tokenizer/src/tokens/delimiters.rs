@@ -51,7 +51,7 @@ impl Seal for Delimiters {}
 impl Spanned for Delimiters {
     #[inline(always)]
     fn span(&self) -> Span {
-        self.open_span().connect(self.close_span())
+        self.open_span() + self.close_span()
     }
 }
 
@@ -89,7 +89,7 @@ with_token_set!(
         impl Spanned for $delim_type {
             #[inline(always)]
             fn span(&self) -> Span {
-                self.open_span().connect(self.close_span())
+                self.open_span() + self.close_span()
             }
         }
 

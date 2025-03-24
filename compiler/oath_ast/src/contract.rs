@@ -47,7 +47,7 @@ impl Parse for ContractItem {
             Try::Failure => {
                 return Self {
                     target,
-                    bounds: Expr::Unknown(parser.peek_span()),
+                    bounds: Expr::Unknown,
                 }
             }
         };

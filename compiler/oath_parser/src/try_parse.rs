@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Try<T> {
     Success(T),
     Failure,

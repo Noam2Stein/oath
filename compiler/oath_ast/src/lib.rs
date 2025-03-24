@@ -51,6 +51,6 @@ pub trait ParseAstExt: Seal {
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {
     fn parse_ast(self, context: ContextHandle) -> SyntaxTree {
-        self.into_parser().parse(context)
+        Parse::parse(&mut self.into_parser(context))
     }
 }

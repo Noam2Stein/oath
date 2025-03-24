@@ -1,16 +1,16 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a struct"]
 pub struct Struct {
     pub vis: Vis,
-    pub ident: Ident,
+    pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
     pub fields: Fields,
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "fields"]
 pub enum Fields {
     Named(Vec<NamedField>),
@@ -18,16 +18,16 @@ pub enum Fields {
     Unknown,
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a named fiend"]
 pub struct NamedField {
     pub vis: Vis,
-    pub ident: PResult<Ident>,
+    pub ident: Try<Ident>,
     pub type_: Expr,
     pub bounds: Option<Expr>,
 }
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "an unnamed fiend"]
 pub struct UnnamedField {
     pub vis: Vis,
@@ -37,93 +37,95 @@ pub struct UnnamedField {
 
 impl ItemParse for Struct {
     fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
+        parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
         target_kind: ItemKind,
-    ) -> PResult<Self> {
+    ) -> Self {
         let vis = modifiers.take_vis();
 
-        target_kind.expect_empty(context, Self::desc());
+        target_kind.expect_empty(parser.context(), Self::desc());
 
-        let ident = parser.try_parse(context)?;
-        let generics = parser.parse(context);
-        let contract = parser.parse::<Contract>(context);
+        let ident = match Parse::parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => {
+                return Self {
+                    vis,
+                    ident: Try::Failure,
+                    generics: None,
+                    contract: Contract::default(),
+                    fields: Fields::Unknown,
+                }
+            }
+        };
+
+        let generics = Parse::parse(parser);
+        let contract = Contract::parse(parser);
 
         if contract.is_not_empty() {
-            let fields = if let Ok(group) = parser.try_parse::<Group<Braces>>(context) {
-                Fields::Named(group.into_parser().parse_trl_all::<_, punct!(",")>(context))
+            let fields = if let Try::Success(group) = <Try<Group<Braces>>>::parse(parser) {
+                Fields::Named(
+                    group
+                        .into_parser(parser.context())
+                        .parse_trl::<_, punct!(",")>(),
+                )
             } else {
                 Fields::Unknown
             };
 
-            Ok(Self {
+            Self {
                 vis,
                 ident,
                 generics,
                 contract,
                 fields,
-            })
+            }
         } else {
-            let fields = parser.parse(context);
+            let fields = Fields::parse(parser);
 
             let contract = if let Fields::Unnamed(_) = fields {
-                parser.parse(context)
+                Parse::parse(parser)
             } else {
                 contract
             };
 
             if let Fields::Unnamed(_) = fields {
-                let _ = parser.try_parse::<punct!(";")>(context);
+                <Try<punct!(";")>>::parse(parser);
             };
 
-            Ok(Self {
+            Self {
                 vis,
                 ident,
                 generics,
                 contract,
                 fields,
-            })
+            }
         }
     }
 }
 
-impl Detect for Struct {
-    fn detect(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool {
-        parser.peek::<keyword!("struct")>(context)
-    }
-}
-
 impl Parse for Fields {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        dbg!("fields start");
-
-        if let Some(group) = parser.parse::<Option<Group<Braces>>>(context) {
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
             Self::Named(
                 group
-                    .into_parser()
-                    .parse_trl_all::<_, punct!(",")>(context)
+                    .into_parser(parser.context())
+                    .parse_trl::<_, punct!(",")>()
                     .into_iter()
                     .collect(),
             )
-        } else if let Some(group) = parser.parse::<Option<Group<Parens>>>(context) {
+        } else if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
             Self::Unnamed(
                 group
-                    .into_parser()
-                    .parse_trl_all::<_, punct!(",")>(context)
+                    .into_parser(parser.context())
+                    .parse_trl::<_, punct!(",")>()
                     .into_iter()
                     .collect(),
             )
         } else {
-            context.push_error(SyntaxError::Expected(
+            parser.context().push_error(SyntaxError::Expected(
                 parser.peek_span(),
                 "either `{ }` or `( )`",
             ));
-
-            dbg!("fields end");
 
             Self::Unknown
         }
@@ -131,41 +133,35 @@ impl Parse for Fields {
 }
 
 impl Parse for NamedField {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        let vis = parser.parse(context);
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        let vis = Vis::parse(parser);
 
-        let ident = match parser.try_parse(context) {
-            Ok(ok) => Ok(ok),
-            Err(_) => {
-                while parser.peek_next().is_some() && !parser.peek::<punct!(",")>(context) {
-                    parser.next();
-                }
+        let ident = match Parse::parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => {
+                parser.skip_until(|parser| <punct!(",")>::detect(parser));
 
                 return Self {
                     vis,
-                    ident: Err(()),
-                    type_: Expr::Unknown(parser.peek_span()),
+                    ident: Try::Failure,
+                    type_: Expr::Unknown,
                     bounds: None,
                 };
             }
         };
 
-        let type_ = if let Some(_) = parser.parse::<Option<punct!("-")>>(context) {
-            parser.parse(context)
+        let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
+            Expr::parse_no_mhs(parser)
         } else {
-            context.push_error(SyntaxError::Expected(
+            parser.context().push_error(SyntaxError::Expected(
                 parser.peek_span(),
                 "`ParamIdent-ParamType`",
             ));
 
-            Expr::Unknown(parser.peek_span())
+            Expr::Unknown
         };
 
-        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            Some(parser.parse(context))
-        } else {
-            None
-        };
+        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
 
         Self {
             vis,
@@ -177,35 +173,25 @@ impl Parse for NamedField {
 }
 
 impl Detect for NamedField {
-    fn detect(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool {
-        parser.peek::<Ident>(context)
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Ident::detect(parser) || Vis::detect(parser)
     }
 }
 
 impl Parse for UnnamedField {
-    fn parse(parser: &mut Parser<impl Iterator<Item = TokenTree>>, context: ContextHandle) -> Self {
-        let vis = parser.parse(context);
+    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+        let vis = Vis::parse(parser);
 
-        let type_ = parser.parse(context);
+        let type_ = Expr::parse_no_mhs(parser);
 
-        let bounds = if let Some(_) = parser.parse::<Option<punct!(":")>>(context) {
-            Some(parser.parse(context))
-        } else {
-            None
-        };
+        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
 
         Self { vis, type_, bounds }
     }
 }
 
 impl Detect for UnnamedField {
-    fn detect(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
-    ) -> bool {
-        parser.peek::<Expr>(context)
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Expr::detect(parser) || Vis::detect(parser)
     }
 }

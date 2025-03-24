@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign};
+
 use crate::Position;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,12 +36,22 @@ impl Span {
     pub fn end(self) -> Position {
         self.end
     }
+}
 
-    #[inline(always)]
-    pub fn connect(self, other: Self) -> Self {
+impl Add for Span {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
         Self {
-            start: self.start.min(other.start),
-            end: self.end.max(other.end),
+            start: self.start.min(rhs.start),
+            end: self.end.max(rhs.end),
         }
+    }
+}
+
+impl AddAssign for Span {
+    fn add_assign(&mut self, rhs: Self) {
+        self.start = self.start.min(rhs.start);
+        self.end = self.end.max(rhs.end);
     }
 }

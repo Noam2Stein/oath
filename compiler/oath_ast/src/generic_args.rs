@@ -8,7 +8,7 @@ impl Parse for GenericArgs {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
         let group = match <Try<Group<Angles>>>::parse(parser) {
             Try::Success(success) => success,
-            Try::Failure => Self(Vec::new(), parser.peek_span()),
+            Try::Failure => return Self(Vec::new(), parser.peek_span()),
         };
 
         let span = group.span();
@@ -16,7 +16,7 @@ impl Parse for GenericArgs {
         Self(
             group
                 .into_parser(parser.context())
-                .parse_trl_all::<_, punct!(",")>(),
+                .parse_trl::<_, punct!(",")>(),
             span,
         )
     }

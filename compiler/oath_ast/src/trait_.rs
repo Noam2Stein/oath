@@ -1,11 +1,11 @@
 use crate::*;
 
-#[derive(Debug, Clone, Desc)]
+#[derive(Debug, Clone, ParseDesc)]
 #[desc = "a trait"]
 pub struct Trait {
     pub vis: Vis,
-    pub target: ItemKind,
-    pub ident: Ident,
+    pub target_kind: ItemKind,
+    pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
     pub items: BracesOrSemi<ModContent>,
@@ -13,25 +13,38 @@ pub struct Trait {
 
 impl ItemParse for Trait {
     fn item_parse(
-        parser: &mut Parser<impl Iterator<Item = TokenTree>>,
-        context: ContextHandle,
+        parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
         target_kind: ItemKind,
-    ) -> PResult<Self> {
+    ) -> Self {
         let vis = modifiers.take_vis();
 
-        let ident = parser.try_parse(context)?;
-        let generics = parser.parse(context);
-        let contract = parser.parse(context);
-        let items = parser.parse(context);
+        let ident = match Parse::parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => {
+                return Self {
+                    vis,
+                    target_kind,
+                    ident: Try::Failure,
+                    generics: None,
+                    contract: Contract::default(),
+                    items: BracesOrSemi::Semi,
+                }
+            }
+        };
 
-        Ok(Self {
+        let generics = Parse::parse(parser);
+        let contract = Parse::parse(parser);
+
+        let items = Parse::parse(parser);
+
+        Self {
             vis,
-            target: target_kind,
+            target_kind,
             ident,
             generics,
             contract,
             items,
-        })
+        }
     }
 }
