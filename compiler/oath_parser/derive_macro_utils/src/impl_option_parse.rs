@@ -4,12 +4,12 @@ use syn::{DataEnum, DataStruct, Error, Field, Fields, parse_quote_spanned, spann
 
 use crate::impl_parser_trait;
 
-pub fn impl_parse(input: TokenStream) -> TokenStream {
+pub fn impl_option_parse(input: TokenStream) -> TokenStream {
     impl_parser_trait(
         input.into(),
         "oath_parser",
         "Parse",
-        |ident| quote! { #ident },
+        |ident| quote_spanned! { ident.span() => Option<#ident> },
         "parse",
         quote! {
             parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>,
@@ -23,14 +23,21 @@ pub fn impl_parse(input: TokenStream) -> TokenStream {
     )
 }
 
-fn parse_fields(path: TokenStream, fields: &Fields) -> TokenStream {
+fn option_parse_fields(path: TokenStream, fields: &Fields) -> TokenStream {
     match fields {
         Fields::Named(fields) => {
             let fields = fields.named.iter().map(parse_field);
 
             quote! {
-                #path {
-                    #(#fields,)*
+                if let Some(first_field) = <Option<#first_field_type> as ::oath_parser::Parse>::parse(parser) {
+                    Some(
+                        #path {
+                            #first_field_ident: first_field,
+                            #(#fields,)*
+                        }
+                    )
+                } else {
+                    None
                 }
             }
         }
@@ -150,7 +157,7 @@ fn parse_field(field: &Field) -> TokenStream {
 }
 
 fn parse_struct(data: DataStruct) -> TokenStream {
-    parse_fields(quote! { Self }, &data.fields)
+    option_parse_fields(quote! { Self }, &data.fields)
 }
 
 fn parse_enum(data: DataEnum) -> TokenStream {
@@ -237,7 +244,7 @@ fn parse_enum(data: DataEnum) -> TokenStream {
                 Self::#variant_ident(span)
             }
         } else {
-            parse_fields(quote! { Self::#variant_ident }, &fallback_variant.fields)
+            option_parse_fields(quote! { Self::#variant_ident }, &fallback_variant.fields)
         }
     } else {
         quote! {

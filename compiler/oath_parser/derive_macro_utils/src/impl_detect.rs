@@ -1,9 +1,6 @@
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::{ToTokens, quote, quote_spanned};
-use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Meta, parse2,
-    spanned::Spanned,
-};
+use syn::{Attribute, DataEnum, DataStruct, Error, Fields, Meta, spanned::Spanned};
 
 use crate::impl_parser_trait;
 
@@ -12,6 +9,7 @@ pub fn impl_detect(input: TokenStream) -> TokenStream {
         input.into(),
         "oath_parser",
         "Detect",
+        |ident| quote! { #ident },
         "detect",
         quote! {
             parser: &::oath_parser::Parser<impl ::oath_parser::ParserIterator>,
@@ -25,7 +23,7 @@ pub fn impl_detect(input: TokenStream) -> TokenStream {
     )
 }
 
-pub fn detect_fields(fields: Fields, attrs: &Vec<Attribute>, span: Span) -> TokenStream {
+fn detect_fields(fields: Fields, attrs: &Vec<Attribute>, span: Span) -> TokenStream {
     let detect_type = if let Some(attr) = attrs.iter().find(|attr| attr.path().is_ident("detect")) {
         match &attr.meta {
             Meta::List(meta) => {
@@ -75,7 +73,7 @@ fn detect_struct(data: DataStruct) -> TokenStream {
     }
 }
 
-pub fn detect_enum(data: DataEnum) -> TokenStream {
+fn detect_enum(data: DataEnum) -> TokenStream {
     let detect_variants = data
         .variants
         .iter()
@@ -88,22 +86,5 @@ pub fn detect_enum(data: DataEnum) -> TokenStream {
 
     quote! {
         #((#detect_variants))||*
-    }
-}
-
-pub fn is_detect_parse(input: TokenStream) -> bool {
-    let input = match parse2::<DeriveInput>(input) {
-        Ok(ok) => ok,
-        Err(_) => return false,
-    };
-
-    match input.data {
-        Data::Enum(data) => data.variants.iter().any(|variant| {
-            variant
-                .attrs
-                .iter()
-                .any(|attr| attr.path().is_ident("error_fallback"))
-        }),
-        _ => false,
     }
 }

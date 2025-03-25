@@ -1,18 +1,21 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DataEnum, DataStruct, DataUnion, DeriveInput, parse2};
+use syn::{Data, DataEnum, DataStruct, DataUnion, DeriveInput, Ident, parse2};
 
 mod impl_desc;
 mod impl_detect;
+mod impl_option_parse;
 mod impl_parse;
 pub use impl_desc::*;
 pub use impl_detect::*;
+pub use impl_option_parse::*;
 pub use impl_parse::*;
 
-pub fn impl_parser_trait(
+fn impl_parser_trait(
     input: TokenStream,
     crate_ident: &'static str,
     trait_ident: &'static str,
+    self_type: fn(&Ident) -> TokenStream,
     fn_ident: &'static str,
     params: TokenStream,
     output: TokenStream,
@@ -59,34 +62,16 @@ pub fn impl_parser_trait(
     let trait_ident = format_ident!("{trait_ident}");
     let fn_ident = format_ident!("{fn_ident}");
 
+    let self_type = self_type(&ident);
+
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
-        impl #impl_generics ::#crate_ident::#trait_ident for #ident #ty_generics #where_clause {
+        impl #impl_generics ::#crate_ident::#trait_ident for #self_type #ty_generics #where_clause {
             fn #fn_ident(#params) -> #output {
                 #eval
             }
         }
-    }
-    .into()
-}
-
-pub fn impl_peek_ok(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        attrs: _,
-        vis: _,
-        ident,
-        generics,
-        data: _,
-    } = match parse2(input) {
-        Ok(ok) => ok,
-        Err(error) => return error.to_compile_error(),
-    };
-
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    quote! {
-        impl # impl_generics ::oath_parser::PeekOk for #ident #ty_generics #where_clause {}
     }
     .into()
 }
