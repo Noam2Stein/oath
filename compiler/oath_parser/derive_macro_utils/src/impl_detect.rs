@@ -9,7 +9,6 @@ pub fn impl_detect(input: TokenStream) -> TokenStream {
         input.into(),
         "oath_parser",
         "Detect",
-        |ident| quote! { #ident },
         "detect",
         quote! {
             parser: &::oath_parser::Parser<impl ::oath_parser::ParserIterator>,

@@ -10,12 +10,9 @@ pub enum Try<T> {
     Failure,
 }
 
-impl<T: ParseDesc> TryParse for T
-where
-    Option<T>: Parse,
-{
+impl<T: OptionParse> TryParse for T {
     fn try_parse(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
-        if let Some(output) = Parse::parse(parser) {
+        if let Some(output) = T::option_parse(parser) {
             Try::Success(output)
         } else {
             parser.context().push_error(Error::new(

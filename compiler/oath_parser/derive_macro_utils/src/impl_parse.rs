@@ -9,7 +9,6 @@ pub fn impl_parse(input: TokenStream) -> TokenStream {
         input.into(),
         "oath_parser",
         "Parse",
-        |ident| quote! { #ident },
         "parse",
         quote! {
             parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>,

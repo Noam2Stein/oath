@@ -10,21 +10,6 @@ pub trait Detect: ParseDesc {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool;
 }
 
-impl<T: Parse + Detect> Parse for Option<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        if T::detect(parser) {
-            Some(T::parse(parser))
-        } else {
-            None
-        }
-    }
-}
-impl<T: ParseDesc> ParseDesc for Option<T> {
-    fn desc() -> &'static str {
-        T::desc()
-    }
-}
-
 impl ParseDesc for () {
     fn desc() -> &'static str {
         "nothing"

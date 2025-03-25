@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{DataEnum, DataStruct, Error, Field, Fields, parse_quote_spanned, spanned::Spanned};
 
@@ -8,14 +8,13 @@ pub fn impl_option_parse(input: TokenStream) -> TokenStream {
     impl_parser_trait(
         input.into(),
         "oath_parser",
-        "Parse",
-        |ident| quote_spanned! { ident.span() => Option<#ident> },
-        "parse",
+        "OptionParse",
+        "option_parse",
         quote! {
             parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>,
         },
         quote! {
-            Self
+            Option<Self>
         },
         Some(parse_struct),
         Some(parse_enum),
@@ -23,33 +22,43 @@ pub fn impl_option_parse(input: TokenStream) -> TokenStream {
     )
 }
 
-fn option_parse_fields(path: TokenStream, fields: &Fields) -> TokenStream {
-    match fields {
-        Fields::Named(fields) => {
-            let fields = fields.named.iter().map(parse_field);
+fn option_parse_fields(path: TokenStream, fields: &Fields, span: Span) -> TokenStream {
+    if fields.len() == 0 {
+        return quote_spanned! {
+            span =>
+            compile_error!("expected fields")
+        };
+    }
+
+    let first_field = fields.iter().next().unwrap();
+    let first_field_type = &first_field.ty;
+
+    let parse_fields = fields.iter().skip(1).map(parse_field);
+
+    let parse_some = match fields {
+        Fields::Named(_) => {
+            let first_field_ident = first_field.ident.as_ref().unwrap();
 
             quote! {
-                if let Some(first_field) = <Option<#first_field_type> as ::oath_parser::Parse>::parse(parser) {
-                    Some(
-                        #path {
-                            #first_field_ident: first_field,
-                            #(#fields,)*
-                        }
-                    )
-                } else {
-                    None
+                #path {
+                    #first_field_ident: first_field,
+                    #(#parse_fields,)*
                 }
             }
         }
-        Fields::Unit => quote! {
-            #path
-        },
-        Fields::Unnamed(fields) => {
-            let fields = fields.unnamed.iter().map(parse_field);
-
+        Fields::Unit => unreachable!(),
+        Fields::Unnamed(_) => {
             quote! {
-                #path(#(#fields), *)
+                #path(first_field, #(#parse_fields), *)
             }
+        }
+    };
+
+    quote! {
+        if let Some(first_field) = <Option<#first_field_type> as ::oath_parser::Parse>::parse(parser) {
+            Some(#parse_some)
+        } else {
+            None
         }
     }
 }
@@ -157,13 +166,13 @@ fn parse_field(field: &Field) -> TokenStream {
 }
 
 fn parse_struct(data: DataStruct) -> TokenStream {
-    option_parse_fields(quote! { Self }, &data.fields)
+    option_parse_fields(quote! { Self }, &data.fields, Span::call_site())
 }
 
 fn parse_enum(data: DataEnum) -> TokenStream {
     if data.variants.len() == 0 {
         return quote! {
-            compile_error!("`Parse` cannot be derived for empty enums")
+            compile_error!("`OptionParse` cannot be derived for empty enums")
         };
     };
 
@@ -244,7 +253,11 @@ fn parse_enum(data: DataEnum) -> TokenStream {
                 Self::#variant_ident(span)
             }
         } else {
-            option_parse_fields(quote! { Self::#variant_ident }, &fallback_variant.fields)
+            option_parse_fields(
+                quote! { Self::#variant_ident },
+                &fallback_variant.fields,
+                fallback_variant.span(),
+            )
         }
     } else {
         quote! {

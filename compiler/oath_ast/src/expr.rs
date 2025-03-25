@@ -27,7 +27,7 @@ pub enum FieldIdent {
     Unknown(Span),
 }
 
-#[derive(Debug, Clone, Spanned, ParseDesc, Parse, Detect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
 #[desc = "a single side op"]
 pub enum ShsOp {
     Neg(punct!("-")),
@@ -41,11 +41,9 @@ pub enum ShsOp {
     MoreEq(punct!(">=")),
     LessEq(punct!("<=")),
     Question(punct!("?")),
-    #[error_fallback]
-    Unknown(Span),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, ParseDesc, Parse, Detect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
 #[desc = "a multi side op"]
 pub enum MhsOp {
     Add(punct!("+")),
@@ -65,8 +63,6 @@ pub enum MhsOp {
     MoreEq(punct!(">=")),
     LessEq(punct!("<=")),
     Bound(punct!(":")),
-    #[error_fallback]
-    Unknown(Span),
 }
 
 impl Expr {
