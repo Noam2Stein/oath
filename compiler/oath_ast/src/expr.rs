@@ -8,15 +8,15 @@ pub enum Expr {
     Ident(Ident),
     ItemKind(ItemKind),
     Literal(Literal),
-    Tuple(Vec<Expr>, #[span] Span),
-    Array(Vec<Expr>, #[span] Span),
+    Tuple(#[span] Span, Vec<Try<Expr>>),
+    Array(#[span] Span, Vec<Try<Expr>>),
     Block(Block),
     Field(Box<Expr>, FieldIdent),
-    Index(Box<Expr>, Box<Expr>, #[span] Span),
-    Call(Box<Expr>, Vec<Expr>, #[span] Span),
+    Index(#[span] Span, Box<Expr>, Try<Box<Expr>>),
+    Call(#[span] Span, Box<Expr>, Vec<Try<Expr>>),
     Generics(Box<Expr>, GenericArgs),
-    ShsOp(ShsOp, Box<Expr>),
-    MhsOp(Box<Expr>, MhsOp, Box<Expr>),
+    ShsOp(#[span] Span, ShsOp, Try<Box<Expr>>),
+    MhsOp(#[span] Span, Box<Expr>, MhsOp, Try<Box<Expr>>),
 }
 
 #[derive(Debug, Clone, Spanned, ParseDesc)]
@@ -66,39 +66,64 @@ pub enum MhsOp {
 }
 
 impl Expr {
-    pub fn parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let mut expr = Self::parse_base(parser);
+    pub fn try_parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
+        if let Some(output) = Self::option_parse_no_mhs(parser) {
+            Try::Success(output)
+        } else {
+            parser.context().push_error(Error::new(
+                format!("Syntax Error: expected {}", Self::desc()),
+                parser.peek_span(),
+            ));
+
+            Try::Failure
+        }
+    }
+
+    pub fn option_parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let mut expr = Self::option_parse_base(parser)?;
 
         loop {
-            if let Some(_) = <Option<punct!(".")>>::parse(parser) {
-                expr = Self::Field(
-                    Box::new(replace(&mut expr, Self::fillin())),
-                    Parse::parse(parser),
-                )
-            } else if let Some(group) = <Option<Group<Brackets>>>::parse(parser) {
+            if let Some(_) = <punct!(".")>::option_parse(parser) {
+                let base = Box::new(replace(&mut expr, Self::fillin()));
+                let field = Parse::parse(parser);
+
+                expr = Self::Field(base, field);
+
+                continue;
+            }
+
+            if let Some(group) = Group::<Brackets>::option_parse(parser) {
                 let span = expr.span() + group.span();
-                expr = Self::Index(
-                    Box::new(replace(&mut expr, Self::fillin())),
-                    Parse::parse(&mut group.into_parser(parser.context())),
-                    span,
-                )
-            } else if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
-                let span = expr.span() + group.span();
+                let base = Box::new(replace(&mut expr, Self::fillin()));
+                let index = Expr::try_parse(&mut group.into_parser(parser.context())).map_box();
+
+                expr = Self::Index(span, base, index);
+
+                continue;
+            }
+
+            if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
                 expr = Self::Call(
+                    expr.span() + group.span(),
                     Box::new(replace(&mut expr, Self::fillin())),
                     group
                         .into_parser(parser.context())
                         .parse_trl::<_, punct!(",")>(),
-                    span,
-                )
-            } else if let Some(generics) = <Option<GenericArgs>>::parse(parser) {
-                expr = Self::Generics(Box::new(replace(&mut expr, Self::fillin())), generics)
-            } else {
-                break;
+                );
+
+                continue;
             }
+
+            if let Some(generics) = <Option<GenericArgs>>::parse(parser) {
+                expr = Self::Generics(Box::new(replace(&mut expr, Self::fillin())), generics);
+
+                continue;
+            }
+
+            break;
         }
 
-        expr
+        Some(expr)
     }
 
     fn fillin() -> Self {
@@ -108,82 +133,92 @@ impl Expr {
         )))
     }
 
-    fn parse_base(parser: &mut Parser<impl ParserIterator>) -> Self {
-        if let Some(value) = Parse::parse(parser) {
-            Self::Ident(value)
-        } else if let Some(value) = Parse::parse(parser) {
-            Self::Literal(value)
-        } else if let Some(group) = <Option<Group>>::parse(parser) {
-            let span = group.span();
-
-            match group.delimiters.kind {
-                DelimiterKind::Parens => Self::Tuple(
-                    group
-                        .into_parser(parser.context())
-                        .parse_trl::<_, punct!(",")>(),
-                    span,
-                ),
-                DelimiterKind::Brackets => Self::Array(
-                    group
-                        .into_parser(parser.context())
-                        .parse_trl::<_, punct!(",")>(),
-                    span,
-                ),
-                DelimiterKind::Braces => {
-                    Self::Block(Block::parse_inner(&mut group.into_parser(parser.context())))
-                }
-                DelimiterKind::Angles => {
-                    parser
-                        .context()
-                        .push_error(SyntaxError::Expected(group.span(), Self::desc()));
-
-                    Self::Unknown
-                }
-            }
-        } else if let Some(value) = <Option<ItemKind>>::parse(parser) {
-            Self::ItemKind(value)
-        } else if let Some(op) = Parse::parse(parser) {
-            Self::ShsOp(op, Box::new(Self::parse_no_mhs(parser)))
+    fn try_parse_no_base(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
+        if let Some(output) = Self::option_parse_base(parser) {
+            Try::Success(output)
         } else {
-            let span = parser.peek_span();
+            parser.context().push_error(Error::new(
+                format!("Syntax Error: expected {}", Self::desc()),
+                parser.peek_span(),
+            ));
 
-            parser
-                .context()
-                .push_error(SyntaxError::Expected(span, Self::desc()));
-
-            parser.skip_until(|parser| {
-                <punct!(":")>::detect(parser) || <punct!(",")>::detect(parser)
-            });
-
-            return Self::Unknown;
+            Try::Failure
         }
+    }
+
+    fn option_parse_base(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        if let Some(value) = Parse::parse(parser) {
+            return Some(Self::Ident(value));
+        }
+
+        if let Some(value) = Parse::parse(parser) {
+            return Some(Self::Literal(value));
+        }
+
+        if let Some(group) = Group::<Parens>::option_parse(parser) {
+            return Some(Self::Tuple(
+                group.span(),
+                group
+                    .into_parser(parser.context())
+                    .parse_trl::<_, punct!(",")>(),
+            ));
+        }
+
+        if let Some(group) = Group::<Brackets>::option_parse(parser) {
+            return Some(Self::Array(
+                group.span(),
+                group
+                    .into_parser(parser.context())
+                    .parse_trl::<_, punct!(",")>(),
+            ));
+        }
+
+        if let Some(value) = Parse::parse(parser) {
+            return Some(Self::Block(value));
+        }
+
+        if let Some(value) = Parse::parse(parser) {
+            return Some(Self::ItemKind(value));
+        }
+
+        if let Some(shs_op) = ShsOp::option_parse(parser) {
+            let expr = Self::try_parse_no_mhs(parser).map_box();
+
+            let span = shs_op.span() + expr.option_span().unwrap_or(parser.peek_span());
+
+            return Some(Self::ShsOp(span, shs_op, expr));
+        }
+
+        None
     }
 }
 
-impl Parse for Expr {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let mut expr = Self::parse_no_mhs(parser);
+impl OptionParse for Expr {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let mut expr = Self::option_parse_no_mhs(parser)?;
 
-        while let Some(op) = <Option<MhsOp>>::parse(parser) {
+        while let Some(op) = MhsOp::option_parse(parser) {
             match expr {
-                Expr::MhsOp(_, expr_op, ref mut expr_rhs) if expr_op > op => {
-                    **expr_rhs = Self::MhsOp(
-                        Box::new(replace(&mut *expr_rhs, Self::fillin())),
-                        op,
-                        Box::new(Self::parse_no_mhs(parser)),
-                    )
+                Expr::MhsOp(_, _, expr_op, ref mut expr_rhs) if expr_op > op => {
+                    let lhs = Box::new(replace(&mut **expr_rhs.unwrap_mut(), Self::fillin()));
+                    let rhs = Self::try_parse_no_mhs(parser).map_box();
+
+                    let span = lhs.span() + rhs.option_span().unwrap_or(op.span());
+
+                    **expr_rhs.unwrap_mut() = Self::MhsOp(span, lhs, op, rhs);
                 }
                 _ => {
-                    expr = Self::MhsOp(
-                        Box::new(replace(&mut expr, Self::fillin())),
-                        op,
-                        Box::new(Self::parse_no_mhs(parser)),
-                    )
+                    let lhs = Box::new(replace(&mut expr, Self::fillin()));
+                    let rhs = Self::try_parse_no_mhs(parser).map_box();
+
+                    let span = lhs.span() + rhs.option_span().unwrap_or(op.span());
+
+                    expr = Self::MhsOp(span, lhs, op, rhs);
                 }
             }
         }
 
-        expr
+        Some(expr)
     }
 }
 
@@ -259,7 +294,6 @@ impl Ord for MhsOp {
                     MhsOpLvl::Cmp
                 }
                 MhsOp::Bound(_) => MhsOpLvl::Bound,
-                MhsOp::Unknown(_) => unreachable!(),
             }
         }
 

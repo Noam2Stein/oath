@@ -67,7 +67,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         self.peek().is_some()
     }
 
-    pub fn skip_until(&mut self, peek: impl Fn(&mut Self) -> bool) {
+    pub fn skip_until(&mut self, peek: impl Fn(&Self) -> bool) {
         while self.peek().is_some() && !peek(self) {
             self.next();
         }
@@ -93,27 +93,39 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
 
         vec
     }
-    pub fn parse_sep<T: Detect + Parse, S: Detect>(&mut self) -> Try<Vec<T>>
-    where
-        Option<S>: Parse,
-    {
-        if !T::detect(self) {
-            self.context().push_error(Error::new(
-                format!("Syntax Error: expected {}", T::desc()),
-                self.peek_span(),
-            ));
 
-            return Try::Failure;
-        }
+    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Try<Vec<T>> {
+        let first = match T::try_parse(self) {
+            Try::Success(first) => first,
+            Try::Failure => return Try::Failure,
+        };
 
-        let mut vec = vec![T::parse(self)];
+        let mut vec = vec![first];
 
-        while let Some(_) = Option::<S>::parse(self) {
-            vec.push(T::parse(self));
+        while S::option_parse(self).is_some() {
+            match T::try_parse(self) {
+                Try::Success(value) => vec.push(value),
+                Try::Failure => break,
+            }
         }
 
         Try::Success(vec)
     }
+    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Option<Vec<T>> {
+        let first = T::option_parse(self)?;
+
+        let mut vec = vec![first];
+
+        while S::option_parse(self).is_some() {
+            match T::try_parse(self) {
+                Try::Success(value) => vec.push(value),
+                Try::Failure => break,
+            }
+        }
+
+        Some(vec)
+    }
+
     pub fn parse_trl<T: Detect + Parse, S: Detect>(&mut self) -> Vec<T>
     where
         Option<S>: Parse,

@@ -24,7 +24,7 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-#[derive(Debug, Clone, Spanned, ParseDesc, Parse, Detect, Display)]
+#[derive(Debug, Clone, Display, Spanned, OptionParse)]
 #[desc = "an item-type"]
 pub enum ItemKeyword {
     Struct(keyword!("struct")),
@@ -40,15 +40,12 @@ pub enum ItemKeyword {
     Val(keyword!("val")),
     Alias(keyword!("alias")),
     Impl(keyword!("impl")),
-    #[display("unknown")]
-    #[error_fallback]
-    Unknown(Span),
 }
 
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item-type"]
 pub struct ItemKind {
-    pub keywords: Vec<ItemKeyword>,
+    pub keywords: Vec<Try<ItemKeyword>>,
 }
 
 pub trait ItemParse: Sized {
@@ -87,14 +84,11 @@ impl ItemModifiers {
     }
 }
 
-impl Parse for ItemKind {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        Self {
-            keywords: match parser.parse_sep::<_, punct!("-")>() {
-                Try::Success(vec) => vec,
-                Try::Failure => Vec::new(),
-            },
-        }
+impl OptionParse for ItemKind {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        parser
+            .option_parse_sep::<_, punct!("-")>()
+            .map(|keywords| Self { keywords })
     }
 }
 impl Detect for ItemKind {

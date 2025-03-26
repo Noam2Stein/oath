@@ -1,9 +1,8 @@
 use crate::*;
 
-#[derive(Debug, Clone, Spanned)]
+#[derive(Debug, Clone, Spanned, ParseDesc)]
+#[desc = "a block"]
 pub struct Block {
-    pub stmts: Vec<Stmt>,
-    pub ditch: bool,
     #[span]
     span: Span,
 }
@@ -23,12 +22,14 @@ pub struct VarStmt {
     span: Span,
 }
 
-impl Block {
-    pub fn parse_inner(parser: &mut Parser<impl ParserIterator>) -> Self {
-        Self {
-            stmts: Vec::new(),
-            ditch: false,
-            span: parser.peek_span(),
-        }
+impl OptionParse for Block {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        Group::<Braces>::option_parse(parser).map(|group| Self { span: group.span() })
+    }
+}
+
+impl Detect for Block {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Group::<Braces>::detect(parser)
     }
 }

@@ -10,8 +10,8 @@ pub struct Contract {
 #[derive(Debug, Clone, ParseDesc, Detect)]
 #[desc = "a contract item"]
 pub struct ContractItem {
-    pub target: Expr,
-    pub bounds: Expr,
+    pub target: Try<Expr>,
+    pub bounds: Try<Expr>,
 }
 
 impl Parse for Contract {
@@ -40,17 +40,18 @@ impl Parse for Contract {
 
 impl Parse for ContractItem {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let target = Expr::parse_no_mhs(parser);
+        let target = Expr::try_parse_no_mhs(parser);
 
-        match <Try<punct!(":")>>::parse(parser) {
-            Try::Success(_) => {}
-            Try::Failure => {
-                return Self {
-                    target,
-                    bounds: Expr::Unknown,
-                }
-            }
-        };
+        if target.is_failure() {
+            parser.skip_until(|parser| <punct!(":")>::detect(parser));
+        }
+
+        if <punct!(":")>::try_parse(parser).is_failure() {
+            return Self {
+                target,
+                bounds: Try::Failure,
+            };
+        }
 
         let bounds = Parse::parse(parser);
 

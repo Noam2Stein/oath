@@ -7,7 +7,7 @@ pub struct Struct {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
-    pub fields: Fields,
+    pub fields: Try<Fields>,
 }
 
 #[derive(Debug, Clone, ParseDesc)]
@@ -15,7 +15,6 @@ pub struct Struct {
 pub enum Fields {
     Named(Vec<NamedField>),
     Unnamed(Vec<UnnamedField>),
-    Unknown,
 }
 
 #[derive(Debug, Clone, ParseDesc)]
