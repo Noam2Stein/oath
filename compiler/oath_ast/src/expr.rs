@@ -133,19 +133,6 @@ impl Expr {
         )))
     }
 
-    fn try_parse_no_base(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
-        if let Some(output) = Self::option_parse_base(parser) {
-            Try::Success(output)
-        } else {
-            parser.context().push_error(Error::new(
-                format!("Syntax Error: expected {}", Self::desc()),
-                parser.peek_span(),
-            ));
-
-            Try::Failure
-        }
-    }
-
     fn option_parse_base(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
         if let Some(value) = Parse::parse(parser) {
             return Some(Self::Ident(value));

@@ -2,6 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{
     parse_macro_input, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident,
+    LitInt,
 };
 
 #[proc_macro_derive(Spanned, attributes(span, spanned))]
@@ -35,7 +36,16 @@ pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 fn struct_span(data: DataStruct) -> TokenStream {
     fields_span(
         &data.fields,
-        |field_ident, _| quote_spanned! { field_ident.span() => self.#field_ident },
+        |field_ident, field_index| {
+            if field_ident.is_some() {
+                quote_spanned! { field_ident.span() => self.#field_ident }
+            } else {
+                let field_ident =
+                    LitInt::new(&field_index.to_string(), field_ident.span()).to_token_stream();
+
+                quote_spanned! { field_ident.span() => self.#field_ident }
+            }
+        },
         Span::call_site(),
     )
 }
@@ -43,6 +53,8 @@ fn struct_span(data: DataStruct) -> TokenStream {
 fn enum_span(data: DataEnum) -> TokenStream {
     let match_variants = data.variants.into_iter().map(|variant| {
         let variant_ident = &variant.ident;
+
+        let original_field_idents = variant.fields.iter().map(|field| &field.ident);
 
         let field_idents =
             (0..variant.fields.len()).map(|field_index| format_ident!("field_{field_index}"));
@@ -53,10 +65,22 @@ fn enum_span(data: DataEnum) -> TokenStream {
             variant.span(),
         );
 
-        quote_spanned! {
-            variant.span() =>
+        match variant.fields {
+            Fields::Named(_) => quote_spanned! {
+                variant.span() =>
 
-            Self::#variant_ident(#(#field_idents), *) => #span,
+                Self::#variant_ident { #(#original_field_idents: #field_idents), * } => #span,
+            },
+            Fields::Unnamed(_) => quote_spanned! {
+                variant.span() =>
+
+                Self::#variant_ident(#(#field_idents), *) => #span,
+            },
+            Fields::Unit => quote_spanned! {
+                variant.span() =>
+
+                Self::#variant_ident => #span,
+            },
         }
     });
 

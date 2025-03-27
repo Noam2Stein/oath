@@ -9,7 +9,7 @@ pub struct Fn {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub params: Vec<FnParam>,
-    pub output: Option<Expr>,
+    pub output: Option<Try<Expr>>,
     pub contract: Contract,
     pub block: BracesOrSemi<()>,
 }
@@ -19,8 +19,8 @@ pub struct Fn {
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Try<Ident>,
-    pub type_: Expr,
-    pub bounds: Option<Expr>,
+    pub type_: Try<Expr>,
+    pub bounds: Option<Try<Expr>>,
 }
 
 impl ItemParse for Fn {
@@ -106,21 +106,21 @@ impl Parse for FnParam {
                 return Self {
                     mut_,
                     ident: Try::Failure,
-                    type_: Expr::Unknown,
+                    type_: Try::Failure,
                     bounds: None,
                 };
             }
         };
 
         let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
-            Parse::parse(parser)
+            Expr::try_parse_no_mhs(parser)
         } else {
             parser.context().push_error(SyntaxError::Expected(
                 parser.peek_span(),
                 "`param_ident-ParamType`",
             ));
 
-            Expr::Unknown
+            Try::Failure
         };
 
         let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));

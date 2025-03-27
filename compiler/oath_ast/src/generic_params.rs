@@ -1,44 +1,35 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, Spanned, ParseDesc)]
 #[desc = "generic params"]
-pub struct GenericParams(pub Vec<GenericParam>, pub Span);
+pub struct GenericParams(#[span] pub Span, pub Vec<GenericParam>);
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, Detect)]
 #[desc = "a generic param"]
 pub struct GenericParam {
     pub ident: Try<Ident>,
-    pub type_: Expr,
-    pub bounds: Option<Expr>,
+    pub type_: Try<Expr>,
+    pub bounds: Option<Try<Expr>>,
 }
 
 impl Parse for GenericParams {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let group = match <Try<Group<Angles>>>::parse(parser) {
+        let group = match Group::<Angles>::try_parse(parser) {
             Try::Success(success) => success,
-            Try::Failure => return Self(Vec::new(), parser.peek_span()),
+            Try::Failure => return Self(parser.peek_span(), Vec::new()),
         };
 
         let span = group.span();
+        let params = group
+            .into_parser(parser.context())
+            .parse_trl::<_, punct!(",")>();
 
-        Self(
-            group
-                .into_parser(parser.context())
-                .parse_trl::<_, punct!(",")>(),
-            span,
-        )
+        Self(span, params)
     }
 }
-
 impl Detect for GenericParams {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Group::<Angles>::detect(parser)
-    }
-}
-
-impl Spanned for GenericParams {
-    fn span(&self) -> Span {
-        self.1
     }
 }
 
@@ -51,21 +42,21 @@ impl Parse for GenericParam {
 
                 return Self {
                     ident: Try::Failure,
-                    type_: Expr::Unknown,
+                    type_: Try::Failure,
                     bounds: None,
                 };
             }
         };
 
-        let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
-            Expr::parse(parser)
+        let type_ = if let Some(_) = <punct!("-")>::option_parse(parser) {
+            Expr::try_parse_no_mhs(parser)
         } else {
             parser.context().push_error(SyntaxError::Expected(
                 parser.peek_span(),
                 "`Param_Ident-Param_Type`",
             ));
 
-            Expr::Unknown
+            Try::Failure
         };
 
         let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
@@ -75,11 +66,5 @@ impl Parse for GenericParam {
             type_,
             bounds,
         }
-    }
-}
-
-impl Detect for GenericParam {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Ident::detect(parser)
     }
 }

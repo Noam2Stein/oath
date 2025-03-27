@@ -126,10 +126,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         Some(vec)
     }
 
-    pub fn parse_trl<T: Detect + Parse, S: Detect>(&mut self) -> Vec<T>
-    where
-        Option<S>: Parse,
-    {
+    pub fn parse_trl<T: OptionParse, S: OptionParse>(&mut self) -> Vec<T> {
         let mut vec = Vec::new();
 
         while let Some(value) = Option::<T>::parse(self) {

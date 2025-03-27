@@ -1,13 +1,11 @@
 mod into_parser;
 mod option_parse;
 mod parse_traits;
-mod parse_types;
 mod parser;
 mod try_parse;
 pub use into_parser::*;
 pub use option_parse::*;
 pub use parse_traits::*;
-pub use parse_types::*;
 pub use parser::*;
 pub use try_parse::*;
 

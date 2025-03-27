@@ -4,8 +4,8 @@ use crate::*;
 #[desc = "an impl"]
 pub struct Impl {
     pub generics: Option<GenericParams>,
-    pub item: Expr,
-    pub target: Option<Expr>,
+    pub item: Try<Expr>,
+    pub target: Option<Try<Expr>>,
     pub contract: Contract,
     pub items: BracesOrSemi<ModContent>,
 }

@@ -13,7 +13,7 @@ pub enum Item {
     Mod(Mod),
     Spec(Sys),
     Impl(Impl),
-    Unkown,
+    Unfinished,
 }
 
 #[derive(Debug, Clone, Default, ParseDesc)]
@@ -45,7 +45,7 @@ pub enum ItemKeyword {
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item-type"]
 pub struct ItemKind {
-    pub keywords: Vec<Try<ItemKeyword>>,
+    pub keywords: Vec<ItemKeyword>,
 }
 
 pub trait ItemParse: Sized {
@@ -113,12 +113,12 @@ impl ItemKind {
     }
 }
 
-impl Parse for Item {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+impl OptionParse for Item {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
         let mut modifiers = ItemModifiers::parse(parser);
-        let mut target_kind = ItemKind::parse(parser);
+        let mut target_kind = ItemKind::option_parse(parser)?;
 
-        match target_kind.keywords.pop().unwrap() {
+        Some(match target_kind.keywords.pop().unwrap() {
             ItemKeyword::Impl(_) => {
                 Self::Impl(ItemParse::item_parse(parser, &mut modifiers, target_kind))
             }
@@ -127,7 +127,7 @@ impl Parse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Val(keyword) => {
                 parser.context().push_error(Error::new(
@@ -135,21 +135,21 @@ impl Parse for Item {
                     keyword.span(),
                 ));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Const(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Enum(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Fn(_) => {
                 Self::Fn(ItemParse::item_parse(parser, &mut modifiers, target_kind))
@@ -165,7 +165,7 @@ impl Parse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Struct(_) => {
                 Self::Struct(ItemParse::item_parse(parser, &mut modifiers, target_kind))
@@ -178,17 +178,16 @@ impl Parse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
             ItemKeyword::Use(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unkown
+                Self::Unfinished
             }
-            ItemKeyword::Unknown(_) => return Self::Unkown,
-        }
+        })
     }
 }
 
