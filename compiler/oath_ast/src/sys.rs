@@ -37,6 +37,8 @@ impl ItemParse for Sys {
             }
         };
 
+        parser.context().highlight(ident, HighlightColor::Green);
+
         let generics = Parse::parse(parser);
         let contract = Parse::parse(parser);
 

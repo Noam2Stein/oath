@@ -50,7 +50,7 @@ impl ItemParse for Struct {
             ));
         };
 
-        let ident = match Parse::parse(parser) {
+        let ident = match Ident::try_parse(parser) {
             Try::Success(success) => Try::Success(success),
             Try::Failure => {
                 return Self {
@@ -62,6 +62,8 @@ impl ItemParse for Struct {
                 }
             }
         };
+
+        parser.context().highlight(ident, HighlightColor::Green);
 
         let generics = Parse::parse(parser);
         let contract = Contract::parse(parser);
@@ -152,6 +154,8 @@ impl Parse for NamedField {
                 };
             }
         };
+
+        parser.context().highlight(ident, HighlightColor::Cyan);
 
         let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
             Expr::try_parse_no_mhs(parser)

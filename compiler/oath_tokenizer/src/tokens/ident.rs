@@ -85,3 +85,9 @@ impl Ident {
         self.str_id
     }
 }
+
+impl Highlightable for Ident {
+    fn highlight_span(&self) -> Option<Span> {
+        Some(self.span)
+    }
+}

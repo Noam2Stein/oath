@@ -60,6 +60,8 @@ impl ItemParse for Fn {
             }
         };
 
+        parser.context().highlight(ident, HighlightColor::Yellow);
+
         let generics = Parse::parse(parser);
 
         let params = match <Try<Group<Parens>>>::parse(parser) {
@@ -117,6 +119,8 @@ impl Parse for FnParam {
                 };
             }
         };
+
+        parser.context().highlight(ident, HighlightColor::Cyan);
 
         let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
             Expr::try_parse_no_mhs(parser)

@@ -45,6 +45,8 @@ impl ItemParse for Trait {
             }
         };
 
+        parser.context().highlight(ident, HighlightColor::Green);
+
         let generics = Parse::parse(parser);
         let contract = Parse::parse(parser);
 

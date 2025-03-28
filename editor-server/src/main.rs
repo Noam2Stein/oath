@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use oath_ast::ParseAstExt;
-use oath_context::{Context, ContextHandle};
-use oath_src::{Spanned, SrcFile};
+use oath_context::{Context, ContextHandle, HighlightColor};
+use oath_src::{Span, Spanned, SrcFile};
 use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -14,7 +15,19 @@ use span_range::*;
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    highlights: Mutex<HashMap<Url, Vec<SemanticToken>>>,
 }
+
+const CUSTOM_LEGEND: &[SemanticTokenType] = &[
+    SemanticTokenType::TYPE,
+    SemanticTokenType::VARIABLE,
+    SemanticTokenType::FUNCTION,
+    SemanticTokenType::KEYWORD,
+    SemanticTokenType::STRING,
+    SemanticTokenType::NUMBER,
+    SemanticTokenType::OPERATOR,
+    SemanticTokenType::COMMENT,
+];
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
@@ -26,6 +39,19 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensOptions(
+                        SemanticTokensOptions {
+                            legend: SemanticTokensLegend {
+                                token_types: CUSTOM_LEGEND.into(),
+                                token_modifiers: vec![],
+                            },
+                            full: Some(SemanticTokensFullOptions::Bool(true)),
+                            range: None,
+                            work_done_progress_options: Default::default(),
+                        },
+                    ),
+                ),
                 ..Default::default()
             },
             ..Default::default()
@@ -72,6 +98,21 @@ impl LanguageServer for Backend {
         )
         .await
     }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let uri = params.text_document.uri;
+
+        let highlights = self.highlights.lock().unwrap();
+        let tokens = highlights.get(&uri).cloned().unwrap_or_default();
+
+        Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
+            data: tokens,
+            result_id: None,
+        })))
+    }
 }
 
 impl Backend {
@@ -94,6 +135,13 @@ impl Backend {
             })
             .collect();
 
+        let highlights = context.collect_highlights();
+
+        self.highlights
+            .lock()
+            .unwrap()
+            .insert(uri.clone(), highlights_to_semantic_tokens(&highlights));
+
         self.client
             .publish_diagnostics(uri, diagnostics, Some(version))
             .await;
@@ -105,6 +153,47 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        highlights: Default::default(),
+    });
+
     Server::new(stdin, stdout, socket).serve(service).await;
+}
+
+fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<SemanticToken> {
+    let mut output = Vec::new();
+
+    let mut prev_line = 0;
+    let mut prev_start = 0;
+
+    for (span, color) in highlights {
+        let delta_line = span.line().unwrap_or(0) - prev_line;
+        let delta_start = if delta_line == 0 {
+            span.start().char - prev_start
+        } else {
+            span.start().char
+        };
+
+        output.push(SemanticToken {
+            delta_line: delta_line as u32,
+            delta_start: delta_start as u32,
+            length: span.len().unwrap_or(1),
+            token_type: color_to_token_type(*color),
+            token_modifiers_bitset: 0,
+        });
+
+        prev_line = span.line().unwrap_or(0);
+        prev_start = span.start().char;
+    }
+
+    output
+}
+
+fn color_to_token_type(color: HighlightColor) -> u32 {
+    match color {
+        HighlightColor::Green => 0,
+        HighlightColor::Cyan => 1,
+        HighlightColor::Yellow => 2,
+    }
 }

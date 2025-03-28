@@ -36,6 +36,21 @@ impl Span {
     pub fn end(self) -> Position {
         self.end
     }
+
+    pub fn line(self) -> Option<u32> {
+        if self.start.line == self.end.line {
+            Some(self.start.line)
+        } else {
+            None
+        }
+    }
+    pub fn len(self) -> Option<u32> {
+        if self.start.line == self.end.line {
+            Some(self.end.char - self.start.char)
+        } else {
+            None
+        }
+    }
 }
 
 impl Add for Span {

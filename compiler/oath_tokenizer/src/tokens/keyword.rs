@@ -5,8 +5,9 @@ use std::{
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Spanned)]
 pub struct Keyword {
+    #[span]
     span: Span,
     pub kind: KeywordKind,
 }
@@ -18,8 +19,8 @@ with_token_set!(
     )*}
 
     $(
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct $keyword_type(pub Span);
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Spanned)]
+        pub struct $keyword_type(#[span] pub Span);
     )*
 );
 
@@ -55,9 +56,9 @@ impl<'a> TryFrom<&'a TokenTree> for Keyword {
     }
 }
 
-impl Spanned for Keyword {
-    fn span(&self) -> Span {
-        self.span
+impl Highlightable for Keyword {
+    fn highlight_span(&self) -> Option<Span> {
+        Some(self.span)
     }
 }
 
@@ -108,16 +109,15 @@ with_token_set!($(
         }
     }
 
-    impl Spanned for $keyword_type {
-        #[inline(always)]
-        fn span(&self) -> Span {
-            self.0
-        }
-    }
-
     impl Display for $keyword_type {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             write!(f, $keyword)
+        }
+    }
+
+    impl Highlightable for $keyword_type {
+        fn highlight_span(&self) -> Option<Span> {
+            Some(self.0)
         }
     }    
 )*);

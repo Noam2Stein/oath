@@ -110,3 +110,13 @@ impl<T: Spanned> Try<T> {
         }
     }
 }
+
+impl<T: Highlightable> Highlightable for Try<T> {
+    fn highlight_span(&self) -> Option<Span> {
+        if let Try::Success(t) = self {
+            t.highlight_span()
+        } else {
+            None
+        }
+    }
+}

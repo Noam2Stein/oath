@@ -49,6 +49,8 @@ impl ItemParse for Mod {
             }
         };
 
+        parser.context().highlight(ident, HighlightColor::Green);
+
         let content = if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
             Some(Parse::parse(&mut group.into_parser(parser.context())))
         } else {

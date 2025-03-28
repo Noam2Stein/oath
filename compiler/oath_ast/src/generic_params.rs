@@ -48,6 +48,8 @@ impl Parse for GenericParam {
             }
         };
 
+        parser.context().highlight(ident, HighlightColor::Green);
+
         let type_ = if let Some(_) = <punct!("-")>::option_parse(parser) {
             Expr::try_parse_no_mhs(parser)
         } else {
