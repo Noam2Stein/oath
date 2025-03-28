@@ -79,17 +79,12 @@ impl Backend {
         let src_file = SrcFile::from_str(text);
 
         let context = Mutex::new(Context::new());
+        let context = ContextHandle(&context);
 
-        {
-            let context = ContextHandle(&context);
-
-            let _ = src_file.tokenize(context).parse_ast(context);
-        }
+        let _ = src_file.tokenize(context).parse_ast(context);
 
         let diagnostics: Vec<Diagnostic> = context
-            .into_inner()
-            .unwrap()
-            .errors
+            .collect_errors()
             .into_iter()
             .map(|error| Diagnostic {
                 range: span_to_range(error.span()),
