@@ -1,6 +1,7 @@
 use std::mem::take;
 
 use derive_more::Display;
+use nonempty::NonEmpty;
 
 use crate::*;
 
@@ -24,7 +25,7 @@ pub struct ItemModifiers {
     raw: Option<keyword!("raw")>,
 }
 
-#[derive(Debug, Clone, Display, Spanned, OptionParse)]
+#[derive(Debug, Clone, Copy, Display, Spanned, OptionParse)]
 #[desc = "an item-type"]
 pub enum ItemKeyword {
     Struct(keyword!("struct")),
@@ -45,14 +46,15 @@ pub enum ItemKeyword {
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item-type"]
 pub struct ItemKind {
-    pub keywords: Vec<ItemKeyword>,
+    pub keywords: NonEmpty<ItemKeyword>,
 }
 
 pub trait ItemParse: Sized {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: ItemKind,
+        target_kind: Option<ItemKind>,
+        kind_keyword: ItemKeyword,
     ) -> Self;
 }
 
@@ -100,7 +102,7 @@ impl Spanned for ItemKind {
     fn span(&self) -> Span {
         self.keywords
             .iter()
-            .fold(self.keywords.first().unwrap().span(), |span, keyword| {
+            .fold(self.keywords.first().span(), |span, keyword| {
                 span + keyword.span()
             })
     }
@@ -118,10 +120,21 @@ impl OptionParse for Item {
         let mut modifiers = ItemModifiers::parse(parser);
         let mut target_kind = ItemKind::option_parse(parser)?;
 
-        Some(match target_kind.keywords.pop().unwrap() {
-            ItemKeyword::Impl(_) => {
-                Self::Impl(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
+        let kind_keyword = *target_kind.keywords.last();
+        let target_kind = if target_kind.keywords.len() > 1 {
+            target_kind.keywords.pop();
+            Some(target_kind)
+        } else {
+            None
+        };
+
+        Some(match kind_keyword {
+            ItemKeyword::Impl(_) => Self::Impl(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
             ItemKeyword::Alias(keyword) => {
                 parser
                     .context()
@@ -151,15 +164,24 @@ impl OptionParse for Item {
 
                 Self::Unfinished
             }
-            ItemKeyword::Fn(_) => {
-                Self::Fn(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
-            ItemKeyword::Mod(_) => {
-                Self::Mod(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
-            ItemKeyword::Sys(_) => {
-                Self::Spec(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
+            ItemKeyword::Fn(_) => Self::Fn(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
+            ItemKeyword::Mod(_) => Self::Mod(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
+            ItemKeyword::Sys(_) => Self::Spec(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
             ItemKeyword::Static(keyword) => {
                 parser
                     .context()
@@ -167,12 +189,18 @@ impl OptionParse for Item {
 
                 Self::Unfinished
             }
-            ItemKeyword::Struct(_) => {
-                Self::Struct(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
-            ItemKeyword::Trait(_) => {
-                Self::Trait(ItemParse::item_parse(parser, &mut modifiers, target_kind))
-            }
+            ItemKeyword::Struct(_) => Self::Struct(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
+            ItemKeyword::Trait(_) => Self::Trait(ItemParse::item_parse(
+                parser,
+                &mut modifiers,
+                target_kind,
+                kind_keyword,
+            )),
             ItemKeyword::Type(keyword) => {
                 parser
                     .context()

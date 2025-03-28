@@ -1,5 +1,7 @@
 use std::mem::{replace, MaybeUninit};
 
+use nonempty::NonEmpty;
+
 use crate::{
     parse_traits::{Detect, Parse},
     *,
@@ -94,13 +96,13 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         vec
     }
 
-    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Try<Vec<T>> {
+    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Try<NonEmpty<T>> {
         let first = match T::try_parse(self) {
             Try::Success(first) => first,
             Try::Failure => return Try::Failure,
         };
 
-        let mut vec = vec![first];
+        let mut vec = NonEmpty::new(first);
 
         while S::option_parse(self).is_some() {
             match T::try_parse(self) {
@@ -111,10 +113,10 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
 
         Try::Success(vec)
     }
-    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Option<Vec<T>> {
+    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Option<NonEmpty<T>> {
         let first = T::option_parse(self)?;
 
-        let mut vec = vec![first];
+        let mut vec = NonEmpty::new(first);
 
         while S::option_parse(self).is_some() {
             match T::try_parse(self) {

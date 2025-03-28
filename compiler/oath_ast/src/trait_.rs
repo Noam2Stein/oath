@@ -4,7 +4,7 @@ use crate::*;
 #[desc = "a trait"]
 pub struct Trait {
     pub vis: Vis,
-    pub target_kind: ItemKind,
+    pub target_kind: Try<ItemKind>,
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
@@ -15,9 +15,21 @@ impl ItemParse for Trait {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: ItemKind,
+        target_kind: Option<ItemKind>,
+        kind_keyword: ItemKeyword,
     ) -> Self {
         let vis = modifiers.take_vis();
+
+        let target_kind = if let Some(target_kind) = target_kind {
+            Try::Success(target_kind)
+        } else {
+            parser.context().push_error(SyntaxError::Expected(
+                kind_keyword.span(),
+                "a trait target-kind",
+            ));
+
+            Try::Failure
+        };
 
         let ident = match Parse::parse(parser) {
             Try::Success(success) => Try::Success(success),

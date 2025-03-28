@@ -13,3 +13,5 @@ members = [
     "compiler/oath_tokenizer/token_set",
     "editor-server",
 ]
+
+panic = "unwind"

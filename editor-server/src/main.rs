@@ -98,16 +98,7 @@ impl LanguageServer for Backend {
             .errors
             .into_iter()
             .map(|error| Diagnostic {
-                range: Range {
-                    start: Position {
-                        line: error.span().start().line,
-                        character: error.span().start().char,
-                    },
-                    end: Position {
-                        line: error.span().end().line,
-                        character: error.span().end().char,
-                    },
-                },
+                range: span_to_range(error.span()),
                 severity: Some(DiagnosticSeverity::ERROR),
                 message: error.message.to_string(),
                 ..Default::default()

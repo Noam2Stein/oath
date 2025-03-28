@@ -102,7 +102,7 @@ impl Expr {
                 continue;
             }
 
-            if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
+            if let Some(group) = Group::<Parens>::option_parse(parser) {
                 expr = Self::Call(
                     expr.span() + group.span(),
                     Box::new(replace(&mut expr, Self::fillin())),
@@ -114,7 +114,7 @@ impl Expr {
                 continue;
             }
 
-            if let Some(generics) = <Option<GenericArgs>>::parse(parser) {
+            if let Some(generics) = GenericArgs::option_parse(parser) {
                 expr = Self::Generics(Box::new(replace(&mut expr, Self::fillin())), generics);
 
                 continue;
@@ -187,12 +187,22 @@ impl OptionParse for Expr {
         while let Some(op) = MhsOp::option_parse(parser) {
             match expr {
                 Expr::MhsOp(_, _, expr_op, ref mut expr_rhs) if expr_op > op => {
-                    let lhs = Box::new(replace(&mut **expr_rhs.unwrap_mut(), Self::fillin()));
+                    let expr_rhs = match expr_rhs {
+                        Try::Success(success) => success,
+                        Try::Failure => {
+                            parser.skip_until(|parser| {
+                                <punct!(";")>::detect(parser) || <punct!(",")>::detect(parser)
+                            });
+                            break;
+                        }
+                    };
+
+                    let lhs = Box::new(replace(&mut **expr_rhs, Self::fillin()));
                     let rhs = Self::try_parse_no_mhs(parser).map_box();
 
                     let span = lhs.span() + rhs.option_span().unwrap_or(op.span());
 
-                    **expr_rhs.unwrap_mut() = Self::MhsOp(span, lhs, op, rhs);
+                    **expr_rhs = Self::MhsOp(span, lhs, op, rhs);
                 }
                 _ => {
                     let lhs = Box::new(replace(&mut expr, Self::fillin()));
