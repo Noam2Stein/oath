@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{spanned::Spanned, DataEnum, DataStruct, DeriveInput, Error};
 
 use crate::impl_util::{
-    detect_fields, has_attrib, impl_parser_trait, parse_detected_fields, parse_fields,
+    condition_parse_fields_if, has_attrib, impl_parser_trait, parse_detected_fields, parse_fields,
 };
 
 pub fn impl_parse(input: &DeriveInput) -> TokenStream {
@@ -67,7 +67,7 @@ fn parse_enum(data: &DataEnum) -> TokenStream {
     };
 
     let variant_ifs = non_fallback_variants.iter().map(|variant| {
-        let detect_variant = detect_fields(&variant.fields, variant.span());
+        let detect_variant = condition_parse_fields_if(&variant.fields, variant.span());
         let parse_detected_variant = parse_detected_fields(&variant.fields, variant.span());
 
         let variant_ident = &variant.ident;

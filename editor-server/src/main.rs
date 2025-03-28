@@ -56,41 +56,35 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let context = Mutex::new(Context::new());
-        let context_handle = ContextHandle(&context);
-
-        let _ = SrcFile::from_str(&params.text_document.text)
-            .tokenize(context_handle)
-            .parse_ast(context_handle);
-
-        let context = context.into_inner().unwrap();
-
-        self.client
-            .publish_diagnostics(
-                params.text_document.uri,
-                context
-                    .errors
-                    .into_iter()
-                    .map(|error| {
-                        Diagnostic::new_simple(
-                            span_to_range(error.span()),
-                            error.message.to_string(),
-                        )
-                    })
-                    .collect(),
-                Some(params.text_document.version),
-            )
-            .await;
+        self.validate_file(
+            params.text_document.uri,
+            params.text_document.text.as_str(),
+            params.text_document.version,
+        )
+        .await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri;
+        self.validate_file(
+            params.text_document.uri,
+            params.content_changes[0].text.as_str(),
+            params.text_document.version,
+        )
+        .await
+    }
+}
 
-        let src_file = SrcFile::from_str(params.content_changes[0].text.as_str());
+impl Backend {
+    async fn validate_file(&self, uri: Url, text: &str, version: i32) {
+        let src_file = SrcFile::from_str(text);
+
         let context = Mutex::new(Context::new());
-        let context_handle = ContextHandle(&context);
 
-        let _ = src_file.tokenize(context_handle).parse_ast(context_handle);
+        {
+            let context = ContextHandle(&context);
+
+            let _ = src_file.tokenize(context).parse_ast(context);
+        }
 
         let diagnostics: Vec<Diagnostic> = context
             .into_inner()
@@ -106,7 +100,7 @@ impl LanguageServer for Backend {
             .collect();
 
         self.client
-            .publish_diagnostics(uri, diagnostics, None)
+            .publish_diagnostics(uri, diagnostics, Some(version))
             .await;
     }
 }

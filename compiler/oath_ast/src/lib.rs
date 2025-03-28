@@ -1,4 +1,4 @@
-use std::{fmt::Debug, panic::catch_unwind};
+use std::fmt::Debug;
 
 use splat_attribs::splat_attribs;
 splat_attribs! {
@@ -53,18 +53,6 @@ pub trait ParseAstExt: Seal {
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {
     fn parse_ast(self, context: ContextHandle) -> SyntaxTree {
-        let result = catch_unwind(|| Parse::parse(&mut self.into_parser(context)));
-
-        match result {
-            Ok(ok) => ok,
-            Err(_) => {
-                context.push_error(Error::new(
-                    "Parsing Panic",
-                    Span::from_start_len(Position::new(0, 0), 1),
-                ));
-
-                ModContent::default()
-            }
-        }
+        Parse::parse(&mut self.into_parser(context))
     }
 }

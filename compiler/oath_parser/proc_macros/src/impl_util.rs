@@ -127,6 +127,53 @@ pub fn detect_fields(fields: &Fields, fields_span: Span) -> TokenStream {
     }
 }
 
+pub fn condition_parse_fields_if(fields: &Fields, fields_span: Span) -> TokenStream {
+    let (option_detect_fields, detect_field) = 'find_fields: {
+        let mut option_detect_fields = Vec::new();
+
+        for field in fields {
+            if has_attrib(&field.attrs, "option_detect") {
+                option_detect_fields.push(field);
+            } else {
+                break 'find_fields (option_detect_fields, field);
+            }
+        }
+
+        return Error::new(fields_span, "expected detectable fields").to_compile_error();
+    };
+
+    if option_detect_fields.is_empty() {
+        let field_type = &detect_field.ty;
+
+        quote_spanned! {
+            detect_field.span() =>
+            let Some(first_field) = <#field_type as oath_parser::OptionParse>::option_parse(parser)
+        }
+    } else {
+        let option_detect_fields = option_detect_fields.into_iter().map(|field| {
+            let field_type = &field.ty;
+
+            quote_spanned! {
+                field_type.span() =>
+                <#field_type as oath_parser::OptionDetect>::option_detect(parser)
+            }
+        });
+
+        let detect_field = {
+            let field_type = &detect_field.ty;
+
+            quote_spanned! {
+                detect_field.span() =>
+                <#field_type as oath_parser::Detect>::detect(parser)
+            }
+        };
+
+        quote! {
+            (#(#option_detect_fields ||)* #detect_field)
+        }
+    }
+}
+
 pub fn parse_detected_fields(fields: &Fields, fields_span: Span) -> TokenStream {
     let (option_detect_fields, detect_field, secondary_fields) = {
         let mut fields_iter = fields.iter();
@@ -161,16 +208,21 @@ pub fn parse_detected_fields(fields: &Fields, fields_span: Span) -> TokenStream 
         }
     });
 
-    let parse_detect_field = {
+    let parse_detect_field = if option_detect_fields.is_empty() {
+        quote_spanned! {
+            detect_field.span() =>
+            first_field
+        }
+    } else {
         let field_type = &detect_field.ty;
 
         quote_spanned! {
             detect_field.span() =>
-            <#field_type as oath_parser::OptionParse>::option_parse(parser).unwrap()
+            <#field_type as oath_parser::Parse>::parse(parser)
         }
     };
 
-    let parse_secondary_fields = option_detect_fields.iter().map(|field| {
+    let parse_secondary_fields = secondary_fields.iter().map(|field| {
         let field_type = &field.ty;
 
         quote_spanned! {

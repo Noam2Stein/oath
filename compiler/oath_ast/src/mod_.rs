@@ -52,7 +52,7 @@ impl ItemParse for Mod {
         let content = if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
             Some(Parse::parse(&mut group.into_parser(parser.context())))
         } else {
-            <Try<punct!(";")>>::parse(parser);
+            <punct!(";")>::try_parse(parser);
             None
         };
 

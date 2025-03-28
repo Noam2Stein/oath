@@ -1,11 +1,6 @@
-use std::mem::{replace, MaybeUninit};
-
 use nonempty::NonEmpty;
 
-use crate::{
-    parse_traits::{Detect, Parse},
-    *,
-};
+use crate::{parse_traits::Parse, *};
 
 #[derive(Debug, Clone)]
 pub struct Parser<'ctx, I: ParserIterator> {
@@ -83,10 +78,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         }
     }
 
-    pub fn parse_rep<T: Detect>(&mut self) -> Vec<T>
-    where
-        Option<T>: Parse,
-    {
+    pub fn parse_rep<T: OptionParse>(&mut self) -> Vec<T> {
         let mut vec = Vec::new();
 
         while let Some(value) = Parse::parse(self) {
@@ -131,10 +123,10 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
     pub fn parse_trl<T: OptionParse, S: OptionParse>(&mut self) -> Vec<T> {
         let mut vec = Vec::new();
 
-        while let Some(value) = Option::<T>::parse(self) {
+        while let Some(value) = T::option_parse(self) {
             vec.push(value);
 
-            if let None = Option::<S>::parse(self) {
+            if S::option_parse(self).is_none() {
                 break;
             }
         }
@@ -156,16 +148,6 @@ impl<'ctx, I: ParserIterator> Drop for Parser<'ctx, I> {
             self.context
                 .push_error(Error::new("Syntax Error: unexpected tokens", span));
         }
-
-        drop(replace(&mut self.iter, unsafe {
-            MaybeUninit::uninit().assume_init()
-        }));
-        drop(replace(&mut self.context, unsafe {
-            MaybeUninit::uninit().assume_init()
-        }));
-        drop(replace(&mut self.last_span, unsafe {
-            MaybeUninit::uninit().assume_init()
-        }));
     }
 }
 

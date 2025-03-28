@@ -14,14 +14,17 @@ pub enum Item {
     Mod(Mod),
     Spec(Sys),
     Impl(Impl),
-    Unfinished,
+    Unknown,
 }
 
-#[derive(Debug, Clone, Default, ParseDesc)]
+#[derive(Debug, Clone, Default, ParseDesc, OptionDetect)]
 #[desc = "item modifiers"]
 pub struct ItemModifiers {
+    #[option_detect]
     pub_: Option<keyword!("pub")>,
+    #[option_detect]
     con: Option<keyword!("con")>,
+    #[option_detect]
     raw: Option<keyword!("raw")>,
 }
 
@@ -73,6 +76,13 @@ impl ItemModifiers {
         self.take_pub().map_or(Vis::Priv, |pub_| Vis::Pub(pub_))
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.pub_.is_none() && self.con.is_none() && self.raw.is_none()
+    }
+    pub fn is_not_empty(&self) -> bool {
+        self.pub_.is_some() || self.con.is_some() || self.raw.is_some()
+    }
+
     pub fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
         if let Some(pub_) = self.pub_ {
             context.push_error(SyntaxError::CannotBePutOn(pub_.span(), "`pub`", item_desc));
@@ -107,18 +117,19 @@ impl Spanned for ItemKind {
             })
     }
 }
-impl ItemKind {
-    pub fn expect_empty(self, context: ContextHandle, item_desc: &'static str) {
-        if self.keywords.len() != 0 {
-            context.push_error(SyntaxError::CannotHaveTarget(self.span(), item_desc));
-        }
-    }
-}
 
 impl OptionParse for Item {
     fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
         let mut modifiers = ItemModifiers::parse(parser);
-        let mut target_kind = ItemKind::option_parse(parser)?;
+
+        let mut target_kind = if modifiers.is_not_empty() {
+            match ItemKind::try_parse(parser) {
+                Try::Success(success) => success,
+                Try::Failure => return Some(Self::Unknown),
+            }
+        } else {
+            ItemKind::option_parse(parser)?
+        };
 
         let kind_keyword = *target_kind.keywords.last();
         let target_kind = if target_kind.keywords.len() > 1 {
@@ -140,7 +151,7 @@ impl OptionParse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Val(keyword) => {
                 parser.context().push_error(Error::new(
@@ -148,21 +159,21 @@ impl OptionParse for Item {
                     keyword.span(),
                 ));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Const(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Enum(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Fn(_) => Self::Fn(ItemParse::item_parse(
                 parser,
@@ -187,7 +198,7 @@ impl OptionParse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Struct(_) => Self::Struct(ItemParse::item_parse(
                 parser,
@@ -206,14 +217,14 @@ impl OptionParse for Item {
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
             ItemKeyword::Use(keyword) => {
                 parser
                     .context()
                     .push_error(Error::new("unfinished item type", keyword.span()));
 
-                Self::Unfinished
+                Self::Unknown
             }
         })
     }
@@ -221,7 +232,7 @@ impl OptionParse for Item {
 
 impl Detect for Item {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        ItemModifiers::detect(parser) || ItemKind::detect(parser)
+        ItemModifiers::option_detect(parser) || ItemKind::detect(parser)
     }
 }
 
@@ -259,13 +270,5 @@ impl Parse for ItemModifiers {
         }
 
         output
-    }
-}
-
-impl Detect for ItemModifiers {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        <keyword!("pub")>::detect(parser)
-            || <keyword!("con")>::detect(parser)
-            || <keyword!("raw")>::detect(parser)
     }
 }

@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{spanned::Spanned, DataEnum, DataStruct, DeriveInput};
 
-use crate::impl_util::{detect_fields, impl_parser_trait, parse_detected_fields};
+use crate::impl_util::{condition_parse_fields_if, impl_parser_trait, parse_detected_fields};
 
 pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
     impl_parser_trait(
@@ -23,7 +23,7 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
 }
 
 fn option_parse_struct(data: &DataStruct) -> TokenStream {
-    let detect_fields = detect_fields(&data.fields, Span::call_site());
+    let detect_fields = condition_parse_fields_if(&data.fields, Span::call_site());
     let parse_detected_fields = parse_detected_fields(&data.fields, Span::call_site());
 
     quote! {
@@ -37,7 +37,7 @@ fn option_parse_struct(data: &DataStruct) -> TokenStream {
 
 fn option_parse_enum(data: &DataEnum) -> TokenStream {
     let variant_ifs = data.variants.iter().map(|variant| {
-        let detect_variant = detect_fields(&variant.fields, variant.span());
+        let detect_variant = condition_parse_fields_if(&variant.fields, variant.span());
         let parse_detected_variant = parse_detected_fields(&variant.fields, variant.span());
 
         let variant_ident = &variant.ident;
