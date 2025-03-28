@@ -168,10 +168,9 @@ impl Parse for NamedField {
         }
     }
 }
-
 impl Detect for NamedField {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Ident::detect(parser) || <keyword!("pub")>::detect(parser)
+        Vis::option_detect(parser) || Ident::detect(parser)
     }
 }
 
@@ -186,9 +185,8 @@ impl Parse for UnnamedField {
         Self { vis, type_, bounds }
     }
 }
-
 impl Detect for UnnamedField {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Expr::detect(parser) || <keyword!("pub")>::detect(parser)
+        Vis::option_detect(parser) || Expr::detect(parser)
     }
 }

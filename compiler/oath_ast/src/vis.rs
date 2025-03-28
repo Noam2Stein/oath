@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, Parse)]
+#[derive(Debug, Clone, ParseDesc, Parse, OptionDetect)]
 #[desc = "a visibility"]
 pub enum Vis {
     Pub(keyword!("pub")),

@@ -1,27 +1,15 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{ToTokens, quote};
-use syn::{DeriveInput, Error, Meta, parse2, spanned::Spanned};
+use quote::{quote, ToTokens};
+use syn::{spanned::Spanned, DeriveInput, Error, Meta};
 
-pub fn impl_desc(input: TokenStream) -> TokenStream {
-    let input = match parse2::<DeriveInput>(input) {
-        Ok(input) => input,
-        Err(error) => return error.into_compile_error(),
-    };
-
-    let DeriveInput {
-        attrs: _,
-        vis: _,
-        ident,
-        generics,
-        data: _,
-    } = &input;
-
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+pub fn impl_desc(input: &DeriveInput) -> TokenStream {
+    let type_ident = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let desc = eval_desc(&input);
 
     quote! {
-        impl #impl_generics ::oath_parser::ParseDesc for #ident #ty_generics #where_clause {
+        impl #impl_generics ::oath_parser::ParseDesc for #type_ident #ty_generics #where_clause {
             fn desc() -> &'static str {
                 #desc
             }

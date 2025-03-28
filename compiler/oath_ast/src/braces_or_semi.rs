@@ -23,7 +23,6 @@ impl<T: Parse> Parse for BracesOrSemi<T> {
         }
     }
 }
-
 impl<T> Detect for BracesOrSemi<T> {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         <Group<Braces>>::detect(parser) || <punct!(";")>::detect(parser)
