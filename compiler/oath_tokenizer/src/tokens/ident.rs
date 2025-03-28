@@ -2,7 +2,7 @@ use crate::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident {
-    str_id: StrId,
+    pub str_id: StrId,
     span: Span,
 }
 
