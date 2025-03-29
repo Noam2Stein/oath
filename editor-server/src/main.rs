@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use oath_ast::ParseAstExt;
 use oath_context::{Context, ContextHandle, HighlightColor};
-use oath_name_res::{DumbNameContext, IntoNamespace};
+//use oath_name_res::{DumbNameContext, IntoNamespace};
 use oath_src::{Span, Spanned, SrcFile};
 use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
 use tower_lsp::jsonrpc::Result;
@@ -124,11 +124,11 @@ impl Backend {
         let context = ContextHandle(&context);
 
         {
-            let ast = src_file.tokenize(context).parse_ast(context);
+            let _ = src_file.tokenize(context).parse_ast(context);
 
-            let mut name_context = DumbNameContext::new();
-            let _ = ast.into_namespace(&mut name_context, context);
-            let _ = name_context.resolve();
+            //let mut name_context = DumbNameContext::new();
+            //let _ = ast.into_namespace(&mut name_context, context);
+            //let _ = name_context.resolve();
         }
 
         let diagnostics: Vec<Diagnostic> = context

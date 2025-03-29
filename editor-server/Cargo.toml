@@ -4,9 +4,9 @@ name    = "editor-server"
 version = "0.1.0"
 
 [dependencies]
-oath_ast       = { path = "../compiler/oath_ast" }
-oath_context   = { path = "../compiler/oath_context" }
-oath_name_res  = { path = "../compiler/oath_name_res" }
+oath_ast     = { path = "../compiler/oath_ast" }
+oath_context = { path = "../compiler/oath_context" }
+#oath_name_res  = { path = "../compiler/oath_name_res" }
 oath_src       = { path = "../compiler/oath_src" }
 oath_tokenizer = { path = "../compiler/oath_tokenizer" }
 tokio          = { version = "1.42.0", features = [ "full" ] }
