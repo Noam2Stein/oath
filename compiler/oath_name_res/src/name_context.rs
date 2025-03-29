@@ -50,4 +50,21 @@ impl DumbNameContext {
     pub fn namespace_mut(&mut self, name: NamespaceId) -> &mut Namespace {
         &mut self.namespaces[name.0]
     }
+
+    pub fn resolve(self) -> ResNameContext {
+        let mut names = Vec::with_capacity(self.names.len());
+        let namespaces = self.namespaces;
+
+        for name in self.names {
+            match name {
+                DumbName::Type(name, type_namespace) => match name {
+                    DumbType::Struct(name) => {
+                        
+                    }
+                },
+            }
+        }
+
+        ResNameContext { names, namespaces }
+    }
 }

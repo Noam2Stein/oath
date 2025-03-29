@@ -6,8 +6,8 @@ use crate::*;
 #[desc = "an expr"]
 pub enum Expr {
     Ident(Ident),
-    ItemKind(ItemKind),
     Literal(Literal),
+    ItemKind(ItemKind),
     Tuple(#[span] Span, Vec<Try<Expr>>),
     Array(#[span] Span, Vec<Try<Expr>>),
     Block(Block),

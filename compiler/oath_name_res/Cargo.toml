@@ -4,6 +4,8 @@ name    = "oath_name_res"
 version = "0.1.0"
 
 [dependencies]
-oath_ast     = { path = "../oath_ast" }
-oath_context = { path = "../oath_context" }
-oath_parser  = { path = "../oath_parser" }
+oath_ast       = { path = "../oath_ast" }
+oath_context   = { path = "../oath_context" }
+oath_parser    = { path = "../oath_parser" }
+oath_src       = { path = "../oath_src" }
+oath_tokenizer = { path = "../oath_tokenizer" }

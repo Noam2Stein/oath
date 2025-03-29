@@ -11,24 +11,26 @@ pub struct Struct {
 }
 
 #[derive(Debug, Clone, ParseDesc)]
-#[desc = "fields"]
+#[desc = "either `{ }` or `( )`"]
 pub enum Fields {
     Named(Vec<NamedField>),
     Unnamed(Vec<UnnamedField>),
 }
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, Detect)]
 #[desc = "a named fiend"]
 pub struct NamedField {
+    #[option_detect]
     pub vis: Vis,
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,
     pub bounds: Option<Try<Expr>>,
 }
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, Detect)]
 #[desc = "an unnamed fiend"]
 pub struct UnnamedField {
+    #[option_detect]
     pub vis: Vis,
     pub type_: Try<Expr>,
     pub bounds: Option<Try<Expr>>,
@@ -66,60 +68,52 @@ impl ItemParse for Struct {
         parser.context().highlight(ident, HighlightColor::Green);
 
         let generics = Parse::parse(parser);
-        let contract = Contract::parse(parser);
+        let mut contract = Contract::parse(parser);
 
-        if contract.is_not_empty() {
-            let fields = Group::<Braces>::try_parse(parser).map(|group| {
+        let fields = if contract.is_not_empty() {
+            Group::<Braces>::try_parse(parser).map(|group| {
                 Fields::Named(
                     group
                         .into_parser(parser.context())
                         .parse_trl::<_, punct!(",")>(),
                 )
-            });
-
-            Self {
-                vis,
-                ident,
-                generics,
-                contract,
-                fields,
-            }
+            })
         } else {
-            let fields = Fields::try_parse(parser);
+            Fields::try_parse(parser)
+        };
 
-            let contract = if let Try::Success(Fields::Unnamed(_)) = fields {
-                Parse::parse(parser)
-            } else {
-                contract
-            };
+        if let Try::Success(Fields::Unnamed(_)) = fields {
+            contract = Parse::parse(parser);
 
-            if let Try::Success(Fields::Unnamed(_)) = fields {
-                <Try<punct!(";")>>::parse(parser);
-            };
+            <punct!(";")>::try_parse(parser);
+        };
 
-            Self {
-                vis,
-                ident,
-                generics,
-                contract,
-                fields,
-            }
+        if fields.is_failure() {
+            parser.skip_until(Item::detect);
+        }
+
+        Self {
+            vis,
+            ident,
+            generics,
+            contract,
+            fields,
         }
     }
 }
 
-impl TryParse for Fields {
-    fn try_parse(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
-        if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
-            Try::Success(Self::Named(
+impl OptionParse for Fields {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        if let Some(group) = Group::<Braces>::option_parse(parser) {
+            Some(Self::Named(
                 group
                     .into_parser(parser.context())
                     .parse_trl::<_, punct!(",")>()
                     .into_iter()
                     .collect(),
             ))
-        } else if let Some(group) = <Option<Group<Parens>>>::parse(parser) {
-            Try::Success(Self::Unnamed(
+        } else if let Some(group) = Group::<Parens>::option_parse(parser) {
+            Some(Self::Unnamed(
                 group
                     .into_parser(parser.context())
                     .parse_trl::<_, punct!(",")>()
@@ -127,13 +121,13 @@ impl TryParse for Fields {
                     .collect(),
             ))
         } else {
-            parser.context().push_error(SyntaxError::Expected(
-                parser.peek_span(),
-                "either `{ }` or `( )`",
-            ));
-
-            Try::Failure
+            None
         }
+    }
+}
+impl Detect for Fields {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Group::<Braces>::detect(parser) || Group::<Parens>::detect(parser)
     }
 }
 
@@ -178,11 +172,6 @@ impl Parse for NamedField {
         }
     }
 }
-impl Detect for NamedField {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Vis::option_detect(parser) || Ident::detect(parser)
-    }
-}
 
 impl Parse for UnnamedField {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
@@ -193,10 +182,5 @@ impl Parse for UnnamedField {
         let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
 
         Self { vis, type_, bounds }
-    }
-}
-impl Detect for UnnamedField {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Vis::option_detect(parser) || Expr::detect(parser)
     }
 }
