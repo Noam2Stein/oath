@@ -4,11 +4,14 @@ use syn::Ident;
 
 macro_rules! define_token_set {
     {
-        keywords: [$($keyword:ident), * $(,)?],
+        blue_keywords: [$($blue_keyword:ident), * $(,)?],
+        pink_keywords: [$($pink_keyword:ident), * $(,)?],
         delims: [$($delim_open:literal $delim_close:literal $delim_type:ident), * $(,)?],
         puncts: [$($punct:literal $punct_variant:ident), * $(,)?] $(,)?
     } => {
-        const KEYWORDS: &[&str] = &[$(stringify!($keyword)), *];
+        const KEYWORDS: &[&str] = &[$(stringify!($blue_keyword),)* $(stringify!($pink_keyword)), *];
+        const BLUE_KEYWORDS: &[&str] = &[$(stringify!($blue_keyword)), *];
+        const PINK_KEYWORDS: &[&str] = &[$(stringify!($pink_keyword)), *];
 
         const DELIMS: &[DelimInfo] = &[$(
             DelimInfo { delim_open: $delim_open, delim_close: $delim_close, delim_type: stringify!($delim_type) },
@@ -30,7 +33,7 @@ macro_rules! define_token_set {
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 define_token_set!(
-    keywords: [
+    blue_keywords: [
         mod, use, pub, package, super, sys, impl,
         trait, promise, require,
         type, alias, struct, enum, untagged, val, is,
@@ -39,16 +42,18 @@ define_token_set!(
         const, static,
         var, mut, smut, excl,
         self, Self,
-        assume,
+    ],
+    pink_keywords: [
         if, else, match,
         loop, while, for,
         return, break, continue,
+        assume,
     ],
     delims: [
         "(" ")" Parens,
         "[" "]" Brackets,
         "{" "}" Braces,
-        "<#" "#>" Angles,
+        "<:" ":>" Angles,
     ],
     puncts: [
         ">>=" ShiftRAssign,
@@ -67,20 +72,20 @@ define_token_set!(
         "|=" OrAssign,
         "^=" CaretAssign,
         "==" EqEq,
-        "<=" LessEq,
-        ">=" MoreEq,
         "!=" NotEq,
         "::" ColonColon,
         ".." DotDot,
         "->" ArrowRight,
+        "<=" LessEq,
+        ">=" MoreEq,
+        "<" Less,
+        ">" More,
         "+" Plus,
         "-" Minus,
         "*" Star,
         "/" Slash,
         "%" Percent,
         "=" Eq,
-        "<" Less,
-        ">" More,
         "&" And,
         "|" Or,
         "^" Caret,
@@ -108,7 +113,9 @@ define_token_set!(
 
 /// provides meta info about all Oath keywords, delimiters, and puncts with `$()*` + `$info` syntax.
 ///
-/// `$keyword:literal`, `$keyword_len:literal`, `$keyword_type:ident`, `$keyword_variant:ident`, "$keyword_category:ident"
+/// `$keyword:literal`, `$keyword_type:ident`, `$keyword_variant:ident`
+/// `$blue_keyword:literal`, `$blue_keyword_type:ident`, `$blue_keyword_variant:ident`
+/// `$pink_keyword:literal`, `$pink_keyword_type:ident`, `$pink_keyword_variant:ident`
 ///
 /// `$punct:literal`, `$punct_type:ident`, `$punct_variant:ident`
 ///
@@ -118,6 +125,26 @@ pub fn with_token_set(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     let input = TokenStream::from(input);
 
     let keywords = KEYWORDS.into_iter().map(|keyword| {
+        let keyword_type = Ident::new(keyword_to_type(&keyword).as_str(), Span::call_site());
+
+        let keyword_variant = Ident::new(keyword_to_variant(&keyword).as_str(), Span::call_site());
+
+        quote! {
+            #keyword #keyword_type #keyword_variant
+        }
+    });
+
+    let blue_keywords = BLUE_KEYWORDS.into_iter().map(|keyword| {
+        let keyword_type = Ident::new(keyword_to_type(&keyword).as_str(), Span::call_site());
+
+        let keyword_variant = Ident::new(keyword_to_variant(&keyword).as_str(), Span::call_site());
+
+        quote! {
+            #keyword #keyword_type #keyword_variant
+        }
+    });
+
+    let pink_keywords = PINK_KEYWORDS.into_iter().map(|keyword| {
         let keyword_type = Ident::new(keyword_to_type(&keyword).as_str(), Span::call_site());
 
         let keyword_variant = Ident::new(keyword_to_variant(&keyword).as_str(), Span::call_site());
@@ -166,6 +193,8 @@ pub fn with_token_set(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         macro_rules! chemical_plant_act_2 {
             {
                 $($keyword:literal $keyword_type:ident $keyword_variant:ident), *;
+                $($blue_keyword:literal $blue_keyword_type:ident $blue_keyword_variant:ident), *;
+                $($pink_keyword:literal $pink_keyword_type:ident $pink_keyword_variant:ident), *;
 
                 $($delim_open:literal $delim_close:literal $delim_type:ident $delim_fn:ident $delim_open_type:ident $delim_close_type:ident), *;
 
@@ -176,6 +205,8 @@ pub fn with_token_set(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         }
         chemical_plant_act_2! {
             #(#keywords), *;
+            #(#blue_keywords), *;
+            #(#pink_keywords), *;
 
             #(#delims), *;
 

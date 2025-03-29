@@ -9,3 +9,6 @@ oath_context               = { path = "../oath_context" }
 oath_src                   = { path = "../oath_src" }
 oath_token_set             = { path = "token_set" }
 oath_tokenizer_proc_macros = { path = "proc_macros" }
+
+[build-dependencies]
+oath_token_set = { path = "token_set" }
