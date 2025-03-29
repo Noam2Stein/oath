@@ -11,7 +11,7 @@ pub struct Fn {
     pub params: Vec<FnParam>,
     pub output: Option<Try<Expr>>,
     pub contract: Contract,
-    pub block: BracesOrSemi<()>,
+    pub block: Option<Block>,
 }
 
 #[derive(Debug, Clone, ParseDesc)]
@@ -55,7 +55,7 @@ impl ItemParse for Fn {
                     params: Vec::new(),
                     output: None,
                     contract: Default::default(),
-                    block: BracesOrSemi::Semi,
+                    block: None,
                 };
             }
         };
@@ -78,7 +78,7 @@ impl ItemParse for Fn {
                     params: Vec::new(),
                     output: None,
                     contract: Default::default(),
-                    block: BracesOrSemi::Semi,
+                    block: None,
                 }
             }
         };
@@ -86,7 +86,14 @@ impl ItemParse for Fn {
         let output = <Option<punct!("->")>>::parse(parser).map(|_| Parse::parse(parser));
 
         let contract = Parse::parse(parser);
-        let block = Parse::parse(parser);
+        let block = Block::option_parse(parser);
+
+        if block.is_none() && <punct!(";")>::option_parse(parser).is_none() {
+            parser.context().push_error(SyntaxError::Expected(
+                parser.peek_span(),
+                "either `{}` or `;`",
+            ));
+        }
 
         Self {
             raw,

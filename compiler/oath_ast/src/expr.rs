@@ -8,6 +8,7 @@ pub enum Expr {
     Ident(Ident),
     Literal(Literal),
     ItemKind(ItemKind),
+    Out(keyword!("out")),
     Tuple(#[span] Span, Vec<Try<Expr>>),
     Array(#[span] Span, Vec<Try<Expr>>),
     Block(Block),
@@ -168,6 +169,10 @@ impl Expr {
             return Some(Self::ItemKind(value));
         }
 
+        if let Some(value) = Parse::parse(parser) {
+            return Some(Self::Out(value));
+        }
+
         if let Some(shs_op) = ShsOp::option_parse(parser) {
             let expr = Self::try_parse_no_mhs(parser).map_box();
 
@@ -223,10 +228,11 @@ impl Detect for Expr {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Ident::detect(parser)
             || Literal::detect(parser)
-            || ItemKind::detect(parser)
             || Group::<Parens>::detect(parser)
             || Group::<Braces>::detect(parser)
             || Group::<Brackets>::detect(parser)
+            || ItemKind::detect(parser)
+            || <keyword!("out")>::detect(parser)
             || ShsOp::detect(parser)
     }
 }

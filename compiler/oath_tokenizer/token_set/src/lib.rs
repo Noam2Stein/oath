@@ -41,7 +41,7 @@ define_token_set!(
         macro,
         const, static,
         var, mut, smut, excl,
-        self, Self,
+        self, Self, out,
     ],
     pink_keywords: [
         if, else, match,
