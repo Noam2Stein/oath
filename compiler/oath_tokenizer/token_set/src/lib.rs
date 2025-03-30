@@ -37,7 +37,7 @@ define_token_set!(
         mod, use, pub, package, super, sys, impl,
         trait, promise, require,
         type, alias, struct, enum, untagged, val, is,
-        fn, raw, con, async, panic, lock, undef,
+        func, raw, con, async, panic, lock, undef,
         macro,
         const, static,
         var, mut, smut, excl,

@@ -63,10 +63,42 @@ impl Add for Span {
         }
     }
 }
-
 impl AddAssign for Span {
     fn add_assign(&mut self, rhs: Self) {
         self.start = self.start.min(rhs.start);
         self.end = self.end.max(rhs.end);
+    }
+}
+
+impl Add<Option<Span>> for Span {
+    type Output = Self;
+
+    fn add(self, rhs: Option<Span>) -> Self::Output {
+        match rhs {
+            Some(rhs) => self + rhs,
+            None => self,
+        }
+    }
+}
+impl AddAssign<Option<Span>> for Span {
+    fn add_assign(&mut self, rhs: Option<Span>) {
+        if let Some(rhs) = rhs {
+            *self += rhs;
+        }
+    }
+}
+
+impl Add<Span> for Option<Span> {
+    type Output = Span;
+
+    fn add(self, rhs: Span) -> Self::Output {
+        rhs + self
+    }
+}
+impl AddAssign<Span> for Option<Span> {
+    fn add_assign(&mut self, rhs: Span) {
+        if let Some(lhs) = self {
+            *lhs += rhs;
+        }
     }
 }

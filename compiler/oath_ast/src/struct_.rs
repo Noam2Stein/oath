@@ -24,7 +24,7 @@ pub struct NamedField {
     pub vis: Vis,
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,
-    pub bounds: Option<Try<Expr>>,
+    pub bounds: Option<Bounds>,
 }
 
 #[derive(Debug, Clone, ParseDesc, Detect)]
@@ -33,7 +33,7 @@ pub struct UnnamedField {
     #[option_detect]
     pub vis: Vis,
     pub type_: Try<Expr>,
-    pub bounds: Option<Try<Expr>>,
+    pub bounds: Option<Bounds>,
 }
 
 impl ItemParse for Struct {
@@ -162,7 +162,7 @@ impl Parse for NamedField {
             Try::Failure
         };
 
-        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
+        let bounds = Bounds::option_parse(parser);
 
         Self {
             vis,
@@ -179,7 +179,7 @@ impl Parse for UnnamedField {
 
         let type_ = Expr::try_parse_no_mhs(parser);
 
-        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
+        let bounds = Bounds::option_parse(parser);
 
         Self { vis, type_, bounds }
     }

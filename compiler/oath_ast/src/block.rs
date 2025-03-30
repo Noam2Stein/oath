@@ -21,10 +21,8 @@ pub enum Stmt {
 pub struct VarStmt {
     #[span]
     span: Span,
-    pub mut_: Option<keyword!("mut")>,
-    pub ident: Try<Ident>,
-    pub ty: Option<Try<Expr>>,
-    pub init: Option<Try<Expr>>,
+    pub name: Try<VarName>,
+    pub init: Try<Expr>,
 }
 
 impl OptionParse for Block {
@@ -73,62 +71,48 @@ impl Detect for Block {
 
 impl OptionParse for VarStmt {
     fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        let mut_ = <keyword!("mut")>::option_parse(parser);
+        let var_keyword = <keyword!("var")>::option_parse(parser)?;
 
-        let var_keyword = if let Some(mut_) = mut_ {
-            if let Try::Success(success) = <keyword!("var")>::try_parse(parser) {
-                success
-            } else {
+        let name = VarName::try_parse(parser);
+        if name.is_failure() {
+            let span = parser.peek_span();
+
+            parser.skip_until(|parser| {
+                <punct!(";")>::detect(parser) || <punct!("=")>::detect(parser)
+            });
+
+            if !<punct!("=")>::detect(parser) {
                 return Some(Self {
-                    mut_: Some(mut_),
-                    ident: Try::Failure,
-                    ty: None,
-                    init: None,
-                    span: mut_.span(),
+                    name: Try::Failure,
+                    init: Try::Failure,
+                    span,
                 });
             }
-        } else {
-            <keyword!("var")>::option_parse(parser)?
-        };
-
-        let ident = match Ident::try_parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                return Some(Self {
-                    mut_,
-                    ident: Try::Failure,
-                    ty: None,
-                    init: None,
-                    span: parser.peek_span(),
-                })
-            }
-        };
-
-        parser.context().highlight(ident, HighlightColor::Cyan);
+        }
 
         let mut span = var_keyword.span() + parser.peek_span();
-
-        let ty = <punct!("-")>::option_parse(parser).map(|_| Expr::try_parse_no_mhs(parser));
-        if let Some(Try::Success(ty)) = &ty {
-            span += ty.span();
-        }
 
         let init = <punct!("=")>::option_parse(parser).map(|_| Expr::try_parse(parser));
         if let Some(Try::Success(init)) = &init {
             span += init.span();
         }
 
-        Some(Self {
-            mut_,
-            span,
-            ident,
-            ty,
-            init,
-        })
+        let init = if let Some(init) = init {
+            init
+        } else {
+            parser.context().push_error(Error::new(
+                "uninit variables are not allowed",
+                parser.peek_span(),
+            ));
+
+            Try::Failure
+        };
+
+        Some(Self { name, init, span })
     }
 }
 impl Detect for VarStmt {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        <keyword!("var")>::detect(parser) || <keyword!("mut")>::detect(parser)
+        <keyword!("var")>::detect(parser)
     }
 }

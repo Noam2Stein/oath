@@ -1,31 +1,37 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{
-    parse_macro_input, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident,
-    LitInt,
+    parse_macro_input, parse_quote, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput,
+    Fields, GenericParam, Ident, LitInt,
 };
 
-#[proc_macro_derive(Spanned, attributes(span, spanned))]
+#[proc_macro_derive(Spanned, attributes(span, option_span))]
 pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         attrs: _,
         vis: _,
         ident,
-        generics,
+        mut generics,
         data,
     } = parse_macro_input!(input as DeriveInput);
 
+    for param in &mut generics.params {
+        if let GenericParam::Type(type_param) = param {
+            type_param.bounds.push(parse_quote!(::oath_src::Spanned));
+        }
+    }
+
     let parse_output = match data {
-        Data::Struct(data) => struct_span(data),
-        Data::Enum(data) => enum_span(data),
-        Data::Union(_) => quote! { compile_error!("`Span` cannot be derived for unions") },
+        Data::Struct(data) => struct_span(data, false),
+        Data::Enum(data) => enum_span(data, false),
+        Data::Union(_) => quote! { compile_error!("`Spanned` cannot be derived for unions") },
     };
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
-        impl # impl_generics ::oath_src::Spanned for #ident #ty_generics #where_clause {
-            fn span(&self) -> Span {
+        impl #impl_generics ::oath_src::Spanned for #ident #ty_generics #where_clause {
+            fn span(&self) -> ::oath_src::Span {
                 #parse_output
             }
         }
@@ -33,7 +39,43 @@ pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     .into()
 }
 
-fn struct_span(data: DataStruct) -> TokenStream {
+#[proc_macro_derive(OptionSpanned, attributes(span, option_span))]
+pub fn derive_option_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let DeriveInput {
+        attrs: _,
+        vis: _,
+        ident,
+        mut generics,
+        data,
+    } = parse_macro_input!(input as DeriveInput);
+
+    for param in &mut generics.params {
+        if let GenericParam::Type(type_param) = param {
+            type_param
+                .bounds
+                .push(parse_quote!(::oath_src::OptionSpanned));
+        }
+    }
+
+    let parse_output = match data {
+        Data::Struct(data) => struct_span(data, true),
+        Data::Enum(data) => enum_span(data, true),
+        Data::Union(_) => quote! { compile_error!("`OptionSpanned` cannot be derived for unions") },
+    };
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote! {
+        impl #impl_generics ::oath_src::OptionSpanned for #ident #ty_generics #where_clause {
+            fn option_span(&self) -> Option<::oath_src::Span> {
+                #parse_output
+            }
+        }
+    }
+    .into()
+}
+
+fn struct_span(data: DataStruct, expect_option: bool) -> TokenStream {
     fields_span(
         &data.fields,
         |field_ident, field_index| {
@@ -46,11 +88,11 @@ fn struct_span(data: DataStruct) -> TokenStream {
                 quote_spanned! { field_ident.span() => self.#field_ident }
             }
         },
-        Span::call_site(),
+        expect_option,
     )
 }
 
-fn enum_span(data: DataEnum) -> TokenStream {
+fn enum_span(data: DataEnum, expect_option: bool) -> TokenStream {
     let match_variants = data.variants.into_iter().map(|variant| {
         let variant_ident = &variant.ident;
 
@@ -62,7 +104,7 @@ fn enum_span(data: DataEnum) -> TokenStream {
         let span = fields_span(
             &variant.fields,
             |_, field_index| format_ident!("field_{field_index}").to_token_stream(),
-            variant.span(),
+            expect_option,
         );
 
         match variant.fields {
@@ -94,44 +136,68 @@ fn enum_span(data: DataEnum) -> TokenStream {
 fn fields_span(
     fields: &Fields,
     get_field_path: impl Fn(Option<&Ident>, usize) -> TokenStream,
-    span: Span,
+    expect_option: bool,
 ) -> TokenStream {
     let span_field = fields
         .iter()
         .zip(0..)
         .find(|(field, _)| field.attrs.iter().any(|attr| attr.path().is_ident("span")));
 
-    let mut span_fields = if let Some(span_field) = span_field {
+    let span_fields = if let Some(span_field) = span_field {
         vec![span_field]
     } else {
         fields.iter().zip(0..).collect()
     };
 
-    if span_fields.is_empty() {
-        return quote_spanned! {
-            span =>
-            compile_error!("expected fields")
-        };
-    }
+    let mut is_always_some = false;
 
-    let (base_field, base_field_index) = span_fields.pop().unwrap();
-    let base_field_ty = &base_field.ty;
-    let base_field_path = get_field_path(base_field.ident.as_ref(), base_field_index);
-
-    let field_types = span_fields.iter().map(|(field, _)| &field.ty);
-
-    let field_paths = span_fields
+    let field_spans_addition = span_fields
         .iter()
-        .map(|(field, field_index)| get_field_path(field.ident.as_ref(), *field_index));
+        .map(|(field, field_index)| {
+            let field_type = &field.ty;
+            let field_path = get_field_path(field.ident.as_ref(), *field_index);
+
+            if field
+                .attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("option_span"))
+            {
+                quote! {
+                    <#field_type as ::oath_src::OptionSpanned>::option_span(&#field_path)
+                }
+            } else {
+                is_always_some = true;
+
+                quote! {
+                    Some(<#field_type as ::oath_src::Spanned>::span(&#field_path))
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let output = if is_always_some && !expect_option {
+        quote! {
+            span.unwrap()
+        }
+    } else {
+        quote! {
+            span
+        }
+    };
 
     quote! {
         {
-            let mut span = <#base_field_ty as ::oath_src::Spanned>::span(&#base_field_path);
+            fn helper(a: Option<::oath_src::Span>, b: Option<::oath_src::Span>) -> Option<::oath_src::Span> {
+                a.map_or(b, |a| Some(a + b))
+            }
+
+            let mut span = None::<::oath_src::Span>;
+
             #(
-                span += <#field_types as ::oath_src::Spanned>::span(&#field_paths);
+                span = helper(span, #field_spans_addition);
             )*
 
-            span
+            #output
         }
     }
 }

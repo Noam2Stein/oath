@@ -8,7 +8,7 @@ use crate::*;
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item"]
 pub enum Item {
-    Fn(Fn),
+    Fn(Func),
     Struct(Struct),
     Trait(Trait),
     Mod(Mod),
@@ -38,7 +38,7 @@ pub enum ItemKeyword {
     Trait(keyword!("trait")),
     Static(keyword!("static")),
     Const(keyword!("const")),
-    Fn(keyword!("fn")),
+    Func(keyword!("func")),
     Mod(keyword!("mod")),
     Use(keyword!("use")),
     Val(keyword!("val")),
@@ -175,7 +175,7 @@ impl OptionParse for Item {
 
                 Self::Unknown
             }
-            ItemKeyword::Fn(_) => Self::Fn(ItemParse::item_parse(
+            ItemKeyword::Func(_) => Self::Fn(ItemParse::item_parse(
                 parser,
                 &mut modifiers,
                 target_kind,

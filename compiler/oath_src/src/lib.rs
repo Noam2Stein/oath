@@ -9,4 +9,4 @@ pub use spanned::*;
 pub use srcfile::*;
 pub use with_span::*;
 
-pub use oath_src_proc_macros::Spanned;
+pub use oath_src_proc_macros::{OptionSpanned, Spanned};

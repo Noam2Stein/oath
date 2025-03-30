@@ -4,9 +4,9 @@ pub trait TryParse: ParseDesc {
     fn try_parse(parser: &mut Parser<impl ParserIterator>) -> Try<Self>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, OptionSpanned)]
 pub enum Try<T> {
-    Success(T),
+    Success(#[option_span] T),
     Failure,
 }
 
@@ -98,15 +98,6 @@ impl<T> Try<T> {
         match self {
             Self::Success(success) => Try::Success(Box::new(success)),
             Self::Failure => Try::Failure,
-        }
-    }
-}
-
-impl<T: Spanned> Try<T> {
-    pub fn option_span(&self) -> Option<Span> {
-        match self {
-            Self::Success(success) => Some(success.span()),
-            Self::Failure => None,
         }
     }
 }

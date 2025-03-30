@@ -16,6 +16,7 @@ pub enum Expr {
     Index(#[span] Span, Box<Expr>, Try<Box<Expr>>),
     Call(#[span] Span, Box<Expr>, Vec<Try<Expr>>),
     Generics(Box<Expr>, GenericArgs),
+    Lamba(#[span] Span, Vec<Try<VarName>>, Try<Box<Expr>>),
     ShsOp(#[span] Span, ShsOp, Try<Box<Expr>>),
     MhsOp(#[span] Span, Box<Expr>, MhsOp, Try<Box<Expr>>),
 }
@@ -161,6 +162,32 @@ impl Expr {
             ));
         }
 
+        if let Some(open_punct) = <punct!("|")>::option_parse(parser) {
+            let param_names = parser.parse_trl::<Try<VarName>, punct!(",")>();
+
+            if <punct!("|")>::try_parse(parser).is_failure() {
+                return Some(Self::Lamba(
+                    open_punct.span() + param_names.last().map_or(None, |name| name.option_span()),
+                    param_names,
+                    Try::Failure,
+                ));
+            }
+
+            let expr = Expr::try_parse(parser).map_box();
+
+            let span = open_punct.span() + expr.option_span();
+
+            return Some(Self::Lamba(span, param_names, expr));
+        }
+
+        if let Some(input) = <punct!("||")>::option_parse(parser) {
+            let expr = Expr::try_parse(parser).map_box();
+
+            let span = input.span() + expr.option_span();
+
+            return Some(Self::Lamba(span, Vec::new(), expr));
+        }
+
         if let Some(value) = Parse::parse(parser) {
             return Some(Self::Block(value));
         }
@@ -233,6 +260,7 @@ impl Detect for Expr {
             || Group::<Brackets>::detect(parser)
             || ItemKind::detect(parser)
             || <keyword!("out")>::detect(parser)
+            || <punct!("|")>::detect(parser)
             || ShsOp::detect(parser)
     }
 }

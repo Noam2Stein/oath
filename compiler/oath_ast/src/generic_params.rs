@@ -9,7 +9,7 @@ pub struct GenericParams(#[span] pub Span, pub Vec<GenericParam>);
 pub struct GenericParam {
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,
-    pub bounds: Option<Try<Expr>>,
+    pub bounds: Option<Bounds>,
 }
 
 impl Parse for GenericParams {
@@ -61,7 +61,7 @@ impl Parse for GenericParam {
             Try::Failure
         };
 
-        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
+        let bounds = Bounds::option_parse(parser);
 
         Self {
             ident,

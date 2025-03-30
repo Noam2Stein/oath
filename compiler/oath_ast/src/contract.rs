@@ -11,7 +11,7 @@ pub struct Contract {
 #[desc = "a contract item"]
 pub struct ContractItem {
     pub target: Try<Expr>,
-    pub bounds: Try<Expr>,
+    pub bounds: Try<Bounds>,
 }
 
 impl Parse for Contract {
@@ -46,14 +46,7 @@ impl Parse for ContractItem {
             parser.skip_until(|parser| <punct!(":")>::detect(parser));
         }
 
-        if <punct!(":")>::try_parse(parser).is_failure() {
-            return Self {
-                target,
-                bounds: Try::Failure,
-            };
-        }
-
-        let bounds = Parse::parse(parser);
+        let bounds = Bounds::try_parse(parser);
 
         Self { target, bounds }
     }

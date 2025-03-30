@@ -2,7 +2,7 @@ use crate::*;
 
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "a fn"]
-pub struct Fn {
+pub struct Func {
     pub vis: Vis,
     pub con: Option<keyword!("con")>,
     pub raw: Option<keyword!("raw")>,
@@ -20,10 +20,10 @@ pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,
-    pub bounds: Option<Try<Expr>>,
+    pub bounds: Option<Bounds>,
 }
 
-impl ItemParse for Fn {
+impl ItemParse for Func {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
@@ -140,7 +140,7 @@ impl Parse for FnParam {
             Try::Failure
         };
 
-        let bounds = <Option<punct!(":")>>::parse(parser).map(|_| Parse::parse(parser));
+        let bounds = Bounds::option_parse(parser);
 
         Self {
             mut_,
