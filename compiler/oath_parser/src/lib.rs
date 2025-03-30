@@ -1,9 +1,11 @@
+mod case;
 mod into_parser;
 mod option_detect;
 mod option_parse;
 mod parse_traits;
 mod parser;
 mod try_parse;
+pub use case::*;
 pub use into_parser::*;
 pub use option_detect::*;
 pub use option_parse::*;

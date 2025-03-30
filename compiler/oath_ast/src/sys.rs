@@ -38,6 +38,7 @@ impl ItemParse for Sys {
         };
 
         parser.context().highlight(ident, HighlightColor::Green);
+        ident.expect_case(IdentCase::UpperCamelCase, parser.context());
 
         let generics = Parse::parse(parser);
         let contract = Parse::parse(parser);

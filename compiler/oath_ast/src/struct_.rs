@@ -52,20 +52,19 @@ impl ItemParse for Struct {
             ));
         };
 
-        let ident = match Ident::try_parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                return Self {
-                    vis,
-                    ident: Try::Failure,
-                    generics: None,
-                    contract: Contract::default(),
-                    fields: Try::Failure,
-                }
-            }
-        };
+        let ident = Ident::try_parse(parser);
+        if ident.is_failure() {
+            return Self {
+                vis,
+                ident: Try::Failure,
+                generics: None,
+                contract: Contract::default(),
+                fields: Try::Failure,
+            };
+        }
 
         parser.context().highlight(ident, HighlightColor::Green);
+        ident.expect_case(IdentCase::UpperCamelCase, parser.context());
 
         let generics = Parse::parse(parser);
         let mut contract = Contract::parse(parser);
@@ -135,21 +134,20 @@ impl Parse for NamedField {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
         let vis = Vis::parse(parser);
 
-        let ident = match Parse::parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                parser.skip_until(|parser| <punct!(",")>::detect(parser));
+        let ident = Ident::try_parse(parser);
+        if ident.is_failure() {
+            parser.skip_until(|parser| <punct!(",")>::detect(parser));
 
-                return Self {
-                    vis,
-                    ident: Try::Failure,
-                    type_: Try::Failure,
-                    bounds: None,
-                };
-            }
-        };
+            return Self {
+                vis,
+                ident: Try::Failure,
+                type_: Try::Failure,
+                bounds: None,
+            };
+        }
 
         parser.context().highlight(ident, HighlightColor::Cyan);
+        ident.expect_case(IdentCase::LowerCamelCase, parser.context());
 
         let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
             Expr::try_parse_no_mhs(parser)

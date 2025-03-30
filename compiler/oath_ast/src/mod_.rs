@@ -38,18 +38,17 @@ impl ItemParse for Mod {
             ));
         };
 
-        let ident = match Parse::parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                return Self {
-                    vis,
-                    ident: Try::Failure,
-                    content: None,
-                }
-            }
-        };
+        let ident = Ident::try_parse(parser);
+        if ident.is_failure() {
+            return Self {
+                vis,
+                ident: Try::Failure,
+                content: None,
+            };
+        }
 
         parser.context().highlight(ident, HighlightColor::Green);
+        ident.expect_case(IdentCase::LowerCamelCase, parser.context());
 
         let content = if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
             Some(Parse::parse(&mut group.into_parser(parser.context())))

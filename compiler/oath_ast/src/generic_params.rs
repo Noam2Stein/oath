@@ -49,6 +49,7 @@ impl Parse for GenericParam {
         };
 
         parser.context().highlight(ident, HighlightColor::Green);
+        ident.expect_case(IdentCase::UpperCamelCase, parser.context());
 
         let type_ = if let Some(_) = <punct!("-")>::option_parse(parser) {
             Expr::try_parse_no_mhs(parser)

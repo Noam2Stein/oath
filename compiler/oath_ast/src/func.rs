@@ -61,6 +61,7 @@ impl ItemParse for Func {
         };
 
         parser.context().highlight(ident, HighlightColor::Yellow);
+        ident.expect_case(IdentCase::LowerCamelCase, parser.context());
 
         let generics = Parse::parse(parser);
 
@@ -128,6 +129,7 @@ impl Parse for FnParam {
         };
 
         parser.context().highlight(ident, HighlightColor::Cyan);
+        ident.expect_case(IdentCase::LowerCamelCase, parser.context());
 
         let type_ = if let Some(_) = <Option<punct!("-")>>::parse(parser) {
             Expr::try_parse_no_mhs(parser)

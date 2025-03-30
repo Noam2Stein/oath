@@ -140,6 +140,17 @@ impl Backend {
                 message: error.message.to_string(),
                 ..Default::default()
             })
+            .chain(
+                context
+                    .collect_warnings()
+                    .into_iter()
+                    .map(|warning| Diagnostic {
+                        range: span_to_range(warning.span()),
+                        severity: Some(DiagnosticSeverity::WARNING),
+                        message: warning.message.to_string(),
+                        ..Default::default()
+                    }),
+            )
             .collect();
 
         let highlights = context.collect_highlights();

@@ -16,17 +16,19 @@ impl OptionParse for VarName {
         if let Some(mut_) = <keyword!("mut")>::option_parse(parser) {
             let ident = Ident::try_parse(parser);
 
-            let type_ = <punct!("-")>::option_parse(parser).map(|_| Expr::try_parse_no_mhs(parser));
-
             parser.context().highlight(ident, HighlightColor::Cyan);
+            ident.expect_case(IdentCase::LowerCamelCase, parser.context());
+
+            let type_ = <punct!("-")>::option_parse(parser).map(|_| Expr::try_parse_no_mhs(parser));
 
             return Some(Self::Ident(Some(mut_), ident, type_));
         }
 
         if let Some(ident) = Ident::option_parse(parser) {
-            let type_ = <punct!("-")>::option_parse(parser).map(|_| Expr::try_parse_no_mhs(parser));
-
             parser.context().highlight(ident, HighlightColor::Cyan);
+            ident.expect_case(IdentCase::LowerCamelCase, parser.context());
+
+            let type_ = <punct!("-")>::option_parse(parser).map(|_| Expr::try_parse_no_mhs(parser));
 
             return Some(Self::Ident(None, Try::Success(ident), type_));
         }

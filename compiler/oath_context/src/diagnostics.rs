@@ -11,8 +11,9 @@ pub struct Error {
     pub message: String,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, Spanned)]
 pub struct Warning {
+    #[span]
     span: Span,
     pub message: String,
 }
