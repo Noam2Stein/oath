@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "a struct"]
 pub struct Struct {
     pub vis: Vis,
@@ -17,7 +17,7 @@ pub enum Fields {
     Unnamed(Vec<UnnamedField>),
 }
 
-#[derive(Debug, Clone, ParseDesc, Detect)]
+#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
 #[desc = "a named fiend"]
 pub struct NamedField {
     #[option_detect]
@@ -27,7 +27,7 @@ pub struct NamedField {
     pub bounds: Option<Bounds>,
 }
 
-#[derive(Debug, Clone, ParseDesc, Detect)]
+#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
 #[desc = "an unnamed fiend"]
 pub struct UnnamedField {
     #[option_detect]
@@ -40,17 +40,11 @@ impl ItemParse for Struct {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        _kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
-        let vis = modifiers.take_vis();
+        item_kind.expect_no_target(parser.context());
 
-        if let Some(target_kind) = target_kind {
-            parser.context().push_error(SyntaxError::CannotHaveTarget(
-                target_kind.span(),
-                Self::desc(),
-            ));
-        };
+        let vis = modifiers.take_vis();
 
         let ident = Ident::try_parse(parser);
         if ident.is_failure() {

@@ -12,7 +12,7 @@ pub enum Expr {
     Tuple(#[span] Span, Vec<Try<Expr>>),
     Array(#[span] Span, Vec<Try<Expr>>),
     Block(Block),
-    Field(Box<Expr>, FieldIdent),
+    Field(Box<Expr>, #[option_spanned] Try<FieldIdent>),
     Index(#[span] Span, Box<Expr>, Try<Box<Expr>>),
     Call(#[span] Span, Box<Expr>, Vec<Try<Expr>>),
     Generics(Box<Expr>, GenericArgs),
@@ -26,7 +26,6 @@ pub enum Expr {
 pub enum FieldIdent {
     Ident(Ident),
     Int(IntLiteral),
-    Unknown(Span),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
@@ -35,7 +34,7 @@ pub enum ShsOp {
     Neg(punct!("-")),
     Not(punct!("!")),
     Deref(punct!("*")),
-    Ref(punct!("&")),
+    Ref(punct!("&"), #[option_spanned] RefKind),
     Eq(punct!("==")),
     NotEq(punct!("!=")),
     More(punct!(">")),
@@ -43,6 +42,16 @@ pub enum ShsOp {
     MoreEq(punct!(">=")),
     LessEq(punct!("<=")),
     Question(punct!("?")),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
+#[desc = "a reference kind"]
+pub enum RefKind {
+    Mut(keyword!("mut")),
+    SMut(keyword!("smut")),
+    Excl(keyword!("excl")),
+    #[fallback]
+    Imut,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
@@ -87,7 +96,7 @@ impl Expr {
         loop {
             if let Some(_) = <punct!(".")>::option_parse(parser) {
                 let base = Box::new(replace(&mut expr, Self::fillin()));
-                let field = Parse::parse(parser);
+                let field = FieldIdent::try_parse(parser);
 
                 expr = Self::Field(base, field);
 
@@ -265,28 +274,25 @@ impl Detect for Expr {
     }
 }
 
-impl Parse for FieldIdent {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+impl OptionParse for FieldIdent {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
         if let Some(value) = Parse::parse(parser) {
-            Self::Ident(value)
+            Some(Self::Ident(value))
         } else if let Some(value) = <Option<IntLiteral>>::parse(parser) {
             if value.suffix().is_some() {
                 parser
                     .context()
                     .push_error(SyntaxError::Expected(value.span(), "no suffix"));
             }
-            Self::Int(value)
+            Some(Self::Int(value))
         } else {
-            let span = parser.peek_span();
-
-            parser
-                .context()
-                .push_error(SyntaxError::Expected(span, Self::desc()));
-
-            parser.next();
-
-            Self::Unknown(span)
+            None
         }
+    }
+}
+impl Detect for FieldIdent {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        Ident::detect(parser) || IntLiteral::detect(parser)
     }
 }
 

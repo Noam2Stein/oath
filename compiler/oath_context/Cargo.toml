@@ -4,5 +4,6 @@ name    = "oath_context"
 version = "0.1.0"
 
 [dependencies]
-oath_src        = { path = "../oath_src" }
-string-interner = "0.18.0"
+oath_diagnostics = { path = "../oath_diagnostics" }
+oath_src         = { path = "../oath_src" }
+string-interner  = "0.18.0"

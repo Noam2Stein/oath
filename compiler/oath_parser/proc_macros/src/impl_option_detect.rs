@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{spanned::Spanned, DataEnum, DataStruct, DeriveInput, Error};
 
-use crate::impl_util::{detect_fields, has_attrib, impl_parser_trait, option_detect_fields};
+use crate::impl_util::{detect_fields, has_attr, impl_parser_trait, option_detect_fields};
 
 pub fn impl_option_detect(input: &DeriveInput) -> TokenStream {
     impl_parser_trait(
@@ -28,7 +28,7 @@ fn option_detect_struct(data: &DataStruct) -> TokenStream {
 
 fn option_detect_enum(data: &DataEnum) -> TokenStream {
     let detect_variants = data.variants.iter().map(|variant| {
-        if has_attrib(&variant.attrs, "fallback") {
+        if has_attr(&variant.attrs, "fallback") {
             if variant.fields.len() > 0 {
                 Error::new(
                     variant.span(),

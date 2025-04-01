@@ -7,7 +7,7 @@ use crate::{Expr, ShsOp};
 #[derive(Debug, Clone, OptionSpanned, ParseDesc)]
 #[desc = "either `:` or `=`"]
 pub struct Bounds {
-    #[option_span]
+    #[option_spanned]
     pub expr: Try<Expr>,
 }
 

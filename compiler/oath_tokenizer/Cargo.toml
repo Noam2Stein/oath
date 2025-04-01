@@ -4,11 +4,7 @@ name    = "oath_tokenizer"
 version = "0.1.0"
 
 [dependencies]
-logos                      = "0.15.0"
-oath_context               = { path = "../oath_context" }
-oath_src                   = { path = "../oath_src" }
-oath_token_set             = { path = "token_set" }
-oath_tokenizer_proc_macros = { path = "proc_macros" }
-
-[build-dependencies]
-oath_token_set = { path = "token_set" }
+logos        = "0.15.0"
+oath_context = { path = "../oath_context" }
+oath_src     = { path = "../oath_src" }
+oath_tokens  = { path = "../oath_tokens" }

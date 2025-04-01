@@ -2,6 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
     spanned::Spanned, Attribute, Data, DataEnum, DataStruct, DataUnion, DeriveInput, Error, Fields,
+    Meta,
 };
 
 pub fn impl_parser_trait(
@@ -11,27 +12,27 @@ pub fn impl_parser_trait(
     fn_ident: &'static str,
     fn_params: TokenStream,
     fn_output: TokenStream,
-    struct_impl: Option<fn(&DataStruct) -> TokenStream>,
-    enum_impl: Option<fn(&DataEnum) -> TokenStream>,
-    union_impl: Option<fn(&DataUnion) -> TokenStream>,
+    struct_impl: Option<fn(&DataStruct, &Vec<Attribute>) -> TokenStream>,
+    enum_impl: Option<fn(&DataEnum, &Vec<Attribute>) -> TokenStream>,
+    union_impl: Option<fn(&DataUnion, &Vec<Attribute>) -> TokenStream>,
 ) -> TokenStream {
     let eval = match &input.data {
         Data::Struct(data) => match struct_impl {
-            Some(struct_impl) => struct_impl(data),
+            Some(struct_impl) => struct_impl(data, &input.attrs),
             None => {
                 let error_message = format!("`{}` cannot be derived for structs", trait_ident);
                 quote! { compile_error!(#error_message) }
             }
         },
         Data::Enum(data) => match enum_impl {
-            Some(enum_impl) => enum_impl(data),
+            Some(enum_impl) => enum_impl(data, &input.attrs),
             None => {
                 let error_message = format!("`{}` cannot be derived for enums", trait_ident);
                 quote! { compile_error!(#error_message) }
             }
         },
         Data::Union(data) => match union_impl {
-            Some(union_impl) => union_impl(data),
+            Some(union_impl) => union_impl(data, &input.attrs),
             None => {
                 let error_message = format!("`{}` cannot be derived for unions", trait_ident);
                 quote! { compile_error!(#error_message) }
@@ -56,7 +57,48 @@ pub fn impl_parser_trait(
     .into()
 }
 
-pub fn parse_fields(fields: &Fields, fields_span: Span) -> TokenStream {
+pub fn fields_parse_error(fields: &Fields, fields_span: Span) -> TokenStream {
+    let fields_parse_error = fields.iter().map(|field| {
+        let field_type = &field.ty;
+
+        quote_spanned! {
+            field_type.span() =>
+            <#field_type as oath_parser::ParseError>::parse_error()
+        }
+    });
+
+    match fields {
+        Fields::Named(_) => {
+            let field_idents = fields.iter().map(|field| &field.ident);
+
+            quote_spanned! {
+                fields_span =>
+                {
+                    #(#field_idents: #fields_parse_error,)*
+                }
+            }
+        }
+        Fields::Unnamed(_) => {
+            quote_spanned! {
+                fields_span =>
+                (#(#fields_parse_error), *)
+            }
+        }
+        Fields::Unit => {
+            quote! {}
+        }
+    }
+}
+
+pub fn parse_fields(
+    fields: &Fields,
+    fields_attrs: &Vec<Attribute>,
+    fields_span: Span,
+) -> TokenStream {
+    if let Some(delimiters) = fields_delimiters(fields_attrs) {
+        if !has_attr(fields.first, attrib)
+    }
+
     let parse_fields = fields.iter().map(|field| {
         let field_type = &field.ty;
 
@@ -89,12 +131,18 @@ pub fn parse_fields(fields: &Fields, fields_span: Span) -> TokenStream {
     }
 }
 
-pub fn detect_fields(fields: &Fields, fields_span: Span) -> TokenStream {
+pub fn detect_fields(fields: &Fields, attrs: &Vec<Attribute>, fields_span: Span) -> TokenStream {
+    if let Some(delimiters) = fields_delimiters(attrs) {
+        return quote! {
+            <::oath_parser::Group<::oath_parser::#delimiters> as ::oath_parser::Detect>::detect(parser)
+        };
+    }
+
     let (option_detect_fields, detect_field) = 'find_fields: {
         let mut option_detect_fields = Vec::new();
 
         for field in fields {
-            if has_attrib(&field.attrs, "option_detect") {
+            if has_attr(&field.attrs, "option_detect") {
                 option_detect_fields.push(field);
             } else {
                 break 'find_fields (option_detect_fields, field);
@@ -132,7 +180,7 @@ pub fn condition_parse_fields_if(fields: &Fields, fields_span: Span) -> TokenStr
         let mut option_detect_fields = Vec::new();
 
         for field in fields {
-            if has_attrib(&field.attrs, "option_detect") {
+            if has_attr(&field.attrs, "option_detect") {
                 option_detect_fields.push(field);
             } else {
                 break 'find_fields (option_detect_fields, field);
@@ -182,7 +230,7 @@ pub fn parse_detected_fields(fields: &Fields, fields_span: Span) -> TokenStream 
         let mut detect_field = None;
 
         while let Some(field) = fields_iter.next() {
-            if has_attrib(&field.attrs, "option_detect") {
+            if has_attr(&field.attrs, "option_detect") {
                 option_detect_fields.push(field);
             } else {
                 detect_field = Some(field);
@@ -265,7 +313,7 @@ pub fn parse_detected_fields(fields: &Fields, fields_span: Span) -> TokenStream 
 pub fn option_detect_fields(fields: &Fields) -> TokenStream {
     let non_option_detect_errors = fields
         .iter()
-        .filter(|field| !has_attrib(&field.attrs, "option_detect"))
+        .filter(|field| !has_attr(&field.attrs, "option_detect"))
         .map(|field| {
             Error::new(field.span(), "field must be marked `option_detect`").to_compile_error()
         });
@@ -288,6 +336,12 @@ pub fn option_detect_fields(fields: &Fields) -> TokenStream {
     }
 }
 
-pub fn has_attrib<'a>(attribs: impl IntoIterator<Item = &'a Attribute>, attrib: &'a str) -> bool {
+pub fn has_attr<'a>(attribs: impl IntoIterator<Item = &'a Attribute>, attrib: &'a str) -> bool {
     attribs.into_iter().any(|attr| attr.path().is_ident(attrib))
+}
+
+pub fn fields_delimiters(attrs: &Vec<Attribute>) -> Option<&Meta> {
+    attrs
+        .iter()
+        .find_map(|attr| attr.path().is_ident("delimited").then(|| &attr.meta))
 }

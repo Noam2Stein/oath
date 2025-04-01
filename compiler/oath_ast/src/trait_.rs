@@ -15,16 +15,15 @@ impl ItemParse for Trait {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
         let vis = modifiers.take_vis();
 
-        let target_kind = if let Some(target_kind) = target_kind {
+        let target_kind = if let Some(target_kind) = item_kind.target() {
             Try::Success(target_kind)
         } else {
             parser.context().push_error(SyntaxError::Expected(
-                kind_keyword.span(),
+                item_kind.base.span(),
                 "a trait target-kind",
             ));
 

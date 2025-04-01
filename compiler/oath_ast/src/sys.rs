@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "a spec"]
 pub struct Sys {
     pub vis: Vis,
@@ -13,43 +13,37 @@ impl ItemParse for Sys {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        _kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
-        let vis = modifiers.take_vis();
+        let mut output = Self::parse_error();
 
-        if let Some(target_kind) = target_kind {
-            parser.context().push_error(SyntaxError::CannotHaveTarget(
-                target_kind.span(),
-                Self::desc(),
-            ));
-        };
-
-        let ident = match Parse::parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                return Self {
-                    vis,
-                    ident: Try::Failure,
-                    generics: None,
-                    contract: Contract::default(),
-                }
-            }
-        };
-
-        parser.context().highlight(ident, HighlightColor::Green);
-        ident.expect_case(IdentCase::UpperCamelCase, parser.context());
-
-        let generics = Parse::parse(parser);
-        let contract = Parse::parse(parser);
-
-        <Try<punct!(";")>>::parse(parser);
-
-        Self {
-            vis,
-            ident,
-            generics,
-            contract,
+        match item_kind.expect_no_target(parser.context()) {
+            Try::Success(_) => {}
+            Try::Failure => return output,
         }
+
+        output.vis = modifiers.take_vis();
+
+        output.ident = match Ident::try_parse(parser) {
+            Try::Success(success) => Try::Success(success),
+            Try::Failure => return output,
+        };
+
+        parser
+            .context()
+            .highlight(output.ident, HighlightColor::Green);
+        output
+            .ident
+            .expect_case(IdentCase::UpperCamelCase, parser.context());
+
+        output.generics = Parse::parse(parser);
+        output.contract = Parse::parse(parser);
+
+        match <punct!(";")>::try_parse(parser) {
+            Try::Success(_) => {}
+            Try::Failure => return output,
+        }
+
+        output
     }
 }

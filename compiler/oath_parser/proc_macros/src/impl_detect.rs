@@ -22,11 +22,11 @@ pub fn impl_detect(input: &DeriveInput) -> TokenStream {
     )
 }
 
-fn detect_struct(data: &DataStruct) -> TokenStream {
-    detect_fields(&data.fields, Span::call_site())
+fn detect_struct(data: &DataStruct, attrs: &Vec<Attribute>) -> TokenStream {
+    detect_fields(&data.fields, attrs, Span::call_site())
 }
 
-fn detect_enum(data: &DataEnum) -> TokenStream {
+fn detect_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     let fallback_errors = data
     .variants
     .iter()
@@ -46,7 +46,7 @@ fn detect_enum(data: &DataEnum) -> TokenStream {
     let detect_variants = data
         .variants
         .iter()
-        .map(|variant| detect_fields(&variant.fields, variant.span()));
+        .map(|variant| detect_fields(&variant.fields, &variant.attrs, variant.span()));
 
     quote! {
         {

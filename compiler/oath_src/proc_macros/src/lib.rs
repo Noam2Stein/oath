@@ -5,7 +5,7 @@ use syn::{
     Fields, GenericParam, Ident, LitInt,
 };
 
-#[proc_macro_derive(Spanned, attributes(span, option_span))]
+#[proc_macro_derive(Spanned, attributes(span, option_spanned))]
 pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         attrs: _,
@@ -35,11 +35,29 @@ pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                 #parse_output
             }
         }
+
+        impl #impl_generics PartialEq for #ident #ty_generics #where_clause {
+            fn eq(&self, other: &Self) -> bool {
+                <Self as ::oath_src::Spanned>::span(self).eq(&<Self as ::oath_src::Spanned>::span(other))
+            }
+        }
+        impl #impl_generics Eq for #ident #ty_generics #where_clause {}
+
+        impl #impl_generics PartialOrd for #ident #ty_generics #where_clause {
+            fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+                <Self as ::oath_src::Spanned>::span(self).partial_cmp(&<Self as ::oath_src::Spanned>::span(other))
+            }
+        }
+        impl #impl_generics Ord for #ident #ty_generics #where_clause {
+            fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+                <Self as ::oath_src::Spanned>::span(self).cmp(&<Self as ::oath_src::Spanned>::span(other))
+            }
+        }
     }
     .into()
 }
 
-#[proc_macro_derive(OptionSpanned, attributes(span, option_span))]
+#[proc_macro_derive(OptionSpanned, attributes(span, option_spanned))]
 pub fn derive_option_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         attrs: _,
@@ -69,6 +87,24 @@ pub fn derive_option_spanned(input: proc_macro::TokenStream) -> proc_macro::Toke
         impl #impl_generics ::oath_src::OptionSpanned for #ident #ty_generics #where_clause {
             fn option_span(&self) -> Option<::oath_src::Span> {
                 #parse_output
+            }
+        }
+
+        impl #impl_generics PartialEq for #ident #ty_generics #where_clause {
+            fn eq(&self, other: &Self) -> bool {
+                <Self as ::oath_src::OptionSpanned>::option_span(self).eq(&<Self as ::oath_src::OptionSpanned>::option_span(other))
+            }
+        }
+        impl #impl_generics Eq for #ident #ty_generics #where_clause {}
+
+        impl #impl_generics PartialOrd for #ident #ty_generics #where_clause {
+            fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+                <Self as ::oath_src::OptionSpanned>::option_span(self).partial_cmp(&<Self as ::oath_src::OptionSpanned>::option_span(other))
+            }
+        }
+        impl #impl_generics Ord for #ident #ty_generics #where_clause {
+            fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+                <Self as ::oath_src::OptionSpanned>::option_span(self).cmp(&<Self as ::oath_src::OptionSpanned>::option_span(other))
             }
         }
     }
@@ -160,7 +196,7 @@ fn fields_span(
             if field
                 .attrs
                 .iter()
-                .any(|attr| attr.path().is_ident("option_span"))
+                .any(|attr| attr.path().is_ident("option_spanned"))
             {
                 quote! {
                     <#field_type as ::oath_src::OptionSpanned>::option_span(&#field_path)

@@ -1,11 +1,13 @@
-use std::mem::take;
+use std::{
+    fmt::{self, Display, Formatter},
+    mem::take,
+};
 
 use derive_more::Display;
-use nonempty::NonEmpty;
 
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "an item"]
 pub enum Item {
     Fn(Func),
@@ -14,10 +16,11 @@ pub enum Item {
     Mod(Mod),
     Spec(Sys),
     Impl(Impl),
+    #[fallback]
     Unknown,
 }
 
-#[derive(Debug, Clone, Default, ParseDesc, OptionDetect)]
+#[derive(Debug, Clone, Default, ParseDesc, ParseError, OptionDetect)]
 #[desc = "item modifiers"]
 pub struct ItemModifiers {
     #[option_detect]
@@ -49,15 +52,15 @@ pub enum ItemKeyword {
 #[derive(Debug, Clone, ParseDesc)]
 #[desc = "an item-type"]
 pub struct ItemKind {
-    pub keywords: NonEmpty<ItemKeyword>,
+    pub target_keywords: Vec<ItemKeyword>,
+    pub base: ItemKeyword,
 }
 
 pub trait ItemParse: Sized {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self;
 }
 
@@ -83,7 +86,7 @@ impl ItemModifiers {
         self.pub_.is_some() || self.con.is_some() || self.raw.is_some()
     }
 
-    pub fn expect_empty(&mut self, context: ContextHandle, item_desc: &'static str) {
+    pub fn expect_empty(&self, context: ContextHandle, item_desc: &'static str) {
         if let Some(pub_) = self.pub_ {
             context.push_error(SyntaxError::CannotBePutOn(pub_.span(), "`pub`", item_desc));
         }
@@ -95,147 +98,6 @@ impl ItemModifiers {
         }
     }
 }
-
-impl OptionParse for ItemKind {
-    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        parser
-            .option_parse_sep::<_, punct!("-")>()
-            .map(|keywords| Self { keywords })
-    }
-}
-impl Detect for ItemKind {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        ItemKeyword::detect(parser)
-    }
-}
-impl Spanned for ItemKind {
-    fn span(&self) -> Span {
-        self.keywords
-            .iter()
-            .fold(self.keywords.first().span(), |span, keyword| {
-                span + keyword.span()
-            })
-    }
-}
-
-impl OptionParse for Item {
-    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        let mut modifiers = ItemModifiers::parse(parser);
-
-        let mut target_kind = if modifiers.is_not_empty() {
-            match ItemKind::try_parse(parser) {
-                Try::Success(success) => success,
-                Try::Failure => return Some(Self::Unknown),
-            }
-        } else {
-            ItemKind::option_parse(parser)?
-        };
-
-        let kind_keyword = *target_kind.keywords.last();
-        let target_kind = if target_kind.keywords.len() > 1 {
-            target_kind.keywords.pop();
-            Some(target_kind)
-        } else {
-            None
-        };
-
-        Some(match kind_keyword {
-            ItemKeyword::Impl(_) => Self::Impl(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Alias(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-            ItemKeyword::Val(keyword) => {
-                parser.context().push_error(Error::new(
-                    "`val` is not a standalone item-type",
-                    keyword.span(),
-                ));
-
-                Self::Unknown
-            }
-            ItemKeyword::Const(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-            ItemKeyword::Enum(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-            ItemKeyword::Func(_) => Self::Fn(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Mod(_) => Self::Mod(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Sys(_) => Self::Spec(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Static(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-            ItemKeyword::Struct(_) => Self::Struct(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Trait(_) => Self::Trait(ItemParse::item_parse(
-                parser,
-                &mut modifiers,
-                target_kind,
-                kind_keyword,
-            )),
-            ItemKeyword::Type(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-            ItemKeyword::Use(keyword) => {
-                parser
-                    .context()
-                    .push_error(Error::new("unfinished item type", keyword.span()));
-
-                Self::Unknown
-            }
-        })
-    }
-}
-
-impl Detect for Item {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        ItemModifiers::option_detect(parser) || ItemKind::detect(parser)
-    }
-}
-
 impl Parse for ItemModifiers {
     fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
         let mut output = Self::default();
@@ -270,5 +132,159 @@ impl Parse for ItemModifiers {
         }
 
         output
+    }
+}
+
+impl ItemKind {
+    pub fn target(&self) -> Option<ItemKind> {
+        self.target_keywords.last().map(|last_keyword| {
+            let base = *last_keyword;
+
+            let target_keywords = self
+                .target_keywords
+                .iter()
+                .cloned()
+                .take(self.target_keywords.len() - 1)
+                .collect();
+
+            Self {
+                target_keywords,
+                base,
+            }
+        })
+    }
+
+    pub fn expect_no_target(&self, context: ContextHandle) -> Try<()> {
+        if self.target_keywords.len() > 0 {
+            context.push_error(Error::new(
+                format!("SyntaxError: `{self}` is invalid"),
+                self.span(),
+            ));
+
+            Try::Failure
+        } else {
+            Try::Success(())
+        }
+    }
+}
+impl Display for ItemKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for target_keyword in &self.target_keywords {
+            write!(f, "{target_keyword}-")?;
+        }
+
+        write!(f, "{}", self.base)
+    }
+}
+impl OptionParse for ItemKind {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let keywords = parser.option_parse_sep::<ItemKeyword, punct!("-")>()?;
+
+        Some(Self {
+            target_keywords: keywords.iter().cloned().take(keywords.len() - 1).collect(),
+            base: *keywords.last(),
+        })
+    }
+}
+impl Detect for ItemKind {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        ItemKeyword::detect(parser)
+    }
+}
+impl Spanned for ItemKind {
+    fn span(&self) -> Span {
+        self.target_keywords.first().map(|first| first.span()) + self.base.span()
+    }
+}
+
+impl OptionParse for Item {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let mut modifiers = ItemModifiers::parse(parser);
+
+        let item_kind = if modifiers.is_not_empty() {
+            match ItemKind::try_parse(parser) {
+                Try::Success(success) => success,
+                Try::Failure => return Some(Self::Unknown),
+            }
+        } else {
+            ItemKind::option_parse(parser)?
+        };
+
+        Some(match item_kind.base {
+            ItemKeyword::Impl(_) => {
+                Self::Impl(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Alias(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+            ItemKeyword::Val(keyword) => {
+                parser.context().push_error(Error::new(
+                    "`val` is not a standalone item-type",
+                    keyword.span(),
+                ));
+
+                Self::Unknown
+            }
+            ItemKeyword::Const(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+            ItemKeyword::Enum(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+            ItemKeyword::Func(_) => {
+                Self::Fn(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Mod(_) => {
+                Self::Mod(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Sys(_) => {
+                Self::Spec(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Static(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+            ItemKeyword::Struct(_) => {
+                Self::Struct(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Trait(_) => {
+                Self::Trait(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+            }
+            ItemKeyword::Type(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+            ItemKeyword::Use(keyword) => {
+                parser
+                    .context()
+                    .push_error(Error::new("unfinished item type", keyword.span()));
+
+                Self::Unknown
+            }
+        })
+    }
+}
+
+impl Detect for Item {
+    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
+        ItemModifiers::option_detect(parser) || ItemKind::detect(parser)
     }
 }

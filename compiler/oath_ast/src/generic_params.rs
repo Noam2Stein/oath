@@ -4,7 +4,7 @@ use crate::*;
 #[desc = "generic params"]
 pub struct GenericParams(#[span] pub Span, pub Vec<GenericParam>);
 
-#[derive(Debug, Clone, ParseDesc, Detect)]
+#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
 #[desc = "a generic param"]
 pub struct GenericParam {
     pub ident: Try<Ident>,
@@ -12,19 +12,17 @@ pub struct GenericParam {
     pub bounds: Option<Bounds>,
 }
 
-impl Parse for GenericParams {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let group = match Group::<Angles>::try_parse(parser) {
-            Try::Success(success) => success,
-            Try::Failure => return Self(parser.peek_span(), Vec::new()),
-        };
+impl OptionParse for GenericParams {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let group = Group::<Angles>::option_parse(parser)?;
 
         let span = group.span();
+
         let params = group
             .into_parser(parser.context())
             .parse_trl::<_, punct!(",")>();
 
-        Self(span, params)
+        Some(Self(span, params))
     }
 }
 impl Detect for GenericParams {

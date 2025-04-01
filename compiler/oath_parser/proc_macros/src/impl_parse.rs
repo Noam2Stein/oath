@@ -1,9 +1,9 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{spanned::Spanned, DataEnum, DataStruct, DeriveInput, Error};
+use syn::{spanned::Spanned, Attribute, DataEnum, DataStruct, DeriveInput, Error};
 
 use crate::impl_util::{
-    condition_parse_fields_if, has_attrib, impl_parser_trait, parse_detected_fields, parse_fields,
+    condition_parse_fields_if, has_attr, impl_parser_trait, parse_detected_fields, parse_fields,
 };
 
 pub fn impl_parse(input: &DeriveInput) -> TokenStream {
@@ -24,8 +24,8 @@ pub fn impl_parse(input: &DeriveInput) -> TokenStream {
     )
 }
 
-fn parse_struct(data: &DataStruct) -> TokenStream {
-    parse_fields(&data.fields, Span::call_site())
+fn parse_struct(data: &DataStruct, attrs: &Vec<Attribute>) -> TokenStream {
+    parse_fields(&data.fields, attrs, Span::call_site())
 }
 
 fn parse_enum(data: &DataEnum) -> TokenStream {
@@ -37,15 +37,16 @@ fn parse_enum(data: &DataEnum) -> TokenStream {
         let mut multiple_fallback_errors = Vec::new();
 
         while let Some(variant) = variant_iter.next() {
-            if has_attrib(&variant.attrs, "fallback") {
+            if has_attr(&variant.attrs, "fallback") {
                 fallback_variant = Some(variant);
+                break;
             } else {
                 non_fallback_variants.push(variant);
             }
         }
 
         while let Some(variant) = variant_iter.next() {
-            if has_attrib(&variant.attrs, "fallback") {
+            if has_attr(&variant.attrs, "fallback") {
                 multiple_fallback_errors.push(
                     Error::new(variant.span(), "only one fallback variant is allowed")
                         .to_compile_error(),

@@ -3,13 +3,15 @@
 members = [
     "compiler/oath_ast",
     "compiler/oath_context",
+    "compiler/oath_diagnostics", "compiler/oath_highlighting", "compiler/oath_interner",
     "compiler/oath_name_res",
     "compiler/oath_parser",
     "compiler/oath_parser/proc_macros",
     "compiler/oath_src",
     "compiler/oath_tokenizer",
-    "compiler/oath_tokenizer/proc_macros",
-    "compiler/oath_tokenizer/token_set",
+    "compiler/oath_tokens",
+    "compiler/oath_tokens/definitions",
+    "compiler/oath_tokens/proc_macros",
     "editor-server",
 ]
 

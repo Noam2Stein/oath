@@ -1,9 +1,10 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "either `{ }` or `;`"]
 pub enum BracesOrSemi<T> {
     Braces(T),
+    #[fallback]
     Semi,
 }
 

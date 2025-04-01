@@ -7,7 +7,7 @@ pub struct Contract {
     pub require: Vec<ContractItem>,
 }
 
-#[derive(Debug, Clone, ParseDesc, Detect)]
+#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
 #[desc = "a contract item"]
 pub struct ContractItem {
     pub target: Try<Expr>,
@@ -49,6 +49,15 @@ impl Parse for ContractItem {
         let bounds = Bounds::try_parse(parser);
 
         Self { target, bounds }
+    }
+}
+
+impl ParseError for Contract {
+    fn parse_error() -> Self {
+        Self {
+            promise: Vec::new(),
+            require: Vec::new(),
+        }
     }
 }
 

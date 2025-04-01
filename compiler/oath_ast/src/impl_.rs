@@ -14,15 +14,9 @@ impl ItemParse for Impl {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         _modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        _kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
-        if let Some(target_kind) = target_kind {
-            parser.context().push_error(SyntaxError::CannotHaveTarget(
-                target_kind.span(),
-                Self::desc(),
-            ));
-        };
+        item_kind.expect_no_target(parser.context());
 
         let generics = Parse::parse(parser);
         let item = Parse::parse(parser);

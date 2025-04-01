@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "a fn"]
 pub struct Func {
     pub vis: Vis,
@@ -9,12 +9,13 @@ pub struct Func {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub params: Vec<FnParam>,
+    pub output_try: Option<OutputTry>,
     pub output: Option<Try<Expr>>,
     pub contract: Contract,
     pub block: Option<Block>,
 }
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "a fn param"]
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
@@ -23,49 +24,49 @@ pub struct FnParam {
     pub bounds: Option<Bounds>,
 }
 
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "output try"]
+pub struct OutputTry {
+    pub keyword: keyword!("try"),
+    pub generics: Option<GenericArgs>,
+}
+
 impl ItemParse for Func {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        _kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
         let vis = modifiers.take_vis();
         let con = modifiers.take_con();
         let raw = modifiers.take_raw();
 
-        if let Some(target_kind) = target_kind {
-            parser.context().push_error(SyntaxError::CannotHaveTarget(
-                target_kind.span(),
-                Self::desc(),
-            ));
-        };
+        let _ = item_kind.expect_no_target(parser.context());
 
-        let ident = match Parse::parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                parser.skip_until(|parser| <punct!(",")>::detect(parser));
+        let ident = Ident::try_parse(parser);
+        if ident.is_failure() {
+            parser.skip_until(|parser| <punct!(",")>::detect(parser));
 
-                return Self {
-                    vis,
-                    con,
-                    raw,
-                    ident: Try::Failure,
-                    generics: None,
-                    params: Vec::new(),
-                    output: None,
-                    contract: Default::default(),
-                    block: None,
-                };
-            }
-        };
+            return Self {
+                vis,
+                con,
+                raw,
+                ident: Try::Failure,
+                generics: None,
+                params: Vec::new(),
+                output_try: None,
+                output: None,
+                contract: Default::default(),
+                block: None,
+            };
+        }
 
         parser.context().highlight(ident, HighlightColor::Yellow);
         ident.expect_case(IdentCase::LowerCamelCase, parser.context());
 
         let generics = Parse::parse(parser);
 
-        let params = match <Try<Group<Parens>>>::parse(parser) {
+        let params = match Group::<Parens>::try_parse(parser) {
             Try::Success(group) => group
                 .into_parser(parser.context())
                 .parse_trl::<_, punct!(",")>(),
@@ -77,6 +78,7 @@ impl ItemParse for Func {
                     ident,
                     generics,
                     params: Vec::new(),
+                    output_try: None,
                     output: None,
                     contract: Default::default(),
                     block: None,
@@ -84,7 +86,9 @@ impl ItemParse for Func {
             }
         };
 
-        let output = <Option<punct!("->")>>::parse(parser).map(|_| Parse::parse(parser));
+        let output_arrow = <punct!("->")>::option_parse(parser);
+        let output_try = output_arrow.map_or(None, |_| OutputTry::option_parse(parser));
+        let output = output_arrow.map(|_| Expr::try_parse(parser));
 
         let contract = Parse::parse(parser);
         let block = Block::option_parse(parser);
@@ -104,6 +108,7 @@ impl ItemParse for Func {
             generics,
             ident,
             params,
+            output_try,
             output,
             block,
         }

@@ -1,0 +1,7 @@
+[package]
+edition = "2024"
+name    = "oath_highlighting"
+version = "0.1.0"
+
+[dependencies]
+oath_src = { path = "../oath_src" }

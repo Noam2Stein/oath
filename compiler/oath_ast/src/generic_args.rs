@@ -4,19 +4,17 @@ use crate::*;
 #[desc = "generic args"]
 pub struct GenericArgs(#[span] pub Span, pub Vec<Expr>);
 
-impl Parse for GenericArgs {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let group = match <Try<Group<Angles>>>::parse(parser) {
-            Try::Success(success) => success,
-            Try::Failure => return Self(parser.peek_span(), Vec::new()),
-        };
+impl OptionParse for GenericArgs {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+        let group = Group::<Angles>::option_parse(parser)?;
 
-        Self(
-            group.span(),
-            group
-                .into_parser(parser.context())
-                .parse_trl::<_, punct!(",")>(),
-        )
+        let span = group.span();
+
+        let items = group
+            .into_parser(parser.context())
+            .parse_trl::<_, punct!(",")>();
+
+        Some(Self(span, items))
     }
 }
 

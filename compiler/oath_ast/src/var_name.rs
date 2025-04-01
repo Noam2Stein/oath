@@ -5,9 +5,9 @@ use crate::*;
 pub enum VarName {
     Tuple(#[span] Span, Vec<VarName>),
     Ident(
-        #[option_span] Option<keyword!("mut")>,
-        #[option_span] Try<Ident>,
-        #[option_span] Option<Try<Expr>>,
+        #[option_spanned] Option<keyword!("mut")>,
+        #[option_spanned] Try<Ident>,
+        #[option_spanned] Option<Try<Expr>>,
     ),
 }
 

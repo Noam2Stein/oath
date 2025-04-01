@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
+#[derive(Debug, Clone, ParseDesc, ParseError)]
 #[desc = "a module"]
 pub struct Mod {
     pub vis: Vis,
@@ -8,7 +8,7 @@ pub struct Mod {
     pub content: Option<ModContent>,
 }
 
-#[derive(Debug, Clone, Default, ParseDesc)]
+#[derive(Debug, Clone, Default, ParseDesc, ParseError)]
 #[desc = "module content"]
 pub struct ModContent {
     pub items: Vec<Item>,
@@ -26,17 +26,11 @@ impl ItemParse for Mod {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,
-        target_kind: Option<ItemKind>,
-        _kind_keyword: ItemKeyword,
+        item_kind: ItemKind,
     ) -> Self {
-        let vis = modifiers.take_vis();
+        let _ = item_kind.expect_no_target(parser.context());
 
-        if let Some(target_kind) = target_kind {
-            parser.context().push_error(SyntaxError::CannotHaveTarget(
-                target_kind.span(),
-                Self::desc(),
-            ));
-        };
+        let vis = modifiers.take_vis();
 
         let ident = Ident::try_parse(parser);
         if ident.is_failure() {
