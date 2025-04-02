@@ -18,23 +18,23 @@ pub struct Diagnostics {
     warnings: Vec<Warning>,
 }
 
-#[derive(Debug, Clone, From, TryInto, Spanned)]
+#[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
 pub enum Error {
     Token(TokenError),
     Syntax(SyntaxError),
 }
 
-#[derive(Debug, Clone, From, TryInto, Spanned)]
+#[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
 pub enum Warning {
     Syntax(SyntaxWarning),
 }
 
 impl Diagnostics {
-    pub fn push_error(&mut self, problem: impl Into<Error>) {
-        self.errors.push(problem.into());
+    pub fn push_error(&mut self, error: impl Into<Error>) {
+        self.errors.push(error.into());
     }
-    pub fn push_warning(&mut self, problem: impl Into<Warning>) {
-        self.warnings.push(problem.into());
+    pub fn push_warning(&mut self, warning: impl Into<Warning>) {
+        self.warnings.push(warning.into());
     }
 
     pub fn errors(&self) -> &[Error] {

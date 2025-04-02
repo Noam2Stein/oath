@@ -1,6 +1,7 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, new, Spanned)]
+#[derive(Debug, Clone, Copy, Hash, new, Spanned, InternedDisplay)]
+#[display("\"{}\"", self.str_id)]
 pub struct StrLiteral {
     #[span]
     pub span: Span,

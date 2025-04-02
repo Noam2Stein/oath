@@ -2,17 +2,23 @@ use derive_more::Display;
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, Spanned)]
+#[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]
 pub enum SyntaxError {
+    #[display("Syntax: expected {}", field_1)]
     Expected(#[span] Span, &'static str),
+    #[display("Syntax: {} cannot be marked {}", field_1, field_2)]
     CannotBeMarked(#[span] Span, &'static str, &'static str),
+    #[display("Syntax: {} cannot cannot have a target item kind", field_1)]
     CannotHaveATarget(#[span] Span, &'static str),
+    #[display("Syntax: multiple {}", field_1)]
     Mutliple(#[span] Span, &'static str),
 }
 
-#[derive(Debug, Clone, Copy, Hash, Spanned)]
+#[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]
 pub enum SyntaxWarning {
+    #[display("Syntax: unnesessary parens")]
     UnnesessaryParens(#[span] Parens),
+    #[display("Syntax: expected {}", field_1)]
     ExpectedCase(#[span] Ident, IdentCase),
 }
 

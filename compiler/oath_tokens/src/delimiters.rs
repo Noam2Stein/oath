@@ -43,6 +43,8 @@ pub trait DelimitersType:
 
     fn open_span(&self) -> Span;
     fn close_span(&self) -> Span;
+
+    fn kind(&self) -> DelimiterKind;
 }
 trait DelimitersTypeSeal {}
 
@@ -56,6 +58,10 @@ impl DelimitersType for Delimiters {
     #[inline(always)]
     fn close_span(&self) -> Span {
         self.close_span
+    }
+
+    fn kind(&self) -> DelimiterKind {
+        self.kind
     }
 }
 impl DelimitersTypeSeal for Delimiters {}
@@ -72,13 +78,15 @@ with_tokens!(
         impl DelimitersType for $delim_type {
             const GROUP_DESC: &str = concat!("expected `", $delim_open, " ", $delim_close, "`");
 
-            #[inline(always)]
             fn open_span(&self) -> Span {
                 self.open_span
             }
-            #[inline(always)]
             fn close_span(&self) -> Span {
                 self.close_span
+            }
+
+            fn kind(&self) -> DelimiterKind {
+                DelimiterKind::$delim_type
             }
         }
         impl DelimitersTypeSeal for $delim_type {}

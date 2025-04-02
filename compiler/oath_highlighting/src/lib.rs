@@ -7,7 +7,7 @@ pub enum HighlightColor {
     Yellow,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Highlighter {
     highlights: Vec<(Span, HighlightColor)>,
 }

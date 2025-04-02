@@ -1,6 +1,7 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, new, Spanned)]
+#[derive(Debug, Clone, Copy, Hash, Display, new, Spanned)]
+#[display("{char:?}")]
 pub struct CharLiteral {
     #[span]
     pub span: Span,

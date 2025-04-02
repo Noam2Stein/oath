@@ -1,3 +1,5 @@
+use std::fmt::{self, Formatter};
+
 use crate::*;
 
 #[derive(Debug, Clone, Hash, new, Spanned)]
@@ -90,5 +92,17 @@ impl<D: DelimitersType> IntoIterator for Group<D> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.tokens.into_iter()
+    }
+}
+
+impl<D: DelimitersType> InternedDisplay for Group<D> {
+    fn interned_fmt(&self, f: &mut Formatter, interner: &Interner) -> fmt::Result {
+        write!(f, "{} ", self.delimiters.kind().open_str())?;
+
+        for token in &self.tokens {
+            write!(f, "{} ", Interned(token, interner))?;
+        }
+
+        write!(f, "{}", self.delimiters.kind().close_str())
     }
 }

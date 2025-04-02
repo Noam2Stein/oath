@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, Spanned)]
+#[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]
 pub enum Literal {
     Char(CharLiteral),
     Float(FloatLiteral),

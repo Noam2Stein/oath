@@ -4,4 +4,6 @@ name    = "oath_interner"
 version = "0.1.0"
 
 [dependencies]
-string-interner = "0.18.0"
+derive-new                = "0.7.0"
+oath_interner_proc_macros = { path = "proc_macros" }
+string-interner           = "0.18.0"

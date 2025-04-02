@@ -51,6 +51,7 @@ const fn verify_token_type_helper<
         + TryFrom<TokenTree>
         + for<'a> TryFrom<&'a TokenTree>
         + Into<TokenTree>
+        + InternedDisplay
         + Spanned,
 >() {
 }
