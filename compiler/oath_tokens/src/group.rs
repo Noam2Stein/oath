@@ -2,7 +2,7 @@ use std::fmt::{self, Formatter};
 
 use crate::*;
 
-#[derive(Debug, Clone, Hash, new, Spanned)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, new, Spanned)]
 pub struct Group<D: DelimitersType = Delimiters> {
     #[span]
     pub delimiters: D,

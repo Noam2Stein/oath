@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 nonempty     = "0.11.0"
 oath_context = { path = "../oath_context" }
-#oath_parser_proc_macros = { path = "proc_macros" }
-oath_src    = { path = "../oath_src" }
-oath_tokens = { path = "../oath_tokens" }
+oath_parser_proc_macros = { path = "proc_macros" }
+oath_diagnostics = { path = "../oath_diagnostics" }
+oath_src         = { path = "../oath_src" }
+oath_tokens      = { path = "../oath_tokens" }

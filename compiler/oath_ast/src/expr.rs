@@ -21,7 +21,7 @@ pub enum Expr {
     MhsOp(#[span] Span, Box<Expr>, MhsOp, Try<Box<Expr>>),
 }
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
+#[derive(Debug, Clone, Spanned)]
 #[desc = "a field ident"]
 pub enum FieldIdent {
     Ident(Ident),

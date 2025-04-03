@@ -35,24 +35,6 @@ pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                 #parse_output
             }
         }
-
-        impl #impl_generics PartialEq for #ident #ty_generics #where_clause {
-            fn eq(&self, other: &Self) -> bool {
-                <Self as ::oath_src::Spanned>::span(self).eq(&<Self as ::oath_src::Spanned>::span(other))
-            }
-        }
-        impl #impl_generics Eq for #ident #ty_generics #where_clause {}
-
-        impl #impl_generics PartialOrd for #ident #ty_generics #where_clause {
-            fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
-                <Self as ::oath_src::Spanned>::span(self).partial_cmp(&<Self as ::oath_src::Spanned>::span(other))
-            }
-        }
-        impl #impl_generics Ord for #ident #ty_generics #where_clause {
-            fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
-                <Self as ::oath_src::Spanned>::span(self).cmp(&<Self as ::oath_src::Spanned>::span(other))
-            }
-        }
     }
     .into()
 }
@@ -87,24 +69,6 @@ pub fn derive_option_spanned(input: proc_macro::TokenStream) -> proc_macro::Toke
         impl #impl_generics ::oath_src::OptionSpanned for #ident #ty_generics #where_clause {
             fn option_span(&self) -> Option<::oath_src::Span> {
                 #parse_output
-            }
-        }
-
-        impl #impl_generics PartialEq for #ident #ty_generics #where_clause {
-            fn eq(&self, other: &Self) -> bool {
-                <Self as ::oath_src::OptionSpanned>::option_span(self).eq(&<Self as ::oath_src::OptionSpanned>::option_span(other))
-            }
-        }
-        impl #impl_generics Eq for #ident #ty_generics #where_clause {}
-
-        impl #impl_generics PartialOrd for #ident #ty_generics #where_clause {
-            fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
-                <Self as ::oath_src::OptionSpanned>::option_span(self).partial_cmp(&<Self as ::oath_src::OptionSpanned>::option_span(other))
-            }
-        }
-        impl #impl_generics Ord for #ident #ty_generics #where_clause {
-            fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
-                <Self as ::oath_src::OptionSpanned>::option_span(self).cmp(&<Self as ::oath_src::OptionSpanned>::option_span(other))
             }
         }
     }

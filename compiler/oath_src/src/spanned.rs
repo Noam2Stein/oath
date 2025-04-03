@@ -1,10 +1,10 @@
 use crate::Span;
 
-pub trait Spanned: Eq + Ord {
+pub trait Spanned {
     fn span(&self) -> Span;
 }
 
-pub trait OptionSpanned: Eq + Ord {
+pub trait OptionSpanned {
     fn option_span(&self) -> Option<Span>;
 }
 

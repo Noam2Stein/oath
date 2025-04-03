@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "a spec"]
+#[derive(Debug, Clone, Parse)]
 pub struct Sys {
     pub vis: Vis,
     pub ident: Try<Ident>,

@@ -1,6 +1,8 @@
 use crate::*;
 
-#[derive(Debug, Clone, Hash, From, TryInto, Spanned, InternedDisplay)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, From, TryInto, Spanned, InternedDisplay,
+)]
 pub enum TokenTree {
     Group(Group),
     Ident(Ident),

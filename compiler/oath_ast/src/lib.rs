@@ -5,16 +5,17 @@ splat_attribs! {
     #[allow(unused_imports)]:
 
     use oath_context::*;
+    use oath_diagnostics::*;
+    use oath_highlighting::*;
     use oath_parser::*;
     use oath_src::*;
-    use oath_tokenizer::*;
+    use oath_tokens::*;
 }
 
 mod block;
 mod bounds;
 mod braces_or_semi;
 mod contract;
-mod error;
 mod expr;
 mod func;
 mod generic_args;
@@ -31,7 +32,6 @@ pub use block::*;
 pub use bounds::*;
 pub use braces_or_semi::*;
 pub use contract::*;
-pub use error::*;
 pub use expr::*;
 pub use func::*;
 pub use generic_args::*;
@@ -45,14 +45,13 @@ pub use trait_::*;
 pub use var_name::*;
 pub use vis::*;
 
-trait Seal {}
-
 pub type SyntaxTree = ModContent;
 
 #[allow(private_bounds)]
 pub trait ParseAstExt: Seal {
     fn parse_ast(self, context: ContextHandle) -> SyntaxTree;
 }
+trait Seal {}
 
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {

@@ -5,7 +5,7 @@ use oath_ast::ParseAstExt;
 use oath_context::{Context, ContextHandle, HighlightColor};
 //use oath_name_res::{DumbNameContext, IntoNamespace};
 use oath_src::{Span, Spanned, SrcFile};
-use oath_tokenizer::{SrcFileTokenizeExt, KEYWORDS};
+use oath_tokenizer::{TokenizeExt, KEYWORDS};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};

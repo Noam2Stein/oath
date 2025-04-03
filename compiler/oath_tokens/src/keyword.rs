@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, Display, new, Spanned)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, new, Spanned)]
 #[display("{kind}")]
 pub struct Keyword {
     #[span]
@@ -16,7 +16,7 @@ with_tokens!(
     )*}
 
     $(
-        #[derive(Debug, Clone, Copy, Hash, Display, Spanned)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Spanned)]
         #[display($keyword)]
         pub struct $keyword_type(#[span] pub Span);
     )*

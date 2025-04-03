@@ -6,6 +6,8 @@ use crate::*;
 pub enum SyntaxError {
     #[display("Syntax: expected {}", field_1)]
     Expected(#[span] Span, &'static str),
+    #[display("Syntax: unexpected tokens")]
+    UnexpectedTokens(#[span] Span),
     #[display("Syntax: {} cannot be marked {}", field_1, field_2)]
     CannotBeMarked(#[span] Span, &'static str, &'static str),
     #[display("Syntax: {} cannot cannot have a target item kind", field_1)]

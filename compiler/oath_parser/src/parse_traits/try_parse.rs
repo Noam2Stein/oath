@@ -1,20 +1,10 @@
 use crate::*;
 
 #[must_use]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, OptionSpanned)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, OptionSpanned)]
 pub enum Try<T> {
     Success(#[option_spanned] T),
     Failure,
-}
-
-impl<T: OptionParse> Parse for Try<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        T::try_parse(parser)
-    }
-
-    fn parse_error() -> Self {
-        Try::Failure
-    }
 }
 
 impl<T> Try<T> {
@@ -74,16 +64,6 @@ impl<T> Try<T> {
         match self {
             Self::Success(success) => Try::Success(Box::new(success)),
             Self::Failure => Try::Failure,
-        }
-    }
-}
-
-impl<T: Highlightable> Highlightable for Try<T> {
-    fn highlight_span(&self) -> Option<Span> {
-        if let Try::Success(t) = self {
-            t.highlight_span()
-        } else {
-            None
         }
     }
 }

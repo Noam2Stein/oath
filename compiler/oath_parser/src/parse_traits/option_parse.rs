@@ -11,10 +11,9 @@ pub trait OptionParse: Sized {
         if let Some(output) = Self::option_parse(parser) {
             Try::Success(output)
         } else {
-            parser.context().push_error(Error::new(
-                format!("SyntaxError: expected {}", Self::desc()),
-                parser.peek_span(),
-            ));
+            parser
+                .context()
+                .push_error(SyntaxError::Expected(parser.peek_span(), Self::desc()));
 
             Try::Failure
         }

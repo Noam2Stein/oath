@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "a struct"]
+#[derive(Debug, Clone, Parse)]
 pub struct Struct {
     pub vis: Vis,
     pub ident: Try<Ident>,
@@ -10,17 +9,14 @@ pub struct Struct {
     pub fields: Try<Fields>,
 }
 
-#[derive(Debug, Clone, ParseDesc)]
-#[desc = "either `{ }` or `( )`"]
+#[derive(Debug, Clone)]
 pub enum Fields {
     Named(Vec<NamedField>),
     Unnamed(Vec<UnnamedField>),
 }
 
-#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
-#[desc = "a named fiend"]
+#[derive(Debug, Clone)]
 pub struct NamedField {
-    #[option_detect]
     pub vis: Vis,
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,

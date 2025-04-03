@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
-#[desc = "a trait"]
+#[derive(Debug, Clone)]
 pub struct Trait {
     pub vis: Vis,
     pub target_kind: Try<ItemKind>,

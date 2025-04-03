@@ -1,7 +1,7 @@
 use crate::*;
 
-#[derive(Debug, Clone, OptionSpanned, ParseDesc)]
-#[desc = "either an ident or `( )`"]
+#[derive(Debug, Clone, OptionSpanned)]
+
 pub enum VarName {
     Tuple(#[span] Span, Vec<VarName>),
     Ident(
@@ -44,9 +44,12 @@ impl OptionParse for VarName {
 
         None
     }
-}
-impl Detect for VarName {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Ident::detect(parser) || Group::<Parens>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "either an ident or `( )`"
     }
 }

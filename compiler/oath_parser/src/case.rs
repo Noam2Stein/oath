@@ -1,12 +1,4 @@
-use std::fmt::{self, Display, Formatter};
-
 use crate::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum IdentCase {
-    UpperCamelCase,
-    LowerCamelCase,
-}
 
 pub trait ExpectCase {
     fn expect_case(&self, case: IdentCase, context: ContextHandle);
@@ -27,18 +19,9 @@ impl<T: ExpectCase> ExpectCase for Try<T> {
     }
 }
 
-impl Display for IdentCase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UpperCamelCase => write!(f, "UpperCamelCase"),
-            Self::LowerCamelCase => write!(f, "lowerCamelCase"),
-        }
-    }
-}
-
 impl ExpectCase for Ident {
     fn expect_case(&self, case: IdentCase, context: ContextHandle) {
-        let str = context.unintern(self.str_id);
+        let str = context.unintern(self.str_id());
         let first_char = str.chars().next().unwrap();
 
         let is_correct = match case {
@@ -53,7 +36,7 @@ impl ExpectCase for Ident {
         };
 
         if !is_correct {
-            context.push_warning(Warning::new(format!("expected {case}"), self.span()));
+            context.push_warning(SyntaxWarning::ExpectedCase(*self, case));
         }
     }
 }

@@ -1,8 +1,4 @@
-use oath_context::ContextHandle;
-use oath_src::Position;
-use oath_tokenizer::{DelimitersType, Group, TokenFile, TokenTree};
-
-use crate::{Parser, ParserIterator};
+use crate::*;
 
 pub trait IntoParser {
     type Iter: ParserIterator;

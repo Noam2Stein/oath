@@ -2,7 +2,7 @@ use std::fmt::{self, Formatter};
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, new, Spanned)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, new, Spanned)]
 pub struct IntLiteral {
     #[span]
     pub span: Span,

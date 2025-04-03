@@ -34,7 +34,7 @@ token_impl!(StrLiteral = "a string literal", (TokenTree::Literal(Literal::Str(_)
 token_impl!(CharLiteral = "a char literal", (TokenTree::Literal(Literal::Char(_))) => true);
 
 token_impl!(Keyword = "a keyword", (TokenTree::Keyword(_)) => true);
-with_token_set!($(
+with_tokens!($(
     token_impl!(
         $keyword_type = concat!("`", $keyword, "`"),
         (TokenTree::Keyword(keyword)) => keyword.kind == KeywordKind::$keyword_variant
@@ -42,7 +42,7 @@ with_token_set!($(
 )*);
 
 token_impl!(Punct = "a punct", (TokenTree::Punct(_)) => true);
-with_token_set!($(
+with_tokens!($(
     token_impl!(
         $punct_type = concat!("`", $punct, "`"),
         (TokenTree::Punct(punct)) => punct.kind == PunctKind::$punct_variant
@@ -50,7 +50,7 @@ with_token_set!($(
 )*);
 
 token_impl!(Group = "delimiters", (TokenTree::Group(_)) => true);
-with_token_set!($(
+with_tokens!($(
     token_impl!(
         Group<$delim_type> = concat!("`", $delim_open, " ", $delim_close, "`"),
         (TokenTree::Group(group)) => group.delimiters.kind == DelimiterKind::$delim_type

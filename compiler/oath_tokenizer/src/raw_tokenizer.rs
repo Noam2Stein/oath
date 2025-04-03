@@ -51,23 +51,23 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                     }
                 };
 
-                Some(with_token_set_expr! {
+                Some(with_tokens_expr! {
                         match next {
                             LogosToken::IdentOrKeyword(str) => {
-                                match Ident::new_or_keyword(str, span, self.context) {
+                                match Ident::new_or_keyword(str, span, &mut self.context.0.write().unwrap().interner) {
                                     Ok(ident) => RawToken::Ident(ident),
                                     Err(keyword) => RawToken::Keyword(keyword),
                                 }
                             },
                             $(
                                 LogosToken::$punct_type => {
-                                    RawToken::Punct(Punct::new(PunctKind::$punct_variant, span))
+                                    RawToken::Punct(Punct::new(span, PunctKind::$punct_variant))
                                 },
                             )*
-                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(unsafe { IntLiteral::from_regex_str(str, span, self.context) })),
-                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(unsafe { FloatLiteral::from_regex_str(str, span, self.context) })),
-                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(unsafe { StrLiteral::from_regex_str(str, span, self.context) })),
-                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(unsafe { CharLiteral::from_regex_str(str, span, self.context) })),
+                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.context))),
                             $(
                                 LogosToken::$delim_open_type => RawToken::OpenDelimiter(span, DelimiterKind::$delim_type),
                                 LogosToken::$delim_close_type => RawToken::CloseDelimiter(span, DelimiterKind::$delim_type),
@@ -81,7 +81,7 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
     }
 }
 
-with_token_set!(
+with_tokens!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos)]
     #[logos(skip r"[ \t\n\r\f]+")]
     enum LogosToken<'src> {

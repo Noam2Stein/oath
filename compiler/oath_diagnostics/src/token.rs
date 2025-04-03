@@ -8,4 +8,6 @@ pub enum TokenError {
     Unclosed(#[span] Span, DelimiterKind),
     #[display("unopened {}", field_1.close_str())]
     Unopened(#[span] Span, DelimiterKind),
+    #[display("out of bounds literal")]
+    OutOfBoundsLiteral(#[span] Span),
 }

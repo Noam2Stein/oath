@@ -148,8 +148,7 @@ impl<'ctx, I: ParserIterator> Drop for Parser<'ctx, I> {
                 span = span + next.span()
             }
 
-            self.context
-                .push_error(Error::new("Syntax Error: unexpected tokens", span));
+            self.context.push_error(SyntaxError::UnexpectedTokens(span));
         }
     }
 }
