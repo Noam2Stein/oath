@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
-#[desc = "generic args"]
+#[derive(Debug, Clone, Spanned)]
 pub struct GenericArgs(#[span] pub Span, pub Vec<Expr>);
 
 impl OptionParse for GenericArgs {
@@ -16,10 +15,12 @@ impl OptionParse for GenericArgs {
 
         Some(Self(span, items))
     }
-}
 
-impl Detect for GenericArgs {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Group::<Angles>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "generic args"
     }
 }

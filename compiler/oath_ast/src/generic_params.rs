@@ -1,11 +1,9 @@
 use crate::*;
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
-#[desc = "generic params"]
+#[derive(Debug, Clone, Spanned)]
 pub struct GenericParams(#[span] pub Span, pub Vec<GenericParam>);
 
-#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
-#[desc = "a generic param"]
+#[derive(Debug, Clone)]
 pub struct GenericParam {
     pub ident: Try<Ident>,
     pub type_: Try<Expr>,
@@ -24,10 +22,13 @@ impl OptionParse for GenericParams {
 
         Some(Self(span, params))
     }
-}
-impl Detect for GenericParams {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Group::<Angles>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "generic params"
     }
 }
 
@@ -66,6 +67,14 @@ impl Parse for GenericParam {
             ident,
             type_,
             bounds,
+        }
+    }
+
+    fn parse_error() -> Self {
+        Self {
+            ident: Parse::parse_error(),
+            type_: Parse::parse_error(),
+            bounds: Parse::parse_error(),
         }
     }
 }

@@ -7,8 +7,7 @@ use derive_more::Display;
 
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "an item"]
+#[derive(Debug, Clone)]
 pub enum Item {
     Fn(Func),
     Struct(Struct),
@@ -16,18 +15,13 @@ pub enum Item {
     Mod(Mod),
     Spec(Sys),
     Impl(Impl),
-    #[fallback]
     Unknown,
 }
 
-#[derive(Debug, Clone, Default, ParseDesc, ParseError, OptionDetect)]
-#[desc = "item modifiers"]
+#[derive(Debug, Clone, Default)]
 pub struct ItemModifiers {
-    #[option_detect]
     pub_: Option<keyword!("pub")>,
-    #[option_detect]
     con: Option<keyword!("con")>,
-    #[option_detect]
     raw: Option<keyword!("raw")>,
 }
 
@@ -49,8 +43,7 @@ pub enum ItemKeyword {
     Impl(keyword!("impl")),
 }
 
-#[derive(Debug, Clone, ParseDesc)]
-#[desc = "an item-type"]
+#[derive(Debug, Clone)]
 pub struct ItemKind {
     pub target_keywords: Vec<ItemKeyword>,
     pub base: ItemKeyword,
@@ -133,6 +126,14 @@ impl Parse for ItemModifiers {
 
         output
     }
+
+    fn parse_error() -> Self {
+        Self {
+            con: Parse::parse_error(),
+            pub_: Parse::parse_error(),
+            raw: Parse::parse_error(),
+        }
+    }
 }
 
 impl ItemKind {
@@ -185,10 +186,13 @@ impl OptionParse for ItemKind {
             base: *keywords.last(),
         })
     }
-}
-impl Detect for ItemKind {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         ItemKeyword::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "an item kind"
     }
 }
 impl Spanned for ItemKind {
@@ -281,10 +285,12 @@ impl OptionParse for Item {
             }
         })
     }
-}
 
-impl Detect for Item {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         ItemModifiers::option_detect(parser) || ItemKind::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "an item"
     }
 }

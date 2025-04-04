@@ -1,14 +1,12 @@
 use crate::*;
 
-#[derive(Debug, Clone, Default, ParseDesc)]
-#[desc = "a contract"]
+#[derive(Debug, Clone, Default)]
 pub struct Contract {
     pub promise: Vec<ContractItem>,
     pub require: Vec<ContractItem>,
 }
 
-#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
-#[desc = "a contract item"]
+#[derive(Debug, Clone, Parse)]
 pub struct ContractItem {
     pub target: Try<Expr>,
     pub bounds: Try<Bounds>,
@@ -36,23 +34,7 @@ impl Parse for Contract {
 
         output
     }
-}
 
-impl Parse for ContractItem {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let target = Expr::try_parse_no_mhs(parser);
-
-        if target.is_failure() {
-            parser.skip_until(|parser| <punct!(":")>::detect(parser));
-        }
-
-        let bounds = Bounds::try_parse(parser);
-
-        Self { target, bounds }
-    }
-}
-
-impl ParseError for Contract {
     fn parse_error() -> Self {
         Self {
             promise: Vec::new(),

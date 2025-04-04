@@ -23,10 +23,8 @@ pub struct NamedField {
     pub bounds: Option<Bounds>,
 }
 
-#[derive(Debug, Clone, ParseDesc, ParseError, Detect)]
-#[desc = "an unnamed fiend"]
+#[derive(Debug, Clone)]
 pub struct UnnamedField {
-    #[option_detect]
     pub vis: Vis,
     pub type_: Try<Expr>,
     pub bounds: Option<Bounds>,
@@ -113,10 +111,13 @@ impl OptionParse for Fields {
             None
         }
     }
-}
-impl Detect for Fields {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Group::<Braces>::detect(parser) || Group::<Parens>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "either `{ }` or `( )`"
     }
 }
 

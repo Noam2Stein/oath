@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "a fn"]
+#[derive(Debug, Clone)]
 pub struct Func {
     pub vis: Vis,
     pub con: Option<keyword!("con")>,
@@ -15,8 +14,7 @@ pub struct Func {
     pub block: Option<Block>,
 }
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "a fn param"]
+#[derive(Debug, Clone)]
 pub struct FnParam {
     pub mut_: Option<keyword!("mut")>,
     pub ident: Try<Ident>,
@@ -156,10 +154,8 @@ impl Parse for FnParam {
             bounds,
         }
     }
-}
 
-impl Detect for FnParam {
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Ident::detect(parser) || <keyword!("mut")>::detect(parser)
+    fn parse_error() -> Self {
+        todo!()
     }
 }

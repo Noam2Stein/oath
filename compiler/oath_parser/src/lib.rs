@@ -10,4 +10,4 @@ use oath_diagnostics::*;
 use oath_src::*;
 use oath_tokens::*;
 
-pub use oath_parser_proc_macros::{OptionDetect, OptionParse, Parse};
+pub use oath_parser_proc_macros::{OptionParse, Parse};

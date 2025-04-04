@@ -42,16 +42,11 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
 }
 
 fn option_parse_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
-    let detect_fields = condition_parse_fields_if(&data.fields, Span::call_site());
-    let parse_detected_fields = parse_detected_fields(&data.fields, Span::call_site());
-
-    quote! {
-        if #detect_fields {
-            Some(Self #parse_detected_fields)
-        } else {
-            None
-        }
-    }
+    option_parse_fields(
+        &data.fields,
+        Span::call_site(),
+        |fields| quote! { Self #fields },
+    )
 }
 
 fn detect_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
@@ -60,14 +55,16 @@ fn detect_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
 
 fn option_parse_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     let variant_ifs = data.variants.iter().map(|variant| {
-        let detect_variant = condition_parse_fields_if(&variant.fields, variant.span());
-        let parse_detected_variant = parse_detected_fields(&variant.fields, variant.span());
-
-        let variant_ident = &variant.ident;
+        let option_parse_variant = option_parse_fields(&variant.fields, variant.span(), |fields| {
+            let variant_ident = &variant.ident;
+            quote! {
+                Self::#variant_ident #fields
+            }
+        });
 
         quote! {
-            if #detect_variant {
-                return Some(Self::#variant_ident #parse_detected_variant);
+            if let Some(output) = #option_parse_variant {
+                return Some(output);
             }
         }
     });

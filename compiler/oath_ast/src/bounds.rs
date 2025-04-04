@@ -1,11 +1,6 @@
-use oath_parser::{Detect, OptionParse, ParseDesc, Parser, ParserIterator, Try, TryParse};
-use oath_src::{OptionSpanned, Spanned};
-use oath_tokenizer::{punct, EqEqPunct};
+use crate::*;
 
-use crate::{Expr, ShsOp};
-
-#[derive(Debug, Clone, OptionSpanned, ParseDesc)]
-#[desc = "either `:` or `=`"]
+#[derive(Debug, Clone, OptionSpanned)]
 pub struct Bounds {
     #[option_spanned]
     pub expr: Try<Expr>,
@@ -33,9 +28,12 @@ impl OptionParse for Bounds {
 
         None
     }
-}
-impl Detect for Bounds {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         <punct!(":")>::detect(parser) || <punct!("=")>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "either `:` or `=`"
     }
 }

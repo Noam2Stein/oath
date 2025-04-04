@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
-#[desc = "a block"]
+#[derive(Debug, Clone, Spanned)]
 pub struct Block {
     #[span]
     span: Span,
@@ -16,8 +15,7 @@ pub enum Stmt {
     Expr(Expr),
 }
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
-#[desc = "a variable declaration"]
+#[derive(Debug, Clone, Spanned)]
 pub struct VarStmt {
     #[span]
     span: Span,
@@ -27,45 +25,48 @@ pub struct VarStmt {
 
 impl OptionParse for Block {
     fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        Group::<Braces>::option_parse(parser).map(|group| {
-            let span = group.span();
-            let mut parser = group.into_parser(parser.context());
+        let group = Group::<Braces>::option_parse(parser)?;
 
-            let mut stmts = Vec::new();
-            let mut has_trailing_semi = true;
+        let span = group.span();
+        let mut parser = group.into_parser(parser.context());
 
-            while let Some(value) = Stmt::option_parse(&mut parser) {
-                stmts.push(value);
+        let mut stmts = Vec::new();
+        let mut has_trailing_semi = true;
 
-                if <punct!(";")>::option_parse(&mut parser).is_none() {
-                    has_trailing_semi = false;
-                    break;
+        while let Some(value) = Stmt::option_parse(&mut parser) {
+            stmts.push(value);
+
+            if <punct!(";")>::option_parse(&mut parser).is_none() {
+                has_trailing_semi = false;
+                break;
+            }
+        }
+
+        match stmts.last() {
+            Some(Stmt::Expr(_)) | None => {}
+            _ => {
+                if !has_trailing_semi {
+                    parser.context().push_error(SyntaxError::Expected(
+                        parser.peek_span(),
+                        <punct!(";")>::desc(),
+                    ));
                 }
             }
+        }
 
-            match stmts.last() {
-                Some(Stmt::Expr(_)) | None => {}
-                _ => {
-                    if !has_trailing_semi {
-                        parser.context().push_error(SyntaxError::Expected(
-                            parser.peek_span(),
-                            <punct!(";")>::desc(),
-                        ));
-                    }
-                }
-            }
-
-            Self {
-                span,
-                stmts,
-                has_trailing_semi,
-            }
+        Some(Self {
+            span,
+            stmts,
+            has_trailing_semi,
         })
     }
-}
-impl Detect for Block {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Group::<Braces>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "a block"
     }
 }
 
@@ -110,9 +111,12 @@ impl OptionParse for VarStmt {
 
         Some(Self { name, init, span })
     }
-}
-impl Detect for VarStmt {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         <keyword!("var")>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "a variable declaration"
     }
 }

@@ -2,8 +2,7 @@ use std::{cmp::Ordering, mem::replace};
 
 use crate::*;
 
-#[derive(Debug, Clone, Spanned, ParseDesc)]
-#[desc = "an expr"]
+#[derive(Debug, Clone, Spanned)]
 pub enum Expr {
     Ident(Ident),
     Literal(Literal),
@@ -22,7 +21,6 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, Spanned)]
-#[desc = "a field ident"]
 pub enum FieldIdent {
     Ident(Ident),
     Int(IntLiteral),
@@ -45,7 +43,6 @@ pub enum ShsOp {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
-#[desc = "a reference kind"]
 pub enum RefKind {
     Mut(keyword!("mut")),
     SMut(keyword!("smut")),
@@ -258,9 +255,7 @@ impl OptionParse for Expr {
 
         Some(expr)
     }
-}
 
-impl Detect for Expr {
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Ident::detect(parser)
             || Literal::detect(parser)
@@ -271,6 +266,10 @@ impl Detect for Expr {
             || <keyword!("out")>::detect(parser)
             || <punct!("|")>::detect(parser)
             || ShsOp::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "an expr"
     }
 }
 
@@ -289,10 +288,13 @@ impl OptionParse for FieldIdent {
             None
         }
     }
-}
-impl Detect for FieldIdent {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
         Ident::detect(parser) || IntLiteral::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "a field ident"
     }
 }
 

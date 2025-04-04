@@ -1,7 +1,6 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc)]
-#[desc = "an impl"]
+#[derive(Debug, Clone)]
 pub struct Impl {
     pub generics: Option<GenericParams>,
     pub item: Try<Expr>,

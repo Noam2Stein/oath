@@ -1,31 +1,29 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "either `{ }` or `;`"]
+#[derive(Debug, Clone)]
 pub enum BracesOrSemi<T> {
     Braces(T),
-    #[fallback]
     Semi,
 }
 
-impl<T: Parse> Parse for BracesOrSemi<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+impl<T: Parse> OptionParse for BracesOrSemi<T> {
+    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
         if let Some(group) = <Option<Group<Braces>>>::parse(parser) {
-            Self::Braces(T::parse(&mut group.into_parser(parser.context())))
+            Some(Self::Braces(T::parse(
+                &mut group.into_parser(parser.context()),
+            )))
+        } else if <punct!(";")>::option_parse(parser).is_some() {
+            Some(Self::Semi)
         } else {
-            if let None = <Option<punct!(";")>>::parse(parser) {
-                parser.context().push_error(SyntaxError::Expected(
-                    parser.peek_span(),
-                    "either `{ }` or `;`",
-                ));
-            }
-
-            Self::Semi
+            None
         }
     }
-}
-impl<T> Detect for BracesOrSemi<T> {
+
     fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        <Group<Braces>>::detect(parser) || <punct!(";")>::detect(parser)
+        Group::<Braces>::detect(parser) || <punct!(";")>::detect(parser)
+    }
+
+    fn desc() -> &'static str {
+        "either `{ }` or `;`"
     }
 }

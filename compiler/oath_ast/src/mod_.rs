@@ -1,15 +1,13 @@
 use crate::*;
 
-#[derive(Debug, Clone, ParseDesc, ParseError)]
-#[desc = "a module"]
+#[derive(Debug, Clone)]
 pub struct Mod {
     pub vis: Vis,
     pub ident: Try<Ident>,
     pub content: Option<ModContent>,
 }
 
-#[derive(Debug, Clone, Default, ParseDesc, ParseError)]
-#[desc = "module content"]
+#[derive(Debug, Clone, Default)]
 pub struct ModContent {
     pub items: Vec<Item>,
 }
@@ -19,6 +17,10 @@ impl Parse for ModContent {
         Self {
             items: parser.parse_rep(),
         }
+    }
+
+    fn parse_error() -> Self {
+        Self { items: Vec::new() }
     }
 }
 
