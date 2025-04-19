@@ -8,9 +8,6 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
     impl_trait(
         input,
         "OptionParse",
-        true,
-        true,
-        false,
         [
             impl_trait_fn(
                 quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Option<Self>) -> ParseExit },
@@ -19,7 +16,6 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
                     &input.attrs,
                     option_parse_struct,
                     option_parse_enum,
-                    |_, _| unreachable!(),
                 ),
             ),
             {
@@ -29,13 +25,7 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
             },
             impl_trait_fn(
                 quote! { fn detect(parser: &::oath_parser::Parser<impl ::oath_parser::ParserIterator>) -> bool },
-                data_split(
-                    &input.data,
-                    &input.attrs,
-                    detect_struct,
-                    detect_enum,
-                    |_, _| unreachable!(),
-                ),
+                data_split(&input.data, &input.attrs, detect_struct, detect_enum),
             ),
         ],
     )

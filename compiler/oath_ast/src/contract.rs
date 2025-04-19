@@ -2,8 +2,21 @@ use crate::*;
 
 #[derive(Debug, Clone, Default)]
 pub struct Contract {
-    pub promise: Vec<ContractItem>,
-    pub require: Vec<ContractItem>,
+    pub segments: Vec<ContractSegment>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "either `require` or `promise`"]
+pub struct ContractSegment {
+    pub kind: ContractSegmentKind,
+    pub items: Vec<ContractItem>,
+}
+
+#[derive(Debug, Clone, Copy, Spanned, OptionParse)]
+#[desc = "either `require` or `promise`"]
+pub enum ContractSegmentKind {
+    Require(keyword!("require")),
+    Promise(keyword!("promise")),
 }
 
 #[derive(Debug, Clone, OptionParse)]

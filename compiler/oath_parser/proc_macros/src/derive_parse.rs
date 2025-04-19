@@ -8,19 +8,10 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
     impl_trait(
         input,
         "Parse",
-        true,
-        true,
-        false,
         [
             impl_trait_fn(
                 quote! { fn parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Self) -> ::oath_parser::ParseExit },
-                data_split(
-                    &input.data,
-                    &input.attrs,
-                    parse_struct,
-                    parse_enum,
-                    |_, _| unreachable!(),
-                ),
+                data_split(&input.data, &input.attrs, parse_struct, parse_enum),
             ),
             impl_trait_fn(
                 quote! { fn parse_error() -> Self },
@@ -29,7 +20,6 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
                     &input.attrs,
                     struct_parse_error,
                     enum_parse_error,
-                    |_, _| unreachable!(),
                 ),
             ),
         ],
