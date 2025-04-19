@@ -9,7 +9,7 @@ pub struct Impl {
     pub items: BracesOrSemi<ModContent>,
 }
 
-impl ItemParse for Impl {
+impl ItemType for Impl {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         _modifiers: &mut ItemModifiers,

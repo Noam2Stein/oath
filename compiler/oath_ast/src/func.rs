@@ -29,7 +29,7 @@ pub struct OutputTry {
     pub generics: Option<GenericArgs>,
 }
 
-impl ItemParse for Func {
+impl ItemType for Func {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,

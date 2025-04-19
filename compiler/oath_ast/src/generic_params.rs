@@ -3,9 +3,11 @@ use crate::*;
 #[derive(Debug, Clone, Spanned)]
 pub struct GenericParams(#[span] pub Span, pub Vec<GenericParam>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a generic param"]
 pub struct GenericParam {
-    pub ident: Try<Ident>,
+    pub ident: Ident,
+    pub _minus: Try<punct!("-")>,
     pub type_: Try<Expr>,
     pub bounds: Option<Bounds>,
 }
@@ -29,52 +31,5 @@ impl OptionParse for GenericParams {
 
     fn desc() -> &'static str {
         "generic params"
-    }
-}
-
-impl Parse for GenericParam {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let ident = match <Try<Ident>>::parse(parser) {
-            Try::Success(success) => Try::Success(success),
-            Try::Failure => {
-                parser.skip_until(|parser| <punct!(",")>::detect(parser));
-
-                return Self {
-                    ident: Try::Failure,
-                    type_: Try::Failure,
-                    bounds: None,
-                };
-            }
-        };
-
-        parser.context().highlight(ident, HighlightColor::Green);
-        ident.expect_case(IdentCase::UpperCamelCase, parser.context());
-
-        let type_ = if let Some(_) = <punct!("-")>::option_parse(parser) {
-            Expr::try_parse_no_mhs(parser)
-        } else {
-            parser.context().push_error(SyntaxError::Expected(
-                parser.peek_span(),
-                "`Param_Ident-Param_Type`",
-            ));
-
-            Try::Failure
-        };
-
-        let bounds = Bounds::option_parse(parser);
-
-        Self {
-            ident,
-            type_,
-            bounds,
-        }
-    }
-
-    fn parse_error() -> Self {
-        Self {
-            ident: Parse::parse_error(),
-            type_: Parse::parse_error(),
-            bounds: Parse::parse_error(),
-        }
     }
 }

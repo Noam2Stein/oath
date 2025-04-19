@@ -81,60 +81,103 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         }
     }
 
-    pub fn parse_rep<T: OptionParse>(&mut self) -> Vec<T> {
-        let mut vec = Vec::new();
+    pub fn parse_rep<T: OptionParse>(&mut self, output: &mut Vec<T>) -> ParseExit {
+        loop {
+            let mut item = None;
+            let item_exit = T::option_parse(self, &mut item);
 
-        while let Some(value) = Parse::parse(self) {
-            vec.push(value);
+            if let Some(item) = item {
+                output.push(item);
+
+                if item_exit == ParseExit::Cut {
+                    return ParseExit::Cut;
+                }
+            } else {
+                return item_exit;
+            }
         }
-
-        vec
     }
 
-    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Try<NonEmpty<T>> {
-        let first = match T::try_parse(self) {
-            Try::Success(first) => first,
-            Try::Failure => return Try::Failure,
+    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(
+        &mut self,
+        output: &mut Option<NonEmpty<T>>,
+    ) -> ParseExit {
+        let mut first = None;
+        let first_exit = T::option_parse(self, &mut first);
+
+        let first = match first {
+            Some(first) => first,
+            None => return first_exit,
         };
 
         let mut vec = NonEmpty::new(first);
 
-        while S::option_parse(self).is_some() {
-            match T::try_parse(self) {
-                Try::Success(value) => vec.push(value),
-                Try::Failure => break,
+        loop {
+            let mut sep = None;
+            let sep_exit = S::option_parse(self, &mut sep);
+
+            if sep.is_none() || sep_exit == ParseExit::Cut {
+                *output = Some(vec);
+                return sep_exit;
+            }
+
+            let mut item = Try::Failure;
+            let item_exit = T::try_parse(self, &mut item);
+
+            if let Try::Success(item) = item {
+                vec.push(item);
+
+                if item_exit == ParseExit::Cut {
+                    return ParseExit::Cut;
+                }
+            } else {
+                return item_exit;
             }
         }
-
-        Try::Success(vec)
     }
-    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(&mut self) -> Option<NonEmpty<T>> {
-        let first = T::option_parse(self)?;
+    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(
+        &mut self,
+        output: &mut Try<NonEmpty<T>>,
+    ) -> ParseExit {
+        let mut option = None;
+        let exit = self.option_parse_sep::<T, S>(&mut option);
 
-        let mut vec = NonEmpty::new(first);
+        if let Some(option) = option {
+            *output = Try::Success(option);
 
-        while S::option_parse(self).is_some() {
-            match T::try_parse(self) {
-                Try::Success(value) => vec.push(value),
-                Try::Failure => break,
-            }
+            exit
+        } else {
+            self.context()
+                .push_error(SyntaxError::Expected(self.peek_span(), T::desc()));
+
+            *output = Try::Failure;
+
+            ParseExit::Cut
         }
-
-        Some(vec)
     }
 
-    pub fn parse_trl<T: OptionParse, S: OptionParse>(&mut self) -> Vec<T> {
-        let mut vec = Vec::new();
+    pub fn parse_trl<T: OptionParse, S: OptionParse>(&mut self, output: &mut Vec<T>) -> ParseExit {
+        loop {
+            let mut item = None;
+            let item_exit = T::option_parse(self, &mut item);
 
-        while let Some(value) = T::option_parse(self) {
-            vec.push(value);
+            if let Some(item) = item {
+                output.push(item);
 
-            if S::option_parse(self).is_none() {
-                break;
+                if item_exit == ParseExit::Cut {
+                    return ParseExit::Cut;
+                }
+            } else {
+                return item_exit;
+            }
+
+            let mut sep = None;
+            let sep_exit = S::option_parse(self, &mut sep);
+
+            if sep.is_none() || sep_exit == ParseExit::Cut {
+                return sep_exit;
             }
         }
-
-        vec
     }
 }
 

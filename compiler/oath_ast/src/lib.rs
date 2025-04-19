@@ -56,6 +56,11 @@ trait Seal {}
 impl Seal for TokenFile {}
 impl ParseAstExt for TokenFile {
     fn parse_ast(self, context: ContextHandle) -> SyntaxTree {
-        Parse::parse(&mut self.into_parser(context))
+        let mut parser = self.into_parser(context);
+        let mut output = SyntaxTree::parse_error();
+
+        SyntaxTree::parse(&mut parser, &mut output);
+
+        output
     }
 }

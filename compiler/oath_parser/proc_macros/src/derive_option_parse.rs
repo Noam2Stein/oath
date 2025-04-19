@@ -1,4 +1,4 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Attribute, DataEnum, DataStruct, DeriveInput, Error, Meta, spanned::Spanned};
 
@@ -13,7 +13,7 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
         false,
         [
             impl_trait_fn(
-                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>) -> Option<Self> },
+                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Option<Self>) -> ParseExit },
                 data_split(
                     &input.data,
                     &input.attrs,
@@ -42,11 +42,21 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
 }
 
 fn option_parse_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
-    option_parse_fields(
-        &data.fields,
-        Span::call_site(),
-        |fields| quote! { Self #fields },
-    )
+    let option_parse_fields = option_parse_fields(&data.fields);
+    let members = data.fields.members();
+    let field_indicies = (0..).map(Literal::usize_unsuffixed);
+
+    quote! {
+        if let Some(fields) = #option_parse_fields {
+            *output = Some(Self {
+                #(#members: fields.0.#field_indicies,)*
+            });
+
+            fields.1
+        } else {
+            ::oath_parser::ParseExit::Complete
+        }
+    }
 }
 
 fn detect_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
@@ -55,16 +65,18 @@ fn detect_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
 
 fn option_parse_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     let variant_ifs = data.variants.iter().map(|variant| {
-        let option_parse_variant = option_parse_fields(&variant.fields, variant.span(), |fields| {
-            let variant_ident = &variant.ident;
-            quote! {
-                Self::#variant_ident #fields
-            }
-        });
+        let option_parse_fields = option_parse_fields(&variant.fields);
+        let variant_ident = &variant.ident;
+        let members = variant.fields.members();
+        let field_indicies = (0..).map(Literal::usize_unsuffixed);
 
         quote! {
-            if let Some(output) = #option_parse_variant {
-                return Some(output);
+            if let Some(fields) = #option_parse_fields {
+                *output = Some(Self::#variant_ident {
+                    #(#members: fields.0.#field_indicies,)*
+                });
+
+                return fields.1;
             }
         }
     });
@@ -72,7 +84,7 @@ fn option_parse_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     quote! {
         #(#variant_ifs)*
 
-        None
+        ::oath_parser::ParseExit::Complete
     }
 }
 

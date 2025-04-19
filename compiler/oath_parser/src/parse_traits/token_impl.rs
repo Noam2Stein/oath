@@ -3,8 +3,15 @@ use crate::*;
 macro_rules! token_impl {
     ($ty:ty = $desc:expr, $variant:tt => $detect:expr) => {
         impl OptionParse for $ty {
-            fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-                Self::detect(parser).then(|| parser.next().unwrap().try_into().unwrap())
+            fn option_parse(
+                parser: &mut Parser<impl ParserIterator>,
+                output: &mut Option<Self>,
+            ) -> ParseExit {
+                if Self::detect(parser) {
+                    *output = Some(parser.next().unwrap().try_into().unwrap())
+                };
+
+                ParseExit::Complete
             }
 
             fn detect(parser: &Parser<impl ParserIterator>) -> bool {

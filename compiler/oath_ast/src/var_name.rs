@@ -1,7 +1,6 @@
 use crate::*;
 
 #[derive(Debug, Clone, OptionSpanned)]
-
 pub enum VarName {
     Tuple(#[span] Span, Vec<VarName>),
     Ident(

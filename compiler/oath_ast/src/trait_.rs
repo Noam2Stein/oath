@@ -10,7 +10,7 @@ pub struct Trait {
     pub items: BracesOrSemi<ModContent>,
 }
 
-impl ItemParse for Trait {
+impl ItemType for Trait {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,

@@ -6,33 +6,35 @@ pub struct Contract {
     pub require: Vec<ContractItem>,
 }
 
-#[derive(Debug, Clone, Parse)]
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "contract item"]
 pub struct ContractItem {
-    pub target: Try<Expr>,
+    pub target: Expr,
+    pub _colon: Try<punct!(":")>,
     pub bounds: Try<Bounds>,
 }
 
 impl Parse for Contract {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        let parser = &mut parser.until(|parser| <BracesOrSemi<()>>::detect(parser));
-
-        let mut output = Self::default();
+    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit {
+        let parser = &mut parser.until(BracesOrSemi::<()>::detect);
 
         loop {
-            if let Some(_) = <Option<keyword!("promise")>>::parse(parser) {
-                output
-                    .promise
-                    .append(&mut parser.parse_trl::<_, punct!(",")>());
-            } else if let Some(_) = <Option<keyword!("require")>>::parse(parser) {
-                output
-                    .require
-                    .append(&mut parser.parse_trl::<_, punct!(",")>());
+            if let Some(_) = {
+                let mut require = None;
+                <Option<keyword!("require")>>::parse(parser, &mut require);
+                require
+            } {
+                parser.parse_trl::<_, punct!(",")>(&mut output.require);
+            } else if let Some(_) = {
+                let mut promise = None;
+                <Option<keyword!("promise")>>::parse(parser, &mut promise);
+                promise
+            } {
+                parser.parse_trl::<_, punct!(",")>(&mut output.promise);
             } else {
-                break;
+                break ParseExit::Complete;
             }
         }
-
-        output
     }
 
     fn parse_error() -> Self {

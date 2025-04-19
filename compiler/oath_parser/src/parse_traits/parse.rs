@@ -1,14 +1,14 @@
 use crate::*;
 
 pub trait Parse {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self;
+    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit;
 
     fn parse_error() -> Self;
 }
 
 impl Parse for () {
-    fn parse(_parser: &mut Parser<impl ParserIterator>) -> Self {
-        ()
+    fn parse(_parser: &mut Parser<impl ParserIterator>, _output: &mut Self) -> ParseExit {
+        ParseExit::Complete
     }
 
     fn parse_error() -> Self {
@@ -17,8 +17,8 @@ impl Parse for () {
 }
 
 impl<T: Parse> Parse for Box<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
-        Box::new(T::parse(parser))
+    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit {
+        T::parse(parser, &mut **output)
     }
 
     fn parse_error() -> Self {

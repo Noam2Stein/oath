@@ -14,6 +14,8 @@ pub enum SyntaxError {
     CannotHaveATarget(#[span] Span, &'static str),
     #[display("Syntax: multiple {}", field_1)]
     Mutliple(#[span] Span, &'static str),
+    #[display("uninit variables are not allowed")]
+    UninitVariable(#[span] Span),
 }
 
 #[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]

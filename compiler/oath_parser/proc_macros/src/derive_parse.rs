@@ -1,4 +1,4 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, DataEnum, DataStruct, DeriveInput, spanned::Spanned};
 
@@ -13,7 +13,7 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
         false,
         [
             impl_trait_fn(
-                quote! { fn parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>) -> Self },
+                quote! { fn parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Self) -> ::oath_parser::ParseExit },
                 data_split(
                     &input.data,
                     &input.attrs,
@@ -37,10 +37,18 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
 }
 
 fn parse_struct(data: &DataStruct, _attrs: &Vec<Attribute>) -> TokenStream {
-    let parse_fields = parse_fields(&data.fields, Span::call_site());
+    let field_idents = data.fields.members();
+    let field_types = data.fields.iter().map(|field| &field.ty);
 
     quote! {
-        Self #parse_fields
+        #(
+            match <#field_types as ::oath_parser::Parse>::parse(parser, &mut output.#field_idents) {
+                ::oath_parser::ParseExit::Complete => {},
+                ::oath_parser::ParseExit::Cut => return ::oath_parser::ParseExit::Cut,
+            }
+        )*
+
+        ::oath_parser::ParseExit::Complete
     }
 }
 
@@ -59,21 +67,23 @@ fn parse_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     };
 
     let variant_ifs = non_fallback_variants.iter().map(|variant| {
-        let option_parse_variant = option_parse_fields(&variant.fields, variant.span(), |fields| {
-            let variant_ident = &variant.ident;
-            quote! {
-                Self::#variant_ident #fields
-            }
-        });
+        let option_parse_fields = option_parse_fields(&variant.fields);
+        let variant_ident = &variant.ident;
+        let members = variant.fields.members();
+        let field_indicies = (0..).map(Literal::usize_unsuffixed);
 
         quote! {
-            if let Some(output) = #option_parse_variant {
-                return output;
+            if let Some(fields) = #option_parse_fields {
+                *output = Self::#variant_ident {
+                    #(#members: fields.0.#field_indicies,)*
+                };
+
+                return fields.1;
             }
         }
     });
 
-    let fallback = {
+    let _fallback = {
         let variant_ident = &fallback_variant.ident;
         let parse_variant_fields = parse_fields(&fallback_variant.fields, fallback_variant.span());
 
@@ -85,7 +95,7 @@ fn parse_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
     quote! {
         #(#variant_ifs)*
 
-        #fallback
+        ::oath_parser::ParseExit::Complete
     }
 }
 

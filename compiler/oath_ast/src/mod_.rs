@@ -24,7 +24,7 @@ impl Parse for ModContent {
     }
 }
 
-impl ItemParse for Mod {
+impl ItemType for Mod {
     fn item_parse(
         parser: &mut Parser<impl ParserIterator>,
         modifiers: &mut ItemModifiers,

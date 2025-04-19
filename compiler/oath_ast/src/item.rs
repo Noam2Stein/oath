@@ -49,12 +49,13 @@ pub struct ItemKind {
     pub base: ItemKeyword,
 }
 
-pub trait ItemParse: Sized {
-    fn item_parse(
-        parser: &mut Parser<impl ParserIterator>,
+pub trait ItemType: Sized {
+    fn add_modifiers(
+        &mut self,
+        context: ContextHandle,
         modifiers: &mut ItemModifiers,
         item_kind: ItemKind,
-    ) -> Self;
+    );
 }
 
 impl ItemModifiers {
@@ -81,13 +82,13 @@ impl ItemModifiers {
 
     pub fn expect_empty(&self, context: ContextHandle, item_desc: &'static str) {
         if let Some(pub_) = self.pub_ {
-            context.push_error(SyntaxError::CannotBePutOn(pub_.span(), "`pub`", item_desc));
+            context.push_error(SyntaxError::CannotBeMarked(pub_.span(), "`pub`", item_desc));
         }
         if let Some(con) = self.con {
-            context.push_error(SyntaxError::CannotBePutOn(con.span(), "`con`", item_desc));
+            context.push_error(SyntaxError::CannotBeMarked(con.span(), "`con`", item_desc));
         }
         if let Some(raw) = self.raw {
-            context.push_error(SyntaxError::CannotBePutOn(raw.span(), "`raw`", item_desc));
+            context.push_error(SyntaxError::CannotBeMarked(raw.span(), "`raw`", item_desc));
         }
     }
 }
@@ -155,7 +156,7 @@ impl ItemKind {
         })
     }
 
-    pub fn expect_no_target(&self, context: ContextHandle) -> Try<()> {
+    pub fn expect_no_target(&self, context: ContextHandle) {
         if self.target_keywords.len() > 0 {
             context.push_error(Error::new(
                 format!("SyntaxError: `{self}` is invalid"),
@@ -216,7 +217,7 @@ impl OptionParse for Item {
 
         Some(match item_kind.base {
             ItemKeyword::Impl(_) => {
-                Self::Impl(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Impl(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Alias(keyword) => {
                 parser
@@ -248,13 +249,13 @@ impl OptionParse for Item {
                 Self::Unknown
             }
             ItemKeyword::Func(_) => {
-                Self::Fn(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Fn(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Mod(_) => {
-                Self::Mod(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Mod(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Sys(_) => {
-                Self::Spec(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Spec(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Static(keyword) => {
                 parser
@@ -264,10 +265,10 @@ impl OptionParse for Item {
                 Self::Unknown
             }
             ItemKeyword::Struct(_) => {
-                Self::Struct(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Struct(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Trait(_) => {
-                Self::Trait(ItemParse::item_parse(parser, &mut modifiers, item_kind))
+                Self::Trait(ItemType::item_parse(parser, &mut modifiers, item_kind))
             }
             ItemKeyword::Type(keyword) => {
                 parser

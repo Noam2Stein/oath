@@ -101,10 +101,9 @@ impl OptionParse for VarStmt {
         let init = if let Some(init) = init {
             init
         } else {
-            parser.context().push_error(Error::new(
-                "uninit variables are not allowed",
-                parser.peek_span(),
-            ));
+            parser
+                .context()
+                .push_error(SyntaxError::UninitVariable(parser.peek_span()));
 
             Try::Failure
         };
