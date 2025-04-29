@@ -13,7 +13,7 @@ pub struct ModContent {
 }
 
 impl Parse for ModContent {
-    fn parse(parser: &mut Parser<impl ParserIterator>) -> Self {
+    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit {
         Self {
             items: parser.parse_rep(),
         }

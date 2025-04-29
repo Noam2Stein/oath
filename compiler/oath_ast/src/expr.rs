@@ -59,18 +59,14 @@ pub enum MhsOp {
     Mul(punct!("*")),
     Div(punct!("/")),
     Rem(punct!("%")),
-    BitAnd(punct!("&")),
-    BitOr(punct!("|")),
-    BitXor(punct!("^")),
-    LogicAnd(punct!("&&")),
-    LogicOr(punct!("||")),
+
+    And(punct!("&")),
+    Or(punct!("|")),
+    Xor(punct!("^")),
+
+    Bound(punct!(":")),
     Eq(punct!("==")),
     NotEq(punct!("!=")),
-    More(punct!(">")),
-    Less(punct!("<")),
-    MoreEq(punct!(">=")),
-    LessEq(punct!("<=")),
-    Bound(punct!(":")),
 }
 
 impl Expr {
@@ -219,7 +215,10 @@ impl Expr {
 }
 
 impl OptionParse for Expr {
-    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
+    fn option_parse(
+        parser: &mut Parser<impl ParserIterator>,
+        output: &mut Option<Self>,
+    ) -> ParseExit {
         let mut expr = Self::option_parse_no_mhs(parser)?;
 
         while let Some(op) = MhsOp::option_parse(parser) {
@@ -236,7 +235,7 @@ impl OptionParse for Expr {
                     };
 
                     let lhs = Box::new(replace(&mut **expr_rhs, Self::fillin()));
-                    let rhs = Self::try_parse_no_mhs(parser).map_box();
+                    let rhs: Try<Box<Expr>> = Self::try_parse_no_mhs(parser).map_box();
 
                     let span = lhs.span() + rhs.option_span().unwrap_or(op.span());
 
@@ -323,9 +322,9 @@ impl Ord for MhsOp {
             match op {
                 MhsOp::Add(_) | MhsOp::Sub(_) => MhsOpLvl::AddSub,
                 MhsOp::Mul(_) | MhsOp::Div(_) | MhsOp::Rem(_) => MhsOpLvl::MulDivRem,
-                MhsOp::BitAnd(_) => MhsOpLvl::BitAnd,
-                MhsOp::BitOr(_) => MhsOpLvl::BitOr,
-                MhsOp::BitXor(_) => MhsOpLvl::BitXor,
+                MhsOp::And(_) => MhsOpLvl::BitAnd,
+                MhsOp::Or(_) => MhsOpLvl::BitOr,
+                MhsOp::Xor(_) => MhsOpLvl::BitXor,
                 MhsOp::LogicAnd(_) => MhsOpLvl::LogicAnd,
                 MhsOp::LogicOr(_) => MhsOpLvl::LogicOr,
                 MhsOp::Eq(_) | MhsOp::NotEq(_) => MhsOpLvl::EqNotEq,

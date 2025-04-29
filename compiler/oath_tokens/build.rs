@@ -12,6 +12,9 @@ fn main() {
         "brackets": [
             $([$delim_open, $delim_close]), *
         ],
+        "colorizedBracketPairs": [
+            $([$delim_open, $delim_close]), *
+        ],
         "autoClosingPairs": [
             $([$delim_open, $delim_close],)*
             ["\"", "\""],
