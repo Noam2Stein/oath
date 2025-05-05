@@ -10,6 +10,7 @@ splat_attribs! {
     use oath_parser::*;
     use oath_src::*;
     use oath_tokens::*;
+    use oath_tokenizer::*;
 }
 
 mod block;
@@ -23,6 +24,7 @@ mod generic_params;
 mod impl_;
 mod item;
 mod mod_;
+mod param;
 mod struct_;
 mod sys;
 mod trait_;
@@ -39,6 +41,7 @@ pub use generic_params::*;
 pub use impl_::*;
 pub use item::*;
 pub use mod_::*;
+pub use param::*;
 pub use struct_::*;
 pub use sys::*;
 pub use trait_::*;
@@ -49,14 +52,14 @@ pub type SyntaxTree = ModContent;
 
 #[allow(private_bounds)]
 pub trait ParseAstExt: Seal {
-    fn parse_ast(self, context: ContextHandle) -> SyntaxTree;
+    fn parse_ast(self) -> SyntaxTree;
 }
 trait Seal {}
 
-impl Seal for TokenFile {}
-impl ParseAstExt for TokenFile {
-    fn parse_ast(self, context: ContextHandle) -> SyntaxTree {
-        let mut parser = self.into_parser(context);
+impl<'src, 'ctx> Seal for Tokenizer<'src, 'ctx, 'static> {}
+impl<'src, 'ctx> ParseAstExt for Tokenizer<'src, 'ctx, 'static> {
+    fn parse_ast(self) -> SyntaxTree {
+        let mut parser = self.into_parser();
         let mut output = SyntaxTree::parse_error();
 
         SyntaxTree::parse(&mut parser, &mut output);

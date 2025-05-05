@@ -2,37 +2,40 @@ use std::{cmp::Ordering, mem::replace};
 
 use crate::*;
 
-#[derive(Debug, Clone, Spanned)]
-pub enum Expr {
+#[derive(Debug, Clone, Spanned, OptionParse)]
+#[desc = "a base expression"]
+pub enum BaseExpr {
     Ident(Ident),
     Literal(Literal),
     ItemKind(ItemKind),
     Out(keyword!("out")),
-    Tuple(#[span] Span, Vec<Try<Expr>>),
-    Array(#[span] Span, Vec<Try<Expr>>),
-    Block(Block),
-    Field(Box<Expr>, #[option_spanned] Try<FieldIdent>),
-    Index(#[span] Span, Box<Expr>, Try<Box<Expr>>),
-    Call(#[span] Span, Box<Expr>, Vec<Try<Expr>>),
-    Generics(Box<Expr>, GenericArgs),
+    Tuple(OpenParen, Vec<Expr>),
+    Array(OpenBracket, Vec<Expr>),
+    Block(OpenBrace, Vec<Stmt>),
     Lamba(#[span] Span, Vec<Try<VarName>>, Try<Box<Expr>>),
-    ShsOp(#[span] Span, ShsOp, Try<Box<Expr>>),
-    MhsOp(#[span] Span, Box<Expr>, MhsOp, Try<Box<Expr>>),
+    UnaryOperator(#[span] Span, UnaryOperator, Try<Box<Expr>>),
+}
+
+#[derive(Debug, Clone, Spanned, OptionParse)]
+#[desc = "an unary operator"]
+pub struct UnaryExpr {
+    pub base: BaseExpr,
+    pub extensions: Vec<ExprExtension>,
 }
 
 #[derive(Debug, Clone, Spanned)]
-pub enum FieldIdent {
-    Ident(Ident),
-    Int(IntLiteral),
+pub enum Expr {
+    Unary(UnaryExpr),
+    Binary(#[span] Span, Box<Expr>, BinaryOperator, Try<Box<Expr>>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
-#[desc = "a single side op"]
-pub enum ShsOp {
+#[desc = "an unary operator"]
+pub enum UnaryOperator {
     Neg(punct!("-")),
     Not(punct!("!")),
     Deref(punct!("*")),
-    Ref(punct!("&"), #[option_spanned] RefKind),
+    Ref(punct!("&"), #[option_spanned] ReferenceKind),
     Eq(punct!("==")),
     NotEq(punct!("!=")),
     More(punct!(">")),
@@ -43,17 +46,33 @@ pub enum ShsOp {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
-pub enum RefKind {
-    Mut(keyword!("mut")),
-    SMut(keyword!("smut")),
-    Excl(keyword!("excl")),
+pub enum ReferenceKind {
     #[fallback]
-    Imut,
+    Default,
+    Mut(keyword!("mut")),
+    Sole(keyword!("sole")),
+    SoleMut(keyword!("smut")),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
+#[desc = "an expression extension"]
+pub enum ExprExtension {
+    Member(punct!("."), Try<Member>),
+    Call(OpenParen, Vec<Expr>),
+    Index(OpenBracket, Try<Box<Expr>>),
+    Generics(punct!("<"), GenericArgs, punct!(">")),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
+#[desc = "a `.` expression"]
+pub enum Member {
+    Unnamed(IntLiteral),
+    Named(Ident),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
-#[desc = "a multi side op"]
-pub enum MhsOp {
+#[desc = "a binary operator"]
+pub enum BinaryOperator {
     Add(punct!("+")),
     Sub(punct!("-")),
     Mul(punct!("*")),
@@ -65,171 +84,28 @@ pub enum MhsOp {
     Xor(punct!("^")),
 
     Bound(punct!(":")),
-    Eq(punct!("==")),
-    NotEq(punct!("!=")),
 }
 
 impl Expr {
-    pub fn try_parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Try<Self> {
-        if let Some(output) = Self::option_parse_no_mhs(parser) {
-            Try::Success(output)
-        } else {
-            parser.context().push_error(Error::new(
-                format!("Syntax Error: expected {}", Self::desc()),
-                parser.peek_span(),
-            ));
-
-            Try::Failure
-        }
-    }
-
-    pub fn option_parse_no_mhs(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        let mut expr = Self::option_parse_base(parser)?;
-
-        loop {
-            if let Some(_) = <punct!(".")>::option_parse(parser) {
-                let base = Box::new(replace(&mut expr, Self::fillin()));
-                let field = FieldIdent::try_parse(parser);
-
-                expr = Self::Field(base, field);
-
-                continue;
-            }
-
-            if let Some(group) = Group::<Brackets>::option_parse(parser) {
-                let span = expr.span() + group.span();
-                let base = Box::new(replace(&mut expr, Self::fillin()));
-                let index = Expr::try_parse(&mut group.into_parser(parser.context())).map_box();
-
-                expr = Self::Index(span, base, index);
-
-                continue;
-            }
-
-            if let Some(group) = Group::<Parens>::option_parse(parser) {
-                expr = Self::Call(
-                    expr.span() + group.span(),
-                    Box::new(replace(&mut expr, Self::fillin())),
-                    group
-                        .into_parser(parser.context())
-                        .parse_trl::<_, punct!(",")>(),
-                );
-
-                continue;
-            }
-
-            if let Some(generics) = GenericArgs::option_parse(parser) {
-                expr = Self::Generics(Box::new(replace(&mut expr, Self::fillin())), generics);
-
-                continue;
-            }
-
-            break;
-        }
-
-        Some(expr)
-    }
-
     fn fillin() -> Self {
         Self::Literal(Literal::Char(CharLiteral::new(
             '💪',
             Span::from_start_len(Position::new(0, 0), 1),
         )))
     }
-
-    fn option_parse_base(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        if let Some(value) = Parse::parse(parser) {
-            return Some(Self::Ident(value));
-        }
-
-        if let Some(value) = Parse::parse(parser) {
-            return Some(Self::Literal(value));
-        }
-
-        if let Some(group) = Group::<Parens>::option_parse(parser) {
-            return Some(Self::Tuple(
-                group.span(),
-                group
-                    .into_parser(parser.context())
-                    .parse_trl::<_, punct!(",")>(),
-            ));
-        }
-
-        if let Some(group) = Group::<Brackets>::option_parse(parser) {
-            return Some(Self::Array(
-                group.span(),
-                group
-                    .into_parser(parser.context())
-                    .parse_trl::<_, punct!(",")>(),
-            ));
-        }
-
-        if let Some(open_punct) = <punct!("|")>::option_parse(parser) {
-            let param_names = parser.parse_trl::<Try<VarName>, punct!(",")>();
-
-            if <punct!("|")>::try_parse(parser).is_failure() {
-                return Some(Self::Lamba(
-                    open_punct.span() + param_names.last().map_or(None, |name| name.option_span()),
-                    param_names,
-                    Try::Failure,
-                ));
-            }
-
-            let expr = Expr::try_parse(parser).map_box();
-
-            let span = open_punct.span() + expr.option_span();
-
-            return Some(Self::Lamba(span, param_names, expr));
-        }
-
-        if let Some(input) = <punct!("||")>::option_parse(parser) {
-            let expr = Expr::try_parse(parser).map_box();
-
-            let span = input.span() + expr.option_span();
-
-            return Some(Self::Lamba(span, Vec::new(), expr));
-        }
-
-        if let Some(value) = Parse::parse(parser) {
-            return Some(Self::Block(value));
-        }
-
-        if let Some(value) = Parse::parse(parser) {
-            return Some(Self::ItemKind(value));
-        }
-
-        if let Some(value) = Parse::parse(parser) {
-            return Some(Self::Out(value));
-        }
-
-        if let Some(shs_op) = ShsOp::option_parse(parser) {
-            let expr = Self::try_parse_no_mhs(parser).map_box();
-
-            let span = shs_op.span() + expr.option_span().unwrap_or(parser.peek_span());
-
-            return Some(Self::ShsOp(span, shs_op, expr));
-        }
-
-        None
-    }
 }
 
 impl OptionParse for Expr {
-    fn option_parse(
-        parser: &mut Parser<impl ParserIterator>,
-        output: &mut Option<Self>,
-    ) -> ParseExit {
+    fn option_parse(parser: &mut Parser, output: &mut Option<Self>) -> ParseExit {
         let mut expr = Self::option_parse_no_mhs(parser)?;
 
-        while let Some(op) = MhsOp::option_parse(parser) {
+        while let Some(op) = BinaryOperator::option_parse(parser) {
             match expr {
                 Expr::MhsOp(_, _, expr_op, ref mut expr_rhs) if expr_op > op => {
                     let expr_rhs = match expr_rhs {
                         Try::Success(success) => success,
                         Try::Failure => {
-                            parser.skip_until(|parser| {
-                                <punct!(";")>::detect(parser) || <punct!(",")>::detect(parser)
-                            });
+                            parser.skip_until(|parser| <punct!(";")>::detect(parser) || <punct!(",")>::detect(parser));
                             break;
                         }
                     };
@@ -255,86 +131,34 @@ impl OptionParse for Expr {
         Some(expr)
     }
 
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Ident::detect(parser)
-            || Literal::detect(parser)
-            || Group::<Parens>::detect(parser)
-            || Group::<Braces>::detect(parser)
-            || Group::<Brackets>::detect(parser)
-            || ItemKind::detect(parser)
-            || <keyword!("out")>::detect(parser)
-            || <punct!("|")>::detect(parser)
-            || ShsOp::detect(parser)
+    fn detect(parser: &Parser) -> bool {
+        UnaryExpr::detect(parser)
     }
 
     fn desc() -> &'static str {
-        "an expr"
+        "an expression"
     }
 }
 
-impl OptionParse for FieldIdent {
-    fn option_parse(parser: &mut Parser<impl ParserIterator>) -> Option<Self> {
-        if let Some(value) = Parse::parse(parser) {
-            Some(Self::Ident(value))
-        } else if let Some(value) = <Option<IntLiteral>>::parse(parser) {
-            if value.suffix().is_some() {
-                parser
-                    .context()
-                    .push_error(SyntaxError::Expected(value.span(), "no suffix"));
-            }
-            Some(Self::Int(value))
-        } else {
-            None
-        }
-    }
-
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool {
-        Ident::detect(parser) || IntLiteral::detect(parser)
-    }
-
-    fn desc() -> &'static str {
-        "a field ident"
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum BinaryOperatorLevel {
+    Bound,
+    Or,
+    And,
+    Xor,
+    AddSub,
+    MulDivRem,
 }
 
-impl PartialOrd for MhsOp {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for MhsOp {
-    fn cmp(&self, other: &Self) -> Ordering {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-        enum MhsOpLvl {
-            EqNotEq,
-            Cmp,
-            Bound,
-            LogicOr,
-            LogicAnd,
-            BitOr,
-            BitXor,
-            BitAnd,
-            AddSub,
-            MulDivRem,
+impl BinaryOperator {
+    fn level(self) -> BinaryOperatorLevel {
+        match self {
+            Self::Add(_) | Self::Sub(_) => Self::AddSub,
+            Self::Mul(_) | Self::Div(_) | Self::Rem(_) => BinaryOperatorLevel::MulDivRem,
+            Self::Or(_) => BinaryOperatorLevel::Or,
+            Self::And(_) => BinaryOperatorLevel::And,
+            Self::Xor(_) => BinaryOperatorLevel::Xor,
+            Self::Bound(_) => BinaryOperatorLevel::Bound,
         }
-
-        fn to_lvl(op: &MhsOp) -> MhsOpLvl {
-            match op {
-                MhsOp::Add(_) | MhsOp::Sub(_) => MhsOpLvl::AddSub,
-                MhsOp::Mul(_) | MhsOp::Div(_) | MhsOp::Rem(_) => MhsOpLvl::MulDivRem,
-                MhsOp::And(_) => MhsOpLvl::BitAnd,
-                MhsOp::Or(_) => MhsOpLvl::BitOr,
-                MhsOp::Xor(_) => MhsOpLvl::BitXor,
-                MhsOp::LogicAnd(_) => MhsOpLvl::LogicAnd,
-                MhsOp::LogicOr(_) => MhsOpLvl::LogicOr,
-                MhsOp::Eq(_) | MhsOp::NotEq(_) => MhsOpLvl::EqNotEq,
-                MhsOp::More(_) | MhsOp::Less(_) | MhsOp::MoreEq(_) | MhsOp::LessEq(_) => {
-                    MhsOpLvl::Cmp
-                }
-                MhsOp::Bound(_) => MhsOpLvl::Bound,
-            }
-        }
-
-        to_lvl(self).cmp(&to_lvl(other))
     }
 }

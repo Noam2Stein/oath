@@ -10,13 +10,8 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
         "OptionParse",
         [
             impl_trait_fn(
-                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Option<Self>) -> ParseExit },
-                data_split(
-                    &input.data,
-                    &input.attrs,
-                    option_parse_struct,
-                    option_parse_enum,
-                ),
+                quote! { fn option_parse(parser: &mut ::oath_parser::Parser, output: &mut Option<Self>) -> ParseExit },
+                data_split(&input.data, &input.attrs, option_parse_struct, option_parse_enum),
             ),
             {
                 let desc = eval_desc(input);
@@ -24,7 +19,7 @@ pub fn impl_option_parse(input: &DeriveInput) -> TokenStream {
                 quote! { fn desc() -> &'static str { #desc } }
             },
             impl_trait_fn(
-                quote! { fn detect(parser: &::oath_parser::Parser<impl ::oath_parser::ParserIterator>) -> bool },
+                quote! { fn detect(parser: &::oath_parser::Parser) -> bool },
                 data_split(&input.data, &input.attrs, detect_struct, detect_enum),
             ),
         ],
@@ -91,31 +86,24 @@ fn detect_enum(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
 
 fn eval_desc(input: &DeriveInput) -> TokenStream {
     let desc_attr = {
-        let mut desc_attrs = input
-            .attrs
-            .iter()
-            .filter(|attr| attr.path().is_ident("desc"));
+        let mut desc_attrs = input.attrs.iter().filter(|attr| attr.path().is_ident("desc"));
 
         let desc_attr = match desc_attrs.next() {
             Some(desc_attr) => desc_attr,
             None => {
-                return Error::new(Span::call_site(), "expected `#[desc = \"...\"]`")
-                    .to_compile_error();
+                return Error::new(Span::call_site(), "expected `#[desc = \"...\"]`").to_compile_error();
             }
         };
 
         if let Some(second_desc_attr) = desc_attrs.next() {
-            return Error::new(second_desc_attr.span(), "multiple `desc` attributes")
-                .to_compile_error();
+            return Error::new(second_desc_attr.span(), "multiple `desc` attributes").to_compile_error();
         }
 
         desc_attr
     };
 
     match &desc_attr.meta {
-        Meta::List(_) | Meta::Path(_) => {
-            Error::new(Span::call_site(), "expected `#[desc = \"...\"]`").to_compile_error()
-        }
+        Meta::List(_) | Meta::Path(_) => Error::new(Span::call_site(), "expected `#[desc = \"...\"]`").to_compile_error(),
         Meta::NameValue(meta) => meta.value.to_token_stream(),
     }
 }

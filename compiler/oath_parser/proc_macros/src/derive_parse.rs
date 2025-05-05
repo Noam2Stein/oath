@@ -10,17 +10,12 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
         "Parse",
         [
             impl_trait_fn(
-                quote! { fn parse(parser: &mut ::oath_parser::Parser<impl ::oath_parser::ParserIterator>, output: &mut Self) -> ::oath_parser::ParseExit },
+                quote! { fn parse(parser: &mut ::oath_parser::Parser, output: &mut Self) -> ::oath_parser::ParseExit },
                 data_split(&input.data, &input.attrs, parse_struct, parse_enum),
             ),
             impl_trait_fn(
                 quote! { fn parse_error() -> Self },
-                data_split(
-                    &input.data,
-                    &input.attrs,
-                    struct_parse_error,
-                    enum_parse_error,
-                ),
+                data_split(&input.data, &input.attrs, struct_parse_error, enum_parse_error),
             ),
         ],
     )
@@ -97,8 +92,7 @@ fn enum_parse_error(data: &DataEnum, _attrs: &Vec<Attribute>) -> TokenStream {
 
     let fallback = {
         let variant_ident = &fallback_variant.ident;
-        let fields_parse_error =
-            fields_parse_error(&fallback_variant.fields, fallback_variant.span());
+        let fields_parse_error = fields_parse_error(&fallback_variant.fields, fallback_variant.span());
 
         quote! {
             Self::#variant_ident #fields_parse_error
