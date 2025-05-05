@@ -1,16 +1,13 @@
 use crate::*;
 
 pub trait OptionParse: Sized {
-    fn option_parse(
-        parser: &mut Parser<impl ParserIterator>,
-        output: &mut Option<Self>,
-    ) -> ParseExit;
+    fn option_parse(parser: &mut Parser, output: &mut Option<Self>) -> ParseExit;
 
-    fn detect(parser: &Parser<impl ParserIterator>) -> bool;
+    fn detect(parser: &Parser) -> bool;
 
     fn desc() -> &'static str;
 
-    fn try_parse(parser: &mut Parser<impl ParserIterator>, output: &mut Try<Self>) -> ParseExit {
+    fn try_parse(parser: &mut Parser, output: &mut Try<Self>) -> ParseExit {
         let mut option = None;
         let exit = Self::option_parse(parser, &mut option);
 
@@ -31,7 +28,7 @@ pub trait OptionParse: Sized {
 }
 
 impl<T: OptionParse> Parse for Option<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser, output: &mut Self) -> ParseExit {
         T::option_parse(parser, output)
     }
 
@@ -40,7 +37,7 @@ impl<T: OptionParse> Parse for Option<T> {
     }
 }
 impl<T: OptionParse> Parse for Try<T> {
-    fn parse(parser: &mut Parser<impl ParserIterator>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser, output: &mut Self) -> ParseExit {
         T::try_parse(parser, output)
     }
 

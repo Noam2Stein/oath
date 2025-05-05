@@ -2,49 +2,34 @@ use nonempty::NonEmpty;
 
 use crate::*;
 
-mod into_parser;
-pub use into_parser::*;
-
-#[derive(Debug, Clone)]
-pub struct Parser<'ctx, I: ParserIterator> {
-    iter: I,
-    context: ContextHandle<'ctx>,
+pub struct Parser<'src, 'ctx, 'parent> {
+    tokenizer: Tokenizer<'src, 'ctx, 'parent>,
     last_span: Span,
 }
 
-pub trait ParserIterator {
-    fn next(&mut self) -> Option<TokenTree>;
-
-    fn peek(&self) -> Option<&TokenTree>;
-}
-
-pub struct ParserUntil<'ctx, 'p, I: ParserIterator> {
-    parser: &'p mut Parser<'ctx, I>,
-    f: fn(&Parser<'ctx, I>) -> bool,
-}
-
-impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
-    pub fn new(iter: I, context: ContextHandle<'ctx>, start: Position) -> Self {
+impl<'src, 'ctx, 'parent> Parser<'src, 'ctx, 'parent> {
+    pub fn new(tokenizer: Tokenizer<'src, 'ctx, 'parent>) -> Self {
         Self {
-            iter,
-            context,
-            last_span: Span::from_start_len(start, 1),
+            last_span: tokenizer
+                .open_delimeter()
+                .map_or(Span::from_start_len(Position::ZERO, 1), |open| open.span),
+            tokenizer,
         }
     }
 
-    pub fn next(&mut self) -> Option<TokenTree> {
-        if let Some(next) = self.iter.next() {
+    pub fn next(&mut self) -> Option<LazyToken<'src, 'ctx, '_>> {
+        if let Some(next) = self.tokenizer.next() {
             self.last_span = next.span();
             Some(next)
         } else {
             None
         }
     }
-    pub fn peek(&self) -> Option<&TokenTree> {
-        self.iter.peek()
+    pub fn peek(&self) -> Option<PeekToken> {
+        self.tokenizer.peek()
     }
     pub fn context(&self) -> ContextHandle<'ctx> {
-        self.context
+        self.tokenizer.context()
     }
 
     pub fn peek_span(&self) -> Span {
@@ -73,14 +58,6 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         }
     }
 
-    pub fn until<'p>(&'p mut self, f: fn(&Self) -> bool) -> Parser<'ctx, ParserUntil<'ctx, 'p, I>> {
-        Parser {
-            context: self.context,
-            last_span: self.last_span,
-            iter: ParserUntil { parser: self, f },
-        }
-    }
-
     pub fn parse_rep<T: OptionParse>(&mut self, output: &mut Vec<T>) -> ParseExit {
         loop {
             let mut item = None;
@@ -98,10 +75,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
         }
     }
 
-    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(
-        &mut self,
-        output: &mut Option<NonEmpty<T>>,
-    ) -> ParseExit {
+    pub fn option_parse_sep<T: OptionParse, S: OptionParse>(&mut self, output: &mut Option<NonEmpty<T>>) -> ParseExit {
         let mut first = None;
         let first_exit = T::option_parse(self, &mut first);
 
@@ -135,10 +109,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
             }
         }
     }
-    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(
-        &mut self,
-        output: &mut Try<NonEmpty<T>>,
-    ) -> ParseExit {
+    pub fn try_parse_sep<T: OptionParse, S: OptionParse>(&mut self, output: &mut Try<NonEmpty<T>>) -> ParseExit {
         let mut option = None;
         let exit = self.option_parse_sep::<T, S>(&mut option);
 
@@ -147,8 +118,7 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
 
             exit
         } else {
-            self.context()
-                .push_error(SyntaxError::Expected(self.peek_span(), T::desc()));
+            self.context().push_error(SyntaxError::Expected(self.peek_span(), T::desc()));
 
             *output = Try::Failure;
 
@@ -181,45 +151,17 @@ impl<'ctx, I: ParserIterator> Parser<'ctx, I> {
     }
 }
 
-impl<'ctx, I: ParserIterator> Drop for Parser<'ctx, I> {
-    #[allow(dropping_copy_types)]
-    #[allow(invalid_value)]
+impl<'src, 'ctx, 'parent> Drop for Parser<'src, 'ctx, 'parent> {
     fn drop(&mut self) {
-        if let Some(next) = self.next() {
-            let mut span = next.span();
-            while let Some(next) = self.next() {
-                span = span + next.span()
-            }
+        let mut span = match self.next() {
+            Some(next) => next.span(),
+            None => return,
+        };
 
-            self.context.push_error(SyntaxError::UnexpectedTokens(span));
+        while let Some(next) = self.next() {
+            span = span + next.span()
         }
-    }
-}
 
-impl<'ctx, 'p, I: ParserIterator> ParserIterator for ParserUntil<'ctx, 'p, I> {
-    fn next(&mut self) -> Option<TokenTree> {
-        if (self.f)(&self.parser) {
-            None
-        } else {
-            self.parser.next()
-        }
-    }
-
-    fn peek(&self) -> Option<&TokenTree> {
-        if (self.f)(&self.parser) {
-            None
-        } else {
-            self.parser.peek()
-        }
-    }
-}
-
-impl ParserIterator for Vec<TokenTree> {
-    fn next(&mut self) -> Option<TokenTree> {
-        self.pop()
-    }
-
-    fn peek(&self) -> Option<&TokenTree> {
-        self.last()
+        self.context().push_error(SyntaxError::UnexpectedTokens(span));
     }
 }

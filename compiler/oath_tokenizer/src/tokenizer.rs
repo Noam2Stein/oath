@@ -2,22 +2,23 @@ use std::mem::transmute;
 
 use super::*;
 
-#[derive()]
 pub struct Tokenizer<'src, 'ctx, 'parent> {
     kind: TokenizerKind<'src, 'ctx, 'parent>,
     context: ContextHandle<'ctx>,
     next: Option<PeekToken>,
 }
 
+#[derive(Spanned)]
 pub enum LazyToken<'src, 'ctx, 'lexer> {
     Ident(Ident),
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
-    Group(OpenDelimiter, Box<Tokenizer<'src, 'ctx, 'lexer>>),
+    Group(#[span] OpenDelimiter, Box<Tokenizer<'src, 'ctx, 'lexer>>),
 }
 
 #[derive(Debug, Clone, Copy, Hash)]
+#[derive(Spanned)]
 pub enum PeekToken {
     Ident(Ident),
     Keyword(Keyword),
@@ -62,7 +63,7 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
                 PeekToken::Group(group_open) => {
                     let mut group_tokenizer = Box::new(Tokenizer {
                         context: self.context,
-                        kind: TokenizerKind::Group(group_open.kind, unsafe { transmute(self) }),
+                        kind: TokenizerKind::Group(group_open, unsafe { transmute(self) }),
                         next: None,
                     });
 
@@ -76,6 +77,17 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
 
     pub fn peek(&self) -> Option<PeekToken> {
         self.next
+    }
+
+    pub fn context(&self) -> ContextHandle<'ctx> {
+        self.context
+    }
+
+    pub fn open_delimeter(&self) -> Option<OpenDelimiter> {
+        match &self.kind {
+            TokenizerKind::Group(open, _) => Some(*open),
+            TokenizerKind::Root(_) => None,
+        }
     }
 
     fn update_next(&mut self) {
@@ -107,8 +119,8 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
             TokenizerKind::Root(_) => {
                 self.context.push_error(TokenError::Unopened(close));
             }
-            TokenizerKind::Group(open_kind, parent) => {
-                if *open_kind != close.kind {
+            TokenizerKind::Group(open, parent) => {
+                if open.kind != close.kind {
                     parent.close(close);
                 } else {
                     parent.update_next();
@@ -133,5 +145,5 @@ impl<'src, 'ctx, 'parent> Drop for Tokenizer<'src, 'ctx, 'parent> {
 
 enum TokenizerKind<'src, 'ctx, 'parent> {
     Root(RawTokenizer<'src, 'ctx>),
-    Group(DelimiterKind, &'parent mut Tokenizer<'src, 'ctx, 'parent>),
+    Group(OpenDelimiter, &'parent mut Tokenizer<'src, 'ctx, 'parent>),
 }
