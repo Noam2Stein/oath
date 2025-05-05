@@ -6,7 +6,7 @@ macro_rules! define_tokens {
     {
         blue_keywords: [$($blue_keyword:ident), * $(,)?],
         pink_keywords: [$($pink_keyword:ident), * $(,)?],
-        delims: [$($delim_open:literal $delim_close:literal $delim_type:ident), * $(,)?],
+        delims: [$($delim_open:literal $delim_close:literal $delim_name:ident), * $(,)?],
         puncts: [$($punct:literal $punct_variant:ident), * $(,)?] $(,)?
     } => {
         const KEYWORDS: &[&str] = &[$(stringify!($blue_keyword),)* $(stringify!($pink_keyword)), *];
@@ -14,7 +14,7 @@ macro_rules! define_tokens {
         const PINK_KEYWORDS: &[&str] = &[$(stringify!($pink_keyword)), *];
 
         const DELIMS: &[DelimInfo] = &[$(
-            DelimInfo { delim_open: $delim_open, delim_close: $delim_close, delim_type: stringify!($delim_type) },
+            DelimInfo { delim_open: $delim_open, delim_close: $delim_close, delim_name: stringify!($delim_name) },
         )*];
 
         const PUNCTS: &[PunctInfo] = &[$(
@@ -40,7 +40,7 @@ define_tokens!(
         fn, raw, con, async, panic, lock, undef, try, runtime, comptime,
         macro,
         const, static,
-        mut, smut, excl,
+        smut, mut, sole,
         self, Self, out, let, open,
     ],
     pink_keywords: [
@@ -50,9 +50,9 @@ define_tokens!(
         assume, ensure,
     ],
     delims: [
-        "(" ")" Parens,
-        "[" "]" Brackets,
-        "{" "}" Braces,
+        "(" ")" Paren,
+        "[" "]" Bracket,
+        "{" "}" Brace,
     ],
     puncts: [
         ">>=" ShiftRAssign,
@@ -115,7 +115,9 @@ define_tokens!(
 ///
 /// `$punct:literal`, `$punct_type:ident`, `$punct_variant:ident`
 ///
-/// `$delim_open:literal`, `$delim_close:literal`, `$delim_type:ident`, `$delim_fn:ident`, `$delim_open_type`, `$delim_close_type`
+/// `$delim_open:literal`, `$delim_close:literal`
+/// `$delim_type:ident`, `$delim_open_type:ident`, `$delim_close_type:ident`
+/// `$delims_fn:ident`, `$delim_fn:ident`
 #[proc_macro]
 pub fn with_tokens(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = TokenStream::from(input);
@@ -154,36 +156,33 @@ pub fn with_tokens(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         |DelimInfo {
              delim_open,
              delim_close,
-             delim_type,
+             delim_name,
          }| {
-            let delim_fn = Ident::new(&delim_type.to_lowercase(), Span::call_site());
+            let delims_type = format_ident!("{delim_name}s");
+            let delim_type = format_ident!("{delim_name}");
+            let delim_open_type = format_ident!("Open{delim_name}");
+            let delim_close_type = format_ident!("Open{delim_name}Close");
 
-            let delim_type = format_ident!("{delim_type}");
-
-            let delim_open_type = format_ident!("{delim_type}Open");
-
-            let delim_close_type = format_ident!("{delim_type}Close");
+            let delim_fn = Ident::new(&delim_name.to_lowercase(), Span::call_site());
+            let delims_fn = Ident::new(&format!("{}s", delim_name.to_lowercase()), Span::call_site());
 
             quote! {
-                #delim_open #delim_close #delim_type #delim_fn #delim_open_type #delim_close_type
+                #delim_open #delim_close
+                #delims_type #delim_type #delim_open_type #delim_close_type
+                #delims_fn #delim_fn
             }
         },
     );
 
-    let puncts = PUNCTS.into_iter().map(
-        |PunctInfo {
-             punct,
-             punct_variant,
-         }| {
-            let punct_type = format_ident!("{punct_variant}Punct");
+    let puncts = PUNCTS.into_iter().map(|PunctInfo { punct, punct_variant }| {
+        let punct_type = format_ident!("{punct_variant}Punct");
 
-            let punct_variant = format_ident!("{punct_variant}");
+        let punct_variant = format_ident!("{punct_variant}");
 
-            quote! {
-                #punct #punct_type #punct_variant
-            }
-        },
-    );
+        quote! {
+            #punct #punct_type #punct_variant
+        }
+    });
 
     quote! {
         macro_rules! chemical_plant_act_2 {
@@ -192,7 +191,11 @@ pub fn with_tokens(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 $($blue_keyword:literal $blue_keyword_type:ident $blue_keyword_variant:ident), *;
                 $($pink_keyword:literal $pink_keyword_type:ident $pink_keyword_variant:ident), *;
 
-                $($delim_open:literal $delim_close:literal $delim_type:ident $delim_fn:ident $delim_open_type:ident $delim_close_type:ident), *;
+                $(
+                    $delim_open:literal $delim_close:literal
+                    $delims_type:ident $delim_type:ident $delim_open_type:ident $delim_close_type:ident
+                    $delims_fn:ident $delim_fn:ident
+                ), *;
 
                 $($punct:literal $punct_type:ident $punct_variant:ident), *;
             } => {
@@ -208,7 +211,8 @@ pub fn with_tokens(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             #(#puncts), *;
         }
-    }.into()
+    }
+    .into()
 }
 
 #[proc_macro]
@@ -231,7 +235,7 @@ struct PunctInfo {
 struct DelimInfo {
     pub delim_open: &'static str,
     pub delim_close: &'static str,
-    pub delim_type: &'static str,
+    pub delim_name: &'static str,
 }
 
 fn keyword_to_variant(keyword: &str) -> String {
@@ -241,13 +245,15 @@ fn keyword_to_variant(keyword: &str) -> String {
         _ => keyword
             .chars()
             .enumerate()
-            .map(|(char_index, char)| {
-                if char_index == 0 {
-                    char.to_ascii_uppercase()
-                } else {
-                    char
-                }
-            })
+            .map(
+                |(char_index, char)| {
+                    if char_index == 0 {
+                        char.to_ascii_uppercase()
+                    } else {
+                        char
+                    }
+                },
+            )
             .collect(),
     }
 }
@@ -258,13 +264,15 @@ fn keyword_to_type(keyword: &str) -> String {
         _ => keyword
             .chars()
             .enumerate()
-            .map(|(char_index, char)| {
-                if char_index == 0 {
-                    char.to_ascii_uppercase()
-                } else {
-                    char
-                }
-            })
+            .map(
+                |(char_index, char)| {
+                    if char_index == 0 {
+                        char.to_ascii_uppercase()
+                    } else {
+                        char
+                    }
+                },
+            )
             .chain("Keyword".chars())
             .collect(),
     }

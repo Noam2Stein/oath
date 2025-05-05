@@ -22,9 +22,9 @@ with_tokens!(
     )*
 );
 
-verify_punct_type!(Punct);
+verify_token_type!(Punct);
 with_tokens!(
-    $(verify_punct_type!($punct_type);)*
+    $(verify_token_type!($punct_type);)*
 );
 
 pub const PUNCTS: &[&str] = with_tokens_expr! {
@@ -66,88 +66,4 @@ impl PunctKind {
             }
         }
     }
-}
-
-impl<'a> TryFrom<&'a TokenTree> for Punct {
-    type Error = ();
-
-    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Punct(value) = value {
-            Ok(*value)
-        } else {
-            Err(())
-        }
-    }
-}
-
-with_tokens!($(
-    impl From<$punct_type> for TokenTree {
-        fn from(value: $punct_type) -> Self {
-            TokenTree::Punct(value.into())
-        }
-    }
-    impl TryFrom<TokenTree> for $punct_type {
-        type Error = ();
-    
-        fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-            if let TokenTree::Punct(value) = value {
-                if value.kind == PunctKind::$punct_variant {
-                    Ok($punct_type(value.span))
-                } else {
-                    Err(())
-                }
-            } else {
-                Err(())
-            }
-        }
-    }
-    impl<'a> TryFrom<&'a TokenTree> for $punct_type {
-        type Error = ();
-    
-        fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-            if let TokenTree::Punct(value) = value {
-                if value.kind == PunctKind::$punct_variant {
-                    Ok($punct_type(value.span))
-                } else {
-                    Err(())
-                }
-            } else {
-                Err(())
-            }
-        }
-    }
-
-    impl From<$punct_type> for Punct {
-        fn from(value: $punct_type) -> Self {
-            Self {
-                kind: PunctKind::$punct_variant,
-                span: value.span(),
-            }
-        }
-    }
-    impl TryFrom<Punct> for $punct_type {
-        type Error = ();
-    
-        fn try_from(value: Punct) -> Result<Self, Self::Error> {
-            if value.kind == PunctKind::$punct_variant {
-                Ok($punct_type(value.span))
-            } else {
-                Err(())
-            }
-        }
-    }
-)*);
-
-#[macro_export(local_inner_macros)]
-macro_rules! verify_punct_type {
-    ($type:ty) => {
-        verify_token_type!($type);
-        const _: () = verify_punct_type_helper::<$type>();
-    };
-}
-
-#[allow(dead_code)]
-pub(super) const fn verify_punct_type_helper<
-    T: Debug + Copy + Eq + Ord + Hash + TryFrom<Punct> + Into<Punct> + Spanned,
->() {
 }

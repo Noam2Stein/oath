@@ -4,10 +4,10 @@ use crate::*;
 pub enum TokenError {
     #[display("unknown token")]
     UnknownToken(#[span] Span),
-    #[display("unclosed {}", field_1.open_str())]
-    Unclosed(#[span] Span, DelimiterKind),
-    #[display("unopened {}", field_1.close_str())]
-    Unopened(#[span] Span, DelimiterKind),
+    #[display("unclosed {field_0}")]
+    Unclosed(OpenDelimiter),
+    #[display("unopened {field_0}")]
+    Unopened(CloseDelimiter),
     #[display("out of bounds literal")]
     OutOfBoundsLiteral(#[span] Span),
 }

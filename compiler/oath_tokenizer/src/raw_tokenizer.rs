@@ -8,33 +8,24 @@ pub enum RawToken {
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
-    OpenDelimiter(Span, DelimiterKind),
-    CloseDelimiter(Span, DelimiterKind),
-}
-
-pub trait SrcFileTokenizeRawExt: Seal {
-    fn tokenize_raw<'src, 'd>(&'src self, context: ContextHandle<'d>) -> RawTokenizer<'src, 'd>;
+    OpenDelimiter(OpenDelimiter),
+    CloseDelimiter(CloseDelimiter),
 }
 
 #[derive(Debug, Clone)]
-pub struct RawTokenizer<'src, 'd> {
+pub struct RawTokenizer<'src, 'ctx> {
     lexer: Lexer<'src, LogosToken<'src>>,
-    context: ContextHandle<'d>,
+    context: ContextHandle<'ctx>,
 }
 
-impl SrcFileTokenizeRawExt for SrcFile {
-    fn tokenize_raw<'src, 'd>(&'src self, context: ContextHandle<'d>) -> RawTokenizer<'src, 'd> {
-        RawTokenizer {
-            lexer: LogosToken::lexer(self.as_str()),
-            context,
-        }
+impl<'src, 'ctx> RawTokenizer<'src, 'ctx> {
+    pub fn new(src: &'src str, context: ContextHandle<'ctx>) -> Self {
+        let lexer = LogosToken::lexer(src);
+
+        Self { lexer, context }
     }
-}
 
-impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
-    type Item = RawToken;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    pub fn next(&mut self) -> Option<RawToken> {
         loop {
             break if let Some(next) = self.lexer.next() {
                 let span = Span::from_start_end(
@@ -69,8 +60,8 @@ impl<'src, 'd> Iterator for RawTokenizer<'src, 'd> {
                             LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.context))),
                             LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.context))),
                             $(
-                                LogosToken::$delim_open_type => RawToken::OpenDelimiter(span, DelimiterKind::$delim_type),
-                                LogosToken::$delim_close_type => RawToken::CloseDelimiter(span, DelimiterKind::$delim_type),
+                                LogosToken::$delim_open_type => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
+                                LogosToken::$delim_close_type => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
                             )*
                         }
                 })
@@ -112,10 +103,9 @@ fn index_to_pos(str: &str, index: usize) -> Position {
     let mut line = 0;
     let mut last_line_start = 0;
 
-    for newline in
-        str[0..index]
-            .char_indices()
-            .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
+    for newline in str[0..index]
+        .char_indices()
+        .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
     {
         line += 1;
         last_line_start = newline + 1;

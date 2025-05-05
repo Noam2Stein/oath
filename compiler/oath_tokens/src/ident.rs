@@ -56,15 +56,3 @@ impl Ident {
         self.str_id
     }
 }
-
-impl<'a> TryFrom<&'a TokenTree> for Ident {
-    type Error = ();
-
-    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Ident(value) = value {
-            Ok(*value)
-        } else {
-            Err(())
-        }
-    }
-}

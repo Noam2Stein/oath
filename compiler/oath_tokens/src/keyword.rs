@@ -22,9 +22,9 @@ with_tokens!(
     )*
 );
 
-verify_keyword_type!(Keyword);
+verify_token_type!(Keyword);
 with_tokens!(
-    $(verify_keyword_type!($keyword_type);)*
+    $(verify_token_type!($keyword_type);)*
 );
 
 pub const KEYWORDS: &[&str] = with_tokens_expr! {
@@ -66,88 +66,4 @@ impl KeywordKind {
             )*}
         }
     }
-}
-
-impl<'a> TryFrom<&'a TokenTree> for Keyword {
-    type Error = ();
-
-    fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-        if let TokenTree::Keyword(value) = value {
-            Ok(*value)
-        } else {
-            Err(())
-        }
-    }
-}
-
-with_tokens!($(
-    impl From<$keyword_type> for TokenTree {
-        fn from(value: $keyword_type) -> Self {
-            TokenTree::Keyword(value.into())
-        }
-    }
-    impl TryFrom<TokenTree> for $keyword_type {
-        type Error = ();
-    
-        fn try_from(value: TokenTree) -> Result<Self, Self::Error> {
-            if let TokenTree::Keyword(value) = value {
-                if value.kind == KeywordKind::$keyword_variant {
-                    Ok($keyword_type(value.span))
-                } else {
-                    Err(())
-                }
-            } else {
-                Err(())
-            }
-        }
-    }
-    impl<'a> TryFrom<&'a TokenTree> for $keyword_type {
-        type Error = ();
-    
-        fn try_from(value: &'a TokenTree) -> Result<Self, Self::Error> {
-            if let TokenTree::Keyword(value) = value {
-                if value.kind == KeywordKind::$keyword_variant {
-                    Ok($keyword_type(value.span))
-                } else {
-                    Err(())
-                }
-            } else {
-                Err(())
-            }
-        }
-    }
-
-    impl From<$keyword_type> for Keyword {
-        fn from(value: $keyword_type) -> Self {
-            Self {
-                kind: KeywordKind::$keyword_variant,
-                span: value.span(),
-            }
-        }
-    }
-    impl TryFrom<Keyword> for $keyword_type {
-        type Error = ();
-    
-        fn try_from(value: Keyword) -> Result<Self, Self::Error> {
-            if value.kind == KeywordKind::$keyword_variant {
-                Ok($keyword_type(value.span))
-            } else {
-                Err(())
-            }
-        }
-    }
-)*);
-
-#[macro_export(local_inner_macros)]
-macro_rules! verify_keyword_type {
-    ($type:ty) => {
-        verify_token_type!($type);
-        const _: () = verify_keyword_type_helper::<$type>();
-    };
-}
-
-#[allow(dead_code)]
-pub(super) const fn verify_keyword_type_helper<
-    T: Debug + Copy + Eq + Ord + Hash + TryFrom<Keyword> + Into<Keyword> + Spanned,
->() {
 }
