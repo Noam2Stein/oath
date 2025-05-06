@@ -2,11 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput};
 
-pub fn impl_trait(
-    input: &DeriveInput,
-    trait_ident: &'static str,
-    items: impl IntoIterator<Item = TokenStream>,
-) -> TokenStream {
+pub fn impl_trait(input: &DeriveInput, trait_ident: &'static str, items: impl IntoIterator<Item = TokenStream>) -> TokenStream {
     let type_ident = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -40,9 +36,9 @@ pub fn impl_trait_fn(sig: TokenStream, output: TokenStream) -> TokenStream {
 }
 pub fn data_split<O>(
     data: &Data,
-    attrs: &Vec<Attribute>,
-    struct_: impl FnOnce(&DataStruct, &Vec<Attribute>) -> O,
-    enum_: impl FnOnce(&DataEnum, &Vec<Attribute>) -> O,
+    attrs: &[Attribute],
+    struct_: impl FnOnce(&DataStruct, &[Attribute]) -> O,
+    enum_: impl FnOnce(&DataEnum, &[Attribute]) -> O,
 ) -> O {
     match data {
         Data::Struct(data) => struct_(data, attrs),

@@ -96,7 +96,7 @@ impl<'src, 'ctx, 'parent> Parser<'src, 'ctx, 'parent> {
             }
 
             let mut item = Try::Failure;
-            let item_exit = T::try_parse(self, &mut item);
+            let item_exit = Try::<T>::parse(self, &mut item);
 
             if let Try::Success(item) = item {
                 vec.push(item);

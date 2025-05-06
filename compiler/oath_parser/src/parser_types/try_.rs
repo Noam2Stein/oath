@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, OptionSpanned)]
@@ -65,5 +65,30 @@ impl<T> Try<T> {
             Self::Success(success) => Try::Success(Box::new(success)),
             Self::Failure => Try::Failure,
         }
+    }
+}
+
+impl<T: OptionParse> Parse for Try<T> {
+    fn parse(parser: &mut Parser, output: &mut Self) -> ParseExit {
+        let mut option = None;
+        let exit = T::option_parse(parser, &mut option);
+
+        if let Some(option) = option {
+            *output = Try::Success(option);
+
+            exit
+        } else {
+            parser
+                .context()
+                .push_error(SyntaxError::Expected(parser.peek_span(), T::desc()));
+
+            *output = Try::Failure;
+
+            ParseExit::Cut
+        }
+    }
+
+    fn parse_error() -> Self {
+        Try::Failure
     }
 }

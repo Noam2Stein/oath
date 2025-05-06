@@ -15,13 +15,3 @@ impl Parse for () {
         ()
     }
 }
-
-impl<T: Parse> Parse for Box<T> {
-    fn parse(parser: &mut Parser, output: &mut Self) -> ParseExit {
-        T::parse(parser, &mut **output)
-    }
-
-    fn parse_error() -> Self {
-        Box::new(T::parse_error())
-    }
-}
