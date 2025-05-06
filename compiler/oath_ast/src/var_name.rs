@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Debug, Clone, OptionSpanned, Parse)]
 pub enum VarName {
     #[group]
-    Tuple(OpenParen, Vec<VarName>),
+    Tuple(OpenParen, #[trl] Vec<VarName>, CloseDelimiter),
     #[fallback]
     Ident(
         #[option_spanned] Option<keyword!("mut")>,

@@ -29,3 +29,17 @@ impl<T: Spanned> Spanned for Box<T> {
         T::span(&self)
     }
 }
+
+impl<T: OptionSpanned> OptionSpanned for Vec<T> {
+    fn option_span(&self) -> Option<Span> {
+        let mut span = None;
+
+        for item in self {
+            if let Some(span) = &mut span {
+                *span += item.option_span()
+            }
+        }
+
+        span
+    }
+}

@@ -5,8 +5,9 @@ use super::*;
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an item modifier"]
 pub struct Item {
+    #[rep]
     pub modifiers: Vec<ItemModifier>,
-    pub base: BaseItem,
+    pub base: Try<BaseItem>,
 }
 
 #[derive(Debug, Clone, OptionParse)]

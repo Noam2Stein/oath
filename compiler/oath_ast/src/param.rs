@@ -2,7 +2,7 @@ use oath_tokens::Ident;
 
 use super::*;
 
-#[derive(OptionParse)]
+#[derive(Debug, Clone, OptionParse)]
 #[desc = "a parameter"]
 pub struct Param {
     pub name: Ident,
@@ -10,7 +10,7 @@ pub struct Param {
     pub bounds: Option<Bounds>,
 }
 
-#[derive(OptionParse)]
+#[derive(Debug, Clone, OptionParse)]
 #[desc = "an unnamed parameter"]
 pub struct UnnamedParam {
     pub type_: Expr,
