@@ -2,30 +2,40 @@ use std::ops::{Deref, DerefMut};
 
 use crate::*;
 
-pub struct Parser<'src, 'ctx, 'parent>(pub Tokenizer<'src, 'ctx, 'parent>);
+pub struct Parser<Src: TokenSource>(pub Tokenizer<Src>);
 
-impl<'src, 'ctx, 'parent> Deref for Parser<'src, 'ctx, 'parent> {
-    type Target = Tokenizer<'src, 'ctx, 'parent>;
+impl<Src: TokenSource> Deref for Parser<Src> {
+    type Target = Tokenizer<Src>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-impl<'src, 'ctx, 'parent> DerefMut for Parser<'src, 'ctx, 'parent> {
+impl<Src: TokenSource> DerefMut for Parser<Src> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<'src, 'ctx, 'parent> Drop for Parser<'src, 'ctx, 'parent> {
+impl<Src: TokenSource> Drop for Parser<Src> {
     fn drop(&mut self) {
+        fn into_span(token: LazyToken<impl TokenSource>) -> Span {
+            match token {
+                LazyToken::Ident(token) => token.span(),
+                LazyToken::Keyword(token) => token.span(),
+                LazyToken::Punct(token) => token.span(),
+                LazyToken::Literal(token) => token.span(),
+                LazyToken::Group(mut token) => token.open().span() + token.close().span(),
+            }
+        }
+
         let mut span = match self.next() {
-            Some(next) => next.span(),
+            Some(next) => into_span(next),
             None => return,
         };
 
         while let Some(next) = self.next() {
-            span = span + next.span()
+            span = span + into_span(next)
         }
 
         self.context().push_error(SyntaxError::UnexpectedTokens(span));

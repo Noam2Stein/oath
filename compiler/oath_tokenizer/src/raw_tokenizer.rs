@@ -70,6 +70,10 @@ impl<'src, 'ctx> RawTokenizer<'src, 'ctx> {
             };
         }
     }
+
+    pub fn context(&self) -> ContextHandle<'ctx> {
+        self.context
+    }
 }
 
 with_tokens!(

@@ -7,7 +7,7 @@ use oath_interner::*;
 use oath_src::*;
 
 pub use oath_token_definitions::{with_tokens, with_tokens_expr};
-pub use oath_tokens_proc_macros::{keyword, punct};
+pub use oath_tokens_proc_macros::{close, delims, keyword, open, punct};
 
 mod char_literal;
 mod delimiters;

@@ -161,7 +161,7 @@ pub fn with_tokens(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             let delims_type = format_ident!("{delim_name}s");
             let delim_type = format_ident!("{delim_name}");
             let delim_open_type = format_ident!("Open{delim_name}");
-            let delim_close_type = format_ident!("Open{delim_name}Close");
+            let delim_close_type = format_ident!("Close{delim_name}");
 
             let delim_fn = Ident::new(&delim_name.to_lowercase(), Span::call_site());
             let delims_fn = Ident::new(&format!("{}s", delim_name.to_lowercase()), Span::call_site());

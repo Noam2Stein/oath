@@ -1,48 +1,19 @@
-use std::mem::transmute;
-
 use super::*;
 
-pub struct Tokenizer<'src, 'ctx, 'parent> {
-    kind: TokenizerKind<'src, 'ctx, 'parent>,
-    context: ContextHandle<'ctx>,
+//
+//
+// TOKENIZER
+//
+//
+
+pub struct Tokenizer<Src: TokenSource> {
+    src: Src,
     next: Option<PeekToken>,
     last_span: Span,
 }
 
-#[derive(Spanned)]
-pub enum LazyToken<'src, 'ctx, 'lexer> {
-    Ident(Ident),
-    Keyword(Keyword),
-    Punct(Punct),
-    Literal(Literal),
-    Group(#[span] OpenDelimiter, Box<Tokenizer<'src, 'ctx, 'lexer>>),
-}
-
-#[derive(Debug, Clone, Copy, Hash)]
-#[derive(Spanned)]
-pub enum PeekToken {
-    Ident(Ident),
-    Keyword(Keyword),
-    Punct(Punct),
-    Literal(Literal),
-    Group(OpenDelimiter),
-}
-
-impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
-    pub fn new(src: &'src SrcFile, context: ContextHandle<'ctx>) -> Self {
-        let mut output = Self {
-            kind: TokenizerKind::Root(RawTokenizer::new(src.as_str(), context)),
-            next: None,
-            context,
-            last_span: Span::ZERO,
-        };
-
-        output.update_next();
-
-        output
-    }
-
-    pub fn next(&mut self) -> Option<LazyToken<'src, 'ctx, '_>> {
+impl<Src: TokenSource> Tokenizer<Src> {
+    pub fn next(&mut self) -> Option<LazyToken<Src>> {
         match self.next {
             None => None,
             Some(token) => Some(match token {
@@ -64,15 +35,18 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
                 }
                 PeekToken::Group(group_open) => {
                     let mut group_tokenizer = Box::new(Tokenizer {
-                        context: self.context,
-                        kind: TokenizerKind::Group(group_open, unsafe { transmute(self) }, None),
+                        src: GroupSource {
+                            open: group_open,
+                            parent: self,
+                            close: None,
+                        },
                         next: None,
                         last_span: group_open.span,
                     });
 
                     group_tokenizer.update_next();
 
-                    LazyToken::Group(group_open, group_tokenizer)
+                    LazyToken::Group(group_tokenizer)
                 }
             }),
         }
@@ -101,26 +75,8 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
         self.peek().is_some()
     }
 
-    pub fn context(&self) -> ContextHandle<'ctx> {
-        self.context
-    }
-
-    pub fn open_delimeter(&self) -> Option<OpenDelimiter> {
-        match &self.kind {
-            TokenizerKind::Group(open, _, _) => Some(*open),
-            TokenizerKind::Root(_) => None,
-        }
-    }
-
-    pub fn finish(&mut self) -> Option<CloseDelimiter> {
-        while self.peek().is_some() {
-            self.next();
-        }
-
-        match &self.kind {
-            TokenizerKind::Group(_, _, close) => Some(close.unwrap()),
-            TokenizerKind::Root(_) => None,
-        }
+    pub fn context(&self) -> ContextHandle {
+        self.src.context()
     }
 
     fn update_next(&mut self) {
@@ -128,7 +84,7 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
             return;
         }
 
-        self.next = match self.raw().next() {
+        self.next = match self.src.raw_next() {
             None => None,
             Some(raw_token) => Some(match raw_token {
                 RawToken::Ident(raw_token) => PeekToken::Ident(raw_token),
@@ -137,7 +93,7 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
                 RawToken::Literal(raw_token) => PeekToken::Literal(raw_token),
                 RawToken::OpenDelimiter(raw_token) => PeekToken::Group(raw_token),
                 RawToken::CloseDelimiter(close) => {
-                    self.close(close);
+                    self.close_end(close);
 
                     return;
                 }
@@ -145,43 +101,129 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
         };
     }
 
-    fn close(&mut self, close: CloseDelimiter) {
+    fn close_end(&mut self, close: CloseDelimiter) {
         self.next = None;
 
-        match &mut self.kind {
-            TokenizerKind::Root(_) => {
-                self.context.push_error(TokenError::Unopened(close));
-            }
-            TokenizerKind::Group(open, parent, self_close) => {
-                *self_close = Some(CloseDelimiter::new(close.span, open.kind));
-                if open.kind != close.kind {
-                    parent.close(close);
-                } else {
-                    parent.update_next();
-                }
-            }
-        }
-    }
-
-    fn raw(&mut self) -> &mut RawTokenizer<'src, 'ctx> {
-        match &mut self.kind {
-            TokenizerKind::Root(raw) => raw,
-            TokenizerKind::Group(_, parent, _) => parent.raw(),
-        }
+        self.src.close_end(close);
     }
 }
-
-impl<'src, 'ctx, 'parent> Drop for Tokenizer<'src, 'ctx, 'parent> {
+impl<Src: TokenSource> Drop for Tokenizer<Src> {
     fn drop(&mut self) {
         while let Some(_) = self.next() {}
     }
 }
 
-enum TokenizerKind<'src, 'ctx, 'parent> {
-    Root(RawTokenizer<'src, 'ctx>),
-    Group(
-        OpenDelimiter,
-        &'parent mut Tokenizer<'src, 'ctx, 'parent>,
-        Option<CloseDelimiter>,
-    ),
+impl<'ctx, 'src> Tokenizer<RootSource<'src, 'ctx>> {
+    pub fn new(src: &'src SrcFile, context: ContextHandle<'ctx>) -> Self {
+        let mut output = Self {
+            src: RootSource {
+                raw: RawTokenizer::new(src.as_str(), context),
+            },
+            next: None,
+            last_span: Span::ZERO,
+        };
+
+        output.update_next();
+
+        output
+    }
+}
+
+impl<'parent, D: DelimiterType, ParentSrc: TokenSource> Tokenizer<GroupSource<'parent, D, ParentSrc>> {
+    pub fn open(&self) -> D::Open {
+        self.src.open
+    }
+
+    pub fn close(&mut self) -> D::Close {
+        while self.peek().is_some() {
+            self.next();
+        }
+
+        self.src.close.unwrap()
+    }
+}
+
+//
+//
+// TOKEN
+//
+//
+
+pub enum LazyToken<'tokenizer, Src: TokenSource> {
+    Ident(Ident),
+    Keyword(Keyword),
+    Punct(Punct),
+    Literal(Literal),
+    Group(Box<Tokenizer<GroupSource<'tokenizer, Delimiters, Src>>>),
+}
+
+#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Spanned)]
+pub enum PeekToken {
+    Ident(Ident),
+    Keyword(Keyword),
+    Punct(Punct),
+    Literal(Literal),
+    Group(OpenDelimiter),
+}
+
+//
+//
+// TOKEN SRC
+//
+//
+
+#[allow(private_bounds)]
+pub trait TokenSource: TokenSourcePrivate {}
+trait TokenSourcePrivate {
+    fn context(&self) -> ContextHandle;
+
+    fn raw_next(&mut self) -> Option<RawToken>;
+
+    fn close_end(&mut self, close: CloseDelimiter);
+}
+
+pub struct RootSource<'src, 'ctx> {
+    raw: RawTokenizer<'src, 'ctx>,
+}
+
+pub struct GroupSource<'parent, D: DelimiterType, ParentSrc: TokenSource> {
+    open: D::Open,
+    parent: &'parent mut Tokenizer<ParentSrc>,
+    close: Option<D::Close>,
+}
+
+impl<'src, 'ctx> TokenSource for RootSource<'src, 'ctx> {}
+impl<'src, 'ctx> TokenSourcePrivate for RootSource<'src, 'ctx> {
+    fn context(&self) -> ContextHandle {
+        self.raw.context()
+    }
+
+    fn raw_next(&mut self) -> Option<RawToken> {
+        self.raw.next()
+    }
+
+    fn close_end(&mut self, close: CloseDelimiter) {
+        self.context().push_error(TokenError::Unopened(close));
+    }
+}
+
+impl<'parent, D: DelimiterType, ParentSrc: TokenSource> TokenSource for GroupSource<'parent, D, ParentSrc> {}
+impl<'parent, D: DelimiterType, ParentSrc: TokenSource> TokenSourcePrivate for GroupSource<'parent, D, ParentSrc> {
+    fn context(&self) -> ContextHandle {
+        self.parent.context()
+    }
+
+    fn raw_next(&mut self) -> Option<RawToken> {
+        self.parent.src.raw_next()
+    }
+
+    fn close_end(&mut self, close: CloseDelimiter) {
+        if let Ok(close) = close.try_into() {
+            self.close = Some(close);
+            self.parent.update_next();
+        } else {
+            self.parent.close_end(close);
+        }
+    }
 }

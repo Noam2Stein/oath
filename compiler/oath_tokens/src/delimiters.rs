@@ -31,6 +31,16 @@ pub struct CloseDelimiter {
     pub kind: DelimiterKind,
 }
 
+pub trait DelimiterType: Debug + Copy + Spanned + TryFrom<Delimiters> {
+    type Open: Debug + Copy + Spanned + TryFrom<OpenDelimiter>;
+    type Close: Debug + Copy + Spanned + TryFrom<CloseDelimiter>;
+
+    fn kind(&self) -> DelimiterKind;
+
+    fn open(&self) -> Self::Open;
+    fn close(&self) -> Self::Close;
+}
+
 with_tokens!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum DelimiterKind {$(
@@ -51,18 +61,12 @@ with_tokens!(
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
         #[derive(Spanned)]
         #[display("`{}`", $delim_open)]
-        pub struct $delim_open_type {
-            #[span]
-            pub span: Span,
-        }
+        pub struct $delim_open_type(Span);
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
         #[derive(Spanned)]
         #[display("`{}`", $delim_close)]
-        pub struct $delim_close_type {
-            #[span]
-            pub span: Span,
-        }
+        pub struct $delim_close_type(Span);
     )*
 );
 
@@ -120,20 +124,6 @@ with_tokens!(
                 Self { open_span, close_span }
             }
         }
-
-        impl $delim_open_type {
-            #[inline(always)]
-            pub fn new(span: Span) -> Self {
-                Self { span }
-            }
-        }
-
-        impl $delim_close_type {
-            #[inline(always)]
-            pub fn new(span: Span) -> Self {
-                Self { span }
-            }
-        }
     )*
 );
 
@@ -153,3 +143,74 @@ impl DelimiterKind {
         }
     }
 }
+
+impl DelimiterType for Delimiters {
+    type Open = OpenDelimiter;
+    type Close = CloseDelimiter;
+
+    fn kind(&self) -> DelimiterKind {
+        self.kind
+    }
+
+    fn open(&self) -> Self::Open {
+        OpenDelimiter::new(self.open_span, self.kind)
+    }
+    fn close(&self) -> Self::Close {
+        CloseDelimiter::new(self.close_span, self.kind)
+    }
+}
+
+with_tokens!($(
+    impl DelimiterType for $delims_type {
+        type Open = $delim_open_type;
+        type Close = $delim_close_type;
+    
+        fn kind(&self) -> DelimiterKind {
+            DelimiterKind::$delims_type
+        }
+    
+        fn open(&self) -> Self::Open {
+            $delim_open_type(self.open_span)
+        }
+        fn close(&self) -> Self::Close {
+            $delim_close_type(self.close_span)
+        }
+    }
+
+    impl TryFrom<Delimiters> for $delims_type {
+        type Error = ();
+
+        fn try_from(value: Delimiters) -> Result<Self, Self::Error> {
+            if value.kind == DelimiterKind::$delims_type {
+                Ok(Self {
+                    open_span: value.open_span,
+                    close_span: value.close_span,
+                })
+            } else {
+                Err(())
+            }
+        }
+    }
+    impl TryFrom<OpenDelimiter> for $delim_open_type {
+        type Error = ();
+
+        fn try_from(value: OpenDelimiter) -> Result<Self, Self::Error> {
+            if value.kind == DelimiterKind::$delims_type {
+                Ok(Self(value.span))
+            } else {
+                Err(())
+            }
+        }
+    }
+    impl TryFrom<CloseDelimiter> for $delim_close_type {
+        type Error = ();
+
+        fn try_from(value: CloseDelimiter) -> Result<Self, Self::Error> {
+            if value.kind == DelimiterKind::$delims_type {
+                Ok(Self(value.span))
+            } else {
+                Err(())
+            }
+        }
+    }
+)*);

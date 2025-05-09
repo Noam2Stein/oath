@@ -10,11 +10,11 @@ pub enum BaseExpr {
     Out(keyword!("out")),
     UnaryOperator(UnaryOperator, Try<Box<Expr>>),
     #[group]
-    Tuple(OpenParen, Trailing<Expr, punct!(",")>),
+    Tuple(delims!("( )"), Trailing<Expr, punct!(",")>),
     #[group]
-    Array(OpenBracket, Trailing<Expr, punct!(",")>),
+    Array(delims!("[ ]"), Trailing<Expr, punct!(",")>),
     #[group]
-    Block(OpenBrace, Trailing<Stmt, punct!(";")>),
+    Block(delims!("{ }"), Trailing<Stmt, punct!(";")>),
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -37,8 +37,8 @@ pub struct Expr {
 #[desc = "an expression extension"]
 pub enum UnaryExprExtension {
     Member(punct!("."), Try<Member>),
-    Call(OpenParen, Trailing<Expr, punct!(",")>),
-    Index(OpenBracket, Try<Box<Expr>>),
+    Call(delims!("( )"), Trailing<Expr, punct!(",")>),
+    Index(delims!("[ ]"), Try<Box<Expr>>),
     Generics(punct!("<"), Trailing<Expr, punct!(",")>, Try<punct!(">")>),
 }
 

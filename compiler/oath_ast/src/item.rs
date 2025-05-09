@@ -45,7 +45,7 @@ pub struct Mod {
 #[desc = "either `{ } or `;`"]
 pub enum ModBlock {
     #[group]
-    Block(OpenBrace, ModContent),
+    Block(delims!("{ }"), ModContent),
     Semi(Discard<punct!(";")>),
 }
 
@@ -62,16 +62,16 @@ pub struct Func {
     pub _keyword: Discard<keyword!("fn")>,
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
-    pub input: FuncInput,
+    pub input: Try<FuncInput>,
     pub output: Option<FuncOutput>,
-    pub block: Option<Block>,
+    pub block: Try<FuncBlock>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
 #[group]
 pub struct FuncInput {
-    pub _open: OpenParen,
+    pub _delims: delims!("( )"),
     pub params: Trailing<Param, punct!(",")>,
 }
 
@@ -86,7 +86,7 @@ pub struct FuncOutput {
 #[desc = "either `{ } or `;`"]
 pub enum FuncBlock {
     #[group]
-    Block(OpenBrace, Trailing<Stmt, punct!(";")>),
+    Block(delims!("{ }"), Trailing<Stmt, punct!(";")>),
     Semi(Discard<punct!(";")>),
 }
 
@@ -104,9 +104,9 @@ pub struct Struct {
 #[desc = "`{ }` / `()`"]
 pub enum StructFields {
     #[group]
-    Named(OpenBrace, Trailing<Param, punct!(",")>),
+    Named(delims!("{ }"), Trailing<Param, punct!(",")>),
     #[group]
-    Unnamed(OpenParen, Trailing<UnnamedParam, punct!(",")>),
+    Unnamed(delims!("( )"), Trailing<UnnamedParam, punct!(",")>),
 }
 
 // SYS
