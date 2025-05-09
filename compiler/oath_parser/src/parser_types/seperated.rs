@@ -11,7 +11,7 @@ pub struct Seperated<T: ParseDesc, S: OptionParse> {
 }
 
 impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
-    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut first = None;
         let first_exit = T::option_parse(parser, &mut first);
 
@@ -50,7 +50,7 @@ impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
         }
     }
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
         T::detect(parser)
     }
 }

@@ -134,7 +134,7 @@ pub fn option_parse_fields(
                 }
 
                 let tokenizer = match parser.next() {
-                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => *tokenizer,
+                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => tokenizer,
                     _ => unreachable!(),
                 };
 

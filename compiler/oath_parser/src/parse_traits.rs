@@ -5,11 +5,11 @@ use super::*;
 pub trait OptionParse: Sized {
     fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit;
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection;
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection;
 }
 
 pub trait Parse: OptionParse {
-    fn parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Self) -> ParseExit;
+    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit;
 
     fn parse_error() -> Self;
 }
@@ -51,7 +51,7 @@ impl BitOrAssign for Detection {
 }
 
 impl<T: OptionParse> OptionParse for Option<T> {
-    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);
 
@@ -60,7 +60,7 @@ impl<T: OptionParse> OptionParse for Option<T> {
         exit
     }
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
         match T::detect(parser) {
             Detection::Detected => Detection::Detected,
             Detection::NotDetected => Detection::EmptyDetected,
@@ -69,7 +69,7 @@ impl<T: OptionParse> OptionParse for Option<T> {
     }
 }
 impl<T: OptionParse> Parse for Option<T> {
-    fn parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
         T::option_parse(parser, output)
     }
 
@@ -79,16 +79,16 @@ impl<T: OptionParse> Parse for Option<T> {
 }
 
 impl OptionParse for () {
-    fn option_parse(_parser: &mut Parser<impl InnerTokenizer>, _output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(_parser: &mut Parser<impl Tokenizer>, _output: &mut Option<Self>) -> ParseExit {
         ParseExit::Complete
     }
 
-    fn detect(_parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(_parser: &Parser<impl Tokenizer>) -> Detection {
         Detection::EmptyDetected
     }
 }
 impl Parse for () {
-    fn parse(_parser: &mut Parser<impl InnerTokenizer>, _output: &mut Self) -> ParseExit {
+    fn parse(_parser: &mut Parser<impl Tokenizer>, _output: &mut Self) -> ParseExit {
         ParseExit::Complete
     }
 
@@ -98,7 +98,7 @@ impl Parse for () {
 }
 
 impl<T: OptionParse> OptionParse for Box<T> {
-    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut inner = None;
 
         let exit = T::option_parse(parser, &mut inner);
@@ -110,12 +110,12 @@ impl<T: OptionParse> OptionParse for Box<T> {
         exit
     }
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
         T::detect(parser)
     }
 }
 impl<T: Parse> Parse for Box<T> {
-    fn parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
         let mut inner = T::parse_error();
 
         let exit = T::parse(parser, &mut inner);

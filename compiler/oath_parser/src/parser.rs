@@ -1,26 +1,23 @@
-use std::{
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 use crate::*;
 
-pub struct Parser<'src, 'ctx, T: Tokenizer<'src, 'ctx>>(pub T, PhantomData<&'src ()>, PhantomData<&'ctx ()>);
+pub struct Parser<T: Tokenizer>(pub T);
 
-impl<'src, 'ctx, T: Tokenizer<'src, 'ctx>> Deref for Parser<'src, 'ctx, T> {
+impl<T: Tokenizer> Deref for Parser<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-impl<'src, 'ctx, T: Tokenizer<'src, 'ctx>> DerefMut for Parser<'src, 'ctx, T> {
+impl<T: Tokenizer> DerefMut for Parser<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<'src, 'ctx, T: Tokenizer<'src, 'ctx>> Drop for Parser<'src, 'ctx, T> {
+impl<T: Tokenizer> Drop for Parser<T> {
     fn drop(&mut self) {
         fn into_span(token: LazyToken) -> Span {
             match token {

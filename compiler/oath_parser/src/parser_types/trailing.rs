@@ -11,7 +11,7 @@ pub struct Trailing<T: OptionParse, S: OptionParse> {
 }
 
 impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
-    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut option = Self::parse_error();
         let exit = Self::parse(parser, &mut option);
 
@@ -20,7 +20,7 @@ impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
         exit
     }
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
         match T::detect(parser) {
             Detection::Detected => Detection::Detected,
             Detection::NotDetected => Detection::EmptyDetected,
@@ -29,7 +29,7 @@ impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
     }
 }
 impl<T: OptionParse, S: OptionParse> Parse for Trailing<T, S> {
-    fn parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
         loop {
             if T::detect(parser) != Detection::Detected {
                 break ParseExit::Complete;

@@ -1,4 +1,4 @@
-use std::mem::transmute;
+use std::{mem::transmute, sync::Arc};
 
 use super::*;
 
@@ -8,13 +8,13 @@ use super::*;
 //
 //
 
-pub trait Tokenizer<'src, 'ctx> {
-    fn next(&mut self) -> Option<LazyToken<'src, 'ctx, '_>>;
+pub trait Tokenizer {
+    fn next(&mut self) -> Option<LazyToken>;
 
     fn peek(&self) -> Option<PeekToken>;
     fn peek_span(&self) -> Span;
 
-    fn context(&self) -> ContextHandle<'ctx>;
+    fn context(&self) -> &Arc<Context>;
 }
 
 //
@@ -23,12 +23,12 @@ pub trait Tokenizer<'src, 'ctx> {
 //
 //
 
-pub enum LazyToken<'src, 'ctx, 'tokenizer> {
+pub enum LazyToken<'src, 'tokenizer> {
     Ident(Ident),
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
-    Group(GroupTokenizer<'src, 'ctx, 'tokenizer>),
+    Group(GroupTokenizer<'src, 'tokenizer>),
 }
 
 #[derive(Debug, Clone, Copy, Hash)]
@@ -47,14 +47,14 @@ pub enum PeekToken {
 //
 //
 
-pub struct RootTokenizer<'src, 'ctx> {
-    raw: RawTokenizer<'src, 'ctx>,
+pub struct RootTokenizer<'src> {
+    raw: RawTokenizer<'src>,
     peek: Option<PeekToken>,
     last_span: Span,
 }
 
-impl<'src, 'ctx> Tokenizer<'src, 'ctx> for RootTokenizer<'src, 'ctx> {
-    fn next(&mut self) -> Option<LazyToken<'src, 'ctx, '_>> {
+impl<'src> Tokenizer for RootTokenizer<'src> {
+    fn next(&mut self) -> Option<LazyToken> {
         match self.peek {
             None => None,
             Some(token) => Some(match token {
@@ -89,7 +89,7 @@ impl<'src, 'ctx> Tokenizer<'src, 'ctx> for RootTokenizer<'src, 'ctx> {
 
                     group_tokenizer.update_peek();
 
-                    LazyToken::Group(group_tokenizer)
+                    LazyToken::Group(unsafe { transmute(group_tokenizer) })
                 }
             }),
         }
@@ -112,13 +112,13 @@ impl<'src, 'ctx> Tokenizer<'src, 'ctx> for RootTokenizer<'src, 'ctx> {
         }
     }
 
-    fn context(&self) -> ContextHandle<'ctx> {
+    fn context(&self) -> &Arc<Context> {
         self.raw.context()
     }
 }
 
-impl<'src, 'ctx> RootTokenizer<'src, 'ctx> {
-    pub fn new(src: &'src SrcFile, context: ContextHandle<'ctx>) -> Self {
+impl<'src> RootTokenizer<'src> {
+    pub fn new(src: &'src SrcFile, context: Arc<Context>) -> Self {
         let mut output = Self {
             raw: RawTokenizer::new(src.as_str(), context),
             peek: None,
@@ -131,6 +131,10 @@ impl<'src, 'ctx> RootTokenizer<'src, 'ctx> {
     }
 
     fn update_peek(&mut self) {
+        if let Some(last) = self.peek {
+            self.last_span = last.span();
+        }
+
         self.peek = match self.raw.next() {
             None => None,
             Some(raw_token) => Some(match raw_token {
@@ -155,21 +159,21 @@ impl<'src, 'ctx> RootTokenizer<'src, 'ctx> {
 //
 //
 
-pub struct GroupTokenizer<'src, 'ctx, 'parent> {
-    parent: ParentTokenizer<'src, 'ctx, 'parent>,
+pub struct GroupTokenizer<'src, 'parent> {
+    parent: ParentTokenizer<'src, 'parent>,
     open: OpenDelimiter,
     close: Option<CloseDelimiter>,
     peek: Option<PeekToken>,
     last_span: Span,
 }
 
-enum ParentTokenizer<'src, 'ctx, 'parent> {
-    Group(&'parent mut GroupTokenizer<'src, 'ctx, 'parent>),
-    Root(&'parent mut RootTokenizer<'src, 'ctx>),
+enum ParentTokenizer<'src, 'parent> {
+    Group(&'parent mut GroupTokenizer<'src, 'parent>),
+    Root(&'parent mut RootTokenizer<'src>),
 }
 
-impl<'src, 'ctx, 'parent> Tokenizer<'src, 'ctx> for GroupTokenizer<'src, 'ctx, 'parent> {
-    fn next(&mut self) -> Option<LazyToken<'src, 'ctx, '_>> {
+impl<'src, 'parent> Tokenizer for GroupTokenizer<'src, 'parent> {
+    fn next(&mut self) -> Option<LazyToken> {
         match self.peek {
             None => None,
             Some(token) => Some(match token {
@@ -227,7 +231,7 @@ impl<'src, 'ctx, 'parent> Tokenizer<'src, 'ctx> for GroupTokenizer<'src, 'ctx, '
         }
     }
 
-    fn context(&self) -> ContextHandle<'ctx> {
+    fn context(&self) -> &Arc<Context> {
         match &self.parent {
             ParentTokenizer::Root(parent) => parent.context(),
             ParentTokenizer::Group(parent) => parent.context(),
@@ -235,13 +239,13 @@ impl<'src, 'ctx, 'parent> Tokenizer<'src, 'ctx> for GroupTokenizer<'src, 'ctx, '
     }
 }
 
-impl<'src, 'ctx, 'parent> Drop for GroupTokenizer<'src, 'ctx, 'parent> {
+impl<'src, 'parent> Drop for GroupTokenizer<'src, 'parent> {
     fn drop(&mut self) {
         while let Some(_) = self.next() {}
     }
 }
 
-impl<'src, 'ctx, 'parent> GroupTokenizer<'src, 'ctx, 'parent> {
+impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
     pub fn open(&self) -> OpenDelimiter {
         self.open
     }
@@ -260,6 +264,10 @@ impl<'src, 'ctx, 'parent> GroupTokenizer<'src, 'ctx, 'parent> {
     fn update_peek(&mut self) {
         if self.close.is_some() {
             return;
+        }
+
+        if let Some(last) = self.peek {
+            self.last_span = last.span();
         }
 
         self.peek = match self.parent.raw_next() {
@@ -298,7 +306,7 @@ impl<'src, 'ctx, 'parent> GroupTokenizer<'src, 'ctx, 'parent> {
     }
 }
 
-impl<'src, 'ctx, 'parent> ParentTokenizer<'src, 'ctx, 'parent> {
+impl<'src, 'parent> ParentTokenizer<'src, 'parent> {
     fn raw_next(&mut self) -> Option<RawToken> {
         match self {
             Self::Root(root) => root.raw.next(),

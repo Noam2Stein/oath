@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use oath_ast::*;
 use oath_context::*;
@@ -111,11 +111,10 @@ impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
         let src_file = SrcFile::from_str(text);
 
-        let context = RwLock::new(Context::new());
-        let context = ContextHandle(&context);
+        let context = Arc::new(Context::new());
 
         {
-            let _ = src_file.tokenize(context).parse_ast();
+            let _ = src_file.tokenize(context.clone()).parse_ast();
 
             //let mut name_context = DumbNameContext::new();
             //let _ = ast.into_namespace(&mut name_context, context);
@@ -128,13 +127,13 @@ impl Backend {
             .map(|error| Diagnostic {
                 range: span_to_range(error.span()),
                 severity: Some(DiagnosticSeverity::ERROR),
-                message: error.to_string_interned(&context.0.read().unwrap().interner),
+                message: error.to_string_interned(&context.interner.read().unwrap()),
                 ..Default::default()
             })
             .chain(context.clone_warnings().into_iter().map(|warning| Diagnostic {
                 range: span_to_range(warning.span()),
                 severity: Some(DiagnosticSeverity::WARNING),
-                message: warning.to_string_interned(&context.0.read().unwrap().interner),
+                message: warning.to_string_interned(&context.interner.read().unwrap()),
                 ..Default::default()
             }))
             .collect();

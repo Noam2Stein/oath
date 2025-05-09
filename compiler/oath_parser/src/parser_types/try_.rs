@@ -69,7 +69,7 @@ impl<T> Try<T> {
 }
 
 impl<T: ParseDesc> OptionParse for Try<T> {
-    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);
 
@@ -78,12 +78,12 @@ impl<T: ParseDesc> OptionParse for Try<T> {
         exit
     }
 
-    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
         T::detect(parser)
     }
 }
 impl<T: ParseDesc> Parse for Try<T> {
-    fn parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);
 

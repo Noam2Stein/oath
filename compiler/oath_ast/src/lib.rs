@@ -32,8 +32,8 @@ pub trait ParseAstExt: Seal {
 }
 trait Seal {}
 
-impl<Src: InnerTokenizer> Seal for Tokenizer<Src> {}
-impl<Src: InnerTokenizer> ParseAstExt for Tokenizer<Src> {
+impl<T: Tokenizer> Seal for T {}
+impl<T: Tokenizer> ParseAstExt for T {
     fn parse_ast(self) -> SyntaxTree {
         let mut parser = Parser(self);
 
