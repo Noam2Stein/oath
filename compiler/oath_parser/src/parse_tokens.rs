@@ -3,7 +3,7 @@ use super::*;
 // IDENT
 
 impl OptionParse for Ident {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Ident(token)) = parser.peek() {
             parser.next();
 
@@ -13,7 +13,7 @@ impl OptionParse for Ident {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Ident(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -30,7 +30,7 @@ impl ParseDesc for Ident {
 // LITERAL
 
 impl OptionParse for Literal {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Literal(token)) = parser.peek() {
             parser.next();
 
@@ -40,7 +40,7 @@ impl OptionParse for Literal {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Literal(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -55,7 +55,7 @@ impl ParseDesc for Literal {
 }
 
 impl OptionParse for IntLiteral {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Literal(Literal::Int(token))) = parser.peek() {
             parser.next();
 
@@ -65,7 +65,7 @@ impl OptionParse for IntLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Literal(Literal::Int(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -80,7 +80,7 @@ impl ParseDesc for IntLiteral {
 }
 
 impl OptionParse for FloatLiteral {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Literal(Literal::Float(token))) = parser.peek() {
             parser.next();
 
@@ -90,7 +90,7 @@ impl OptionParse for FloatLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Literal(Literal::Float(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -105,7 +105,7 @@ impl ParseDesc for FloatLiteral {
 }
 
 impl OptionParse for StrLiteral {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Literal(Literal::Str(token))) = parser.peek() {
             parser.next();
 
@@ -115,7 +115,7 @@ impl OptionParse for StrLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Literal(Literal::Str(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -130,7 +130,7 @@ impl ParseDesc for StrLiteral {
 }
 
 impl OptionParse for CharLiteral {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Literal(Literal::Char(token))) = parser.peek() {
             parser.next();
 
@@ -140,7 +140,7 @@ impl OptionParse for CharLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Literal(Literal::Char(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -157,7 +157,7 @@ impl ParseDesc for CharLiteral {
 // KEYWORD
 
 impl OptionParse for Keyword {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Keyword(token)) = parser.peek() {
             parser.next();
 
@@ -167,7 +167,7 @@ impl OptionParse for Keyword {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Keyword(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -183,7 +183,7 @@ impl ParseDesc for Keyword {
 
 with_tokens!($(
     impl OptionParse for $keyword_type {
-        fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+        fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
             if let Some(PeekToken::Keyword(token)) = parser.peek() {
                 if token.kind == KeywordKind::$keyword_variant {
                     parser.next();
@@ -195,7 +195,7 @@ with_tokens!($(
             ParseExit::Complete
         }
     
-        fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+        fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
             if let Some(PeekToken::Keyword(token)) = parser.peek() {
                 if token.kind == KeywordKind::$keyword_variant {
                     Detection::Detected
@@ -217,7 +217,7 @@ with_tokens!($(
 // PUNCT
 
 impl OptionParse for Punct {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if let Some(PeekToken::Punct(token)) = parser.peek() {
             parser.next();
 
@@ -227,7 +227,7 @@ impl OptionParse for Punct {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         if let Some(PeekToken::Punct(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -243,7 +243,7 @@ impl ParseDesc for Punct {
 
 with_tokens!($(
     impl OptionParse for $punct_type {
-        fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+        fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
             if let Some(PeekToken::Punct(token)) = parser.peek() {
                 if token.kind == PunctKind::$punct_variant {
                     parser.next();
@@ -255,7 +255,7 @@ with_tokens!($(
             ParseExit::Complete
         }
     
-        fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+        fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
             if let Some(PeekToken::Punct(token)) = parser.peek() {
                 if token.kind == PunctKind::$punct_variant {
                     Detection::Detected
@@ -277,7 +277,7 @@ with_tokens!($(
 )*);
 
 impl OptionParse for Delimiters {
-    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
         if Self::detect(parser) == Detection::Detected {
             *output = Some(match parser.next() {
                 Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span(), group.open().kind),
@@ -288,7 +288,7 @@ impl OptionParse for Delimiters {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+    fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
         match parser.peek() {
             Some(PeekToken::Group(_)) => Detection::Detected,
             _ => Detection::NotDetected,
@@ -297,7 +297,7 @@ impl OptionParse for Delimiters {
 }
 with_tokens!($(
     impl OptionParse for $delims_type {
-        fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+        fn option_parse(parser: &mut Parser<impl InnerTokenizer>, output: &mut Option<Self>) -> ParseExit {
             if Self::detect(parser) == Detection::Detected {
                 *output = Some(match parser.next() {
                     Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span()),
@@ -308,7 +308,7 @@ with_tokens!($(
             ParseExit::Complete
         }
 
-        fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+        fn detect(parser: &Parser<impl InnerTokenizer>) -> Detection {
             match parser.peek() {
                 Some(PeekToken::Group(open)) => if open.kind == DelimiterKind::$delims_type {
                     Detection::Detected

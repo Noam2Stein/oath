@@ -10,11 +10,11 @@ pub fn derive_option_parse(input: &DeriveInput) -> TokenStream {
         "OptionParse",
         [
             impl_trait_fn(
-                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_tokenizer::TokenSource>, output: &mut Option<Self>) -> ParseExit },
+                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_tokenizer::InnerTokenizer>, output: &mut Option<Self>) -> ParseExit },
                 data_split(&input.data, &input.attrs, option_parse_struct, option_parse_enum),
             ),
             impl_trait_fn(
-                quote! { fn detect(parser: &::oath_parser::Parser<impl ::oath_tokenizer::TokenSource>) -> Detection },
+                quote! { fn detect(parser: &::oath_parser::Parser<impl ::oath_tokenizer::InnerTokenizer>) -> Detection },
                 data_split(&input.data, &input.attrs, detect_struct, detect_enum),
             ),
         ],
