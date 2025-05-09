@@ -68,7 +68,21 @@ impl<T> Try<T> {
     }
 }
 
-impl<T: OptionParse> Parse for Try<T> {
+impl<T: ParseDesc> OptionParse for Try<T> {
+    fn option_parse(parser: &mut Parser, output: &mut Option<Self>) -> ParseExit {
+        let mut option = None;
+        let exit = T::option_parse(parser, &mut option);
+
+        *output = option.map(|value| Self::Success(value));
+
+        exit
+    }
+
+    fn detect(parser: &Parser) -> Detection {
+        T::detect(parser)
+    }
+}
+impl<T: ParseDesc> Parse for Try<T> {
     fn parse(parser: &mut Parser, output: &mut Self) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);

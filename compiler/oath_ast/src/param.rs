@@ -17,11 +17,9 @@ pub struct UnnamedParam {
     pub bounds: Option<Bounds>,
 }
 
-#[derive(Debug, Clone, OptionSpanned, OptionParse)]
+#[derive(Debug, Clone, OptionParse)]
 #[desc = "`: ...`"]
 pub struct Bounds {
-    _colon: Discard<punct!(":")>,
-    #[span]
-    #[option_spanned]
+    pub _colon: Discard<punct!(":")>,
     pub expr: Try<Expr>,
 }

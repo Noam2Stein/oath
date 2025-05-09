@@ -5,7 +5,7 @@ use syn::{Attribute, DataEnum, DataStruct, DeriveInput, Error, Meta, spanned::Sp
 use crate::*;
 
 pub fn derive_option_parse(input: &DeriveInput) -> TokenStream {
-    impl_trait(
+    let impl_option_parse = impl_trait(
         input,
         "OptionParse",
         [
@@ -13,17 +13,27 @@ pub fn derive_option_parse(input: &DeriveInput) -> TokenStream {
                 quote! { fn option_parse(parser: &mut ::oath_parser::Parser, output: &mut Option<Self>) -> ParseExit },
                 data_split(&input.data, &input.attrs, option_parse_struct, option_parse_enum),
             ),
-            {
-                let desc = eval_desc(input);
-
-                quote! { fn desc() -> &'static str { #desc } }
-            },
             impl_trait_fn(
-                quote! { fn detect(parser: &::oath_parser::Parser) -> bool },
+                quote! { fn detect(parser: &::oath_parser::Parser) -> Detection },
                 data_split(&input.data, &input.attrs, detect_struct, detect_enum),
             ),
         ],
-    )
+    );
+
+    let impl_desc = impl_trait(
+        input,
+        "ParseDesc",
+        [{
+            let desc = eval_desc(input);
+
+            quote! { fn desc() -> &'static str { #desc } }
+        }],
+    );
+
+    quote! {
+        #impl_option_parse
+        #impl_desc
+    }
 }
 
 fn option_parse_struct(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
@@ -74,7 +84,7 @@ fn detect_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         .map(|variant| detect_fields(&variant.fields, variant.span()));
 
     quote! {
-        { #((#detect_variants))||* }
+        'detect_enum: { #((#detect_variants))|* }
     }
 }
 

@@ -5,7 +5,22 @@ use syn::{Attribute, DataEnum, DataStruct, DeriveInput, Error, Variant, spanned:
 use crate::*;
 
 pub fn derive_parse(input: &DeriveInput) -> TokenStream {
-    impl_trait(
+    let impl_option_parse = impl_trait(
+        input,
+        "OptionParse",
+        [
+            impl_trait_fn(
+                quote! { fn option_parse(parser: &mut ::oath_parser::Parser, output: &mut Option<Self>) -> ParseExit },
+                data_split(&input.data, &input.attrs, option_parse_struct, option_parse_enum),
+            ),
+            impl_trait_fn(
+                quote! { fn detect(parser: &::oath_parser::Parser) -> Detection },
+                data_split(&input.data, &input.attrs, detect_struct, detect_enum),
+            ),
+        ],
+    );
+
+    let impl_parse = impl_trait(
         input,
         "Parse",
         [
@@ -18,7 +33,12 @@ pub fn derive_parse(input: &DeriveInput) -> TokenStream {
                 data_split(&input.data, &input.attrs, struct_parse_error, enum_parse_error),
             ),
         ],
-    )
+    );
+
+    quote! {
+        #impl_option_parse
+        #impl_parse
+    }
 }
 
 fn parse_struct(data: &DataStruct, attrs: &[Attribute]) -> TokenStream {
@@ -27,6 +47,14 @@ fn parse_struct(data: &DataStruct, attrs: &[Attribute]) -> TokenStream {
 
 fn struct_parse_error(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
     fields_parse_error(&data.fields, Span::call_site(), &quote! { Self })
+}
+
+fn option_parse_struct(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
+    option_parse_fields(&data.fields, Span::call_site(), &quote! { Self }, &quote! { output })
+}
+
+fn detect_struct(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
+    detect_fields(&data.fields, Span::call_site())
 }
 
 fn parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
@@ -92,6 +120,70 @@ fn enum_parse_error(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         fallback_variant.span(),
         &quote! { Self::#fallback_variant_ident },
     )
+}
+
+fn option_parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
+    let (fallback_variant, non_fallback_variants) = match fallback_split_variants(data) {
+        Ok(ok) => ok,
+        Err(error) => return error,
+    };
+
+    let variant_ifs = non_fallback_variants.iter().map(|variant| {
+        let variant_ident = &variant.ident;
+
+        let option_parse_fields = option_parse_fields(
+            &variant.fields,
+            variant.ident.span(),
+            &quote! { Self::#variant_ident },
+            &quote! { &mut variant_output },
+        );
+
+        quote! {
+            {
+                let mut variant_output = None;
+
+                let variant_option_parse_exit = #option_parse_fields;
+
+                if let Some(variant_output) = variant_output {
+                    *output = Some(variant_output);
+
+                    return variant_option_parse_exit;
+                }
+            }
+        }
+    });
+
+    let option_parse_fallback = {
+        let variant_ident = &fallback_variant.ident;
+
+        option_parse_fields(
+            &fallback_variant.fields,
+            fallback_variant.ident.span(),
+            &quote! { Self::#variant_ident },
+            &quote! { output },
+        )
+    };
+
+    quote! {
+        #(#variant_ifs)*
+
+        #option_parse_fallback
+    }
+}
+
+fn detect_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
+    let (_fallback_variant, non_fallback_variants) = match fallback_split_variants(data) {
+        Ok(ok) => ok,
+        Err(error) => return error,
+    };
+
+    let detect_variants = non_fallback_variants
+        .iter()
+        .map(|variant| detect_fields(&variant.fields, variant.span()));
+
+    quote! {
+        'detect_enum: { Detection::EmptyDetected #(| #detect_variants)* }
+    }
 }
 
 fn fallback_split_variants(data: &DataEnum) -> Result<(&Variant, Vec<&Variant>), TokenStream> {

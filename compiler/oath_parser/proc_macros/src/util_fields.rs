@@ -80,7 +80,15 @@ pub fn fields_parse_error(fields: &Fields, fields_span: Span, fields_path: &Toke
 
 pub fn option_parse_fields(fields: &Fields, fields_span: Span, fields_path: &TokenStream, output: &TokenStream) -> TokenStream {
     if fields.len() == 0 {
-        return Error::new(fields_span, "`OptionParse` requires at least one field").into_compile_error();
+        return quote_spanned! {
+            fields_span =>
+
+            {
+                *#output = Some(#fields_path {});
+
+                ::oath_parser::ParseExit::Complete
+            }
+        };
     }
 
     let primary_field = fields.iter().next().unwrap();
@@ -155,15 +163,22 @@ pub fn option_parse_fields(fields: &Fields, fields_span: Span, fields_path: &Tok
 }
 
 pub fn detect_fields(fields: &Fields, fields_span: Span) -> TokenStream {
-    if fields.len() == 0 {
-        return Error::new(fields_span, "`OptionParse` requires at least one field").into_compile_error();
-    }
+    let detect_fields = fields.iter().map(detect_field);
 
-    let primary_field = fields.iter().next().unwrap();
-    let detect_primary_field = detect_field(primary_field);
+    quote_spanned! {
+        fields_span =>
 
-    quote! {
-        #detect_primary_field
+        'detect_fields: {
+            #(
+                match #detect_fields {
+                    Detection::Detected => break 'detect_fields Detection::Detected,
+                    Detection::NotDetected => break 'detect_fields Detection::NotDetected,
+                    Detection::EmptyDetected => {},
+                }
+            )*
+
+            Detection::NotDetected
+        }
     }
 }
 
@@ -178,30 +193,6 @@ pub fn detect_fields(fields: &Fields, fields_span: Span) -> TokenStream {
 fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
     let field_type = &field.ty;
 
-    if field.attrs.iter().any(|attr| attr.path().is_ident("rep")) {
-        return quote_spanned! {
-            field.span() =>
-
-            parser.parse_rep(#output)
-        };
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("trl")) {
-        return quote_spanned! {
-            field.span() =>
-
-            parser.parse_trl(#output)
-        };
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("sep")) {
-        return quote_spanned! {
-            field.span() =>
-
-            parser.try_parse_sep(#output)
-        };
-    }
-
     quote_spanned! {
         field.span() =>
 
@@ -210,30 +201,6 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
 }
 
 fn field_parse_error(field: &Field) -> TokenStream {
-    if field.attrs.iter().any(|attr| attr.path().is_ident("rep")) {
-        return quote_spanned! {
-            field.span() =>
-
-            Vec::new()
-        };
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("trl")) {
-        return quote_spanned! {
-            field.span() =>
-
-            Vec::new()
-        };
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("sep")) {
-        return quote_spanned! {
-            field.span() =>
-
-            ::oath_parser::Try::Failure
-        };
-    }
-
     let field_type = &field.ty;
 
     quote_spanned! {
@@ -246,22 +213,6 @@ fn field_parse_error(field: &Field) -> TokenStream {
 // OPTION PARSE
 
 fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
-    if field.attrs.iter().any(|attr| attr.path().is_ident("rep")) {
-        return Error::new(field.span(), "`#[rep] is not `OptionParse`").into_compile_error();
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("trl")) {
-        return Error::new(field.span(), "`#[trl] is not `OptionParse`").into_compile_error();
-    }
-
-    if field.attrs.iter().any(|attr| attr.path().is_ident("sep")) {
-        return quote_spanned! {
-            field.span() =>
-
-            parser.option_parse_sep(#output)
-        };
-    }
-
     let field_type = &field.ty;
 
     quote_spanned! {

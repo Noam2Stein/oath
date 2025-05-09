@@ -1,13 +1,9 @@
 use crate::*;
 
-#[derive(Debug, Clone, OptionSpanned, Parse)]
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a variable name"]
 pub enum VarName {
     #[group]
-    Tuple(OpenParen, #[trl] Vec<VarName>, CloseDelimiter),
-    #[fallback]
-    Ident(
-        #[option_spanned] Option<keyword!("mut")>,
-        #[option_spanned] Try<Ident>,
-        #[option_spanned] Option<Expr>,
-    ),
+    Tuple(OpenParen, Trailing<VarName, punct!(",")>, CloseDelimiter),
+    Ident(Option<keyword!("mut")>, Try<Ident>, Option<Expr>),
 }

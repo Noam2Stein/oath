@@ -5,8 +5,7 @@ use super::*;
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an item modifier"]
 pub struct Item {
-    #[rep]
-    pub modifiers: Vec<ItemModifier>,
+    pub modifiers: Repeated<ItemModifier>,
     pub base: Try<BaseItem>,
 }
 
@@ -28,9 +27,9 @@ pub enum BaseItem {
     Spec(Sys),
 }
 
-#[derive(Debug, Clone, Spanned, OptionParse)]
+#[derive(Debug, Clone, OptionParse)]
 #[desc = "`< >`"]
-pub struct GenericParams(punct!("<"), pub Vec<Param>, #[option_spanned] Try<punct!(">")>);
+pub struct GenericParams(punct!("<"), pub Trailing<Param, punct!(",")>, Try<punct!(">")>);
 
 // MOD
 
@@ -52,7 +51,7 @@ pub enum ModBlock {
 
 #[derive(Debug, Clone, Parse)]
 pub struct ModContent {
-    pub items: Vec<Item>,
+    pub items: Repeated<Item>,
 }
 
 // FUNC
@@ -72,8 +71,8 @@ pub struct Func {
 #[desc = "a function declaration"]
 #[group]
 pub struct FuncInput {
-    pub _open: Discard<OpenParen>,
-    pub params: Vec<Param>,
+    pub _open: OpenParen,
+    pub params: Trailing<Param, punct!(",")>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -87,7 +86,7 @@ pub struct FuncOutput {
 #[desc = "either `{ } or `;`"]
 pub enum FuncBlock {
     #[group]
-    Block(OpenBrace, Vec<Stmt>),
+    Block(OpenBrace, Trailing<Stmt, punct!(";")>),
     Semi(Discard<punct!(";")>),
 }
 
@@ -105,9 +104,9 @@ pub struct Struct {
 #[desc = "`{ }` / `()`"]
 pub enum StructFields {
     #[group]
-    Named(OpenBrace, Vec<Param>),
+    Named(OpenBrace, Trailing<Param, punct!(",")>),
     #[group]
-    Unnamed(OpenParen, Vec<UnnamedParam>),
+    Unnamed(OpenParen, Trailing<UnnamedParam, punct!(",")>),
 }
 
 // SYS

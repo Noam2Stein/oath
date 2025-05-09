@@ -4,6 +4,17 @@ use super::*;
 
 pub struct Discard<T>(PhantomData<T>);
 
+impl<T: OptionParse> OptionParse for Discard<T> {
+    fn option_parse(parser: &mut Parser, _output: &mut Option<Self>) -> ParseExit {
+        let mut inner = None;
+
+        T::option_parse(parser, &mut inner)
+    }
+
+    fn detect(parser: &Parser) -> Detection {
+        T::detect(parser)
+    }
+}
 impl<T: Parse> Parse for Discard<T> {
     fn parse(parser: &mut Parser, _output: &mut Self) -> ParseExit {
         let mut inner = T::parse_error();
@@ -15,18 +26,7 @@ impl<T: Parse> Parse for Discard<T> {
         Self(PhantomData)
     }
 }
-
-impl<T: OptionParse> OptionParse for Discard<T> {
-    fn option_parse(parser: &mut Parser, _output: &mut Option<Self>) -> ParseExit {
-        let mut inner = None;
-
-        T::option_parse(parser, &mut inner)
-    }
-
-    fn detect(parser: &Parser) -> bool {
-        T::detect(parser)
-    }
-
+impl<T: ParseDesc> ParseDesc for Discard<T> {
     fn desc() -> &'static str {
         T::desc()
     }
