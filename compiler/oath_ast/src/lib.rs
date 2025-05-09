@@ -35,7 +35,7 @@ trait Seal {}
 impl<'src, 'ctx> Seal for Tokenizer<'src, 'ctx, 'static> {}
 impl<'src, 'ctx> ParseAstExt for Tokenizer<'src, 'ctx, 'static> {
     fn parse_ast(self) -> SyntaxTree {
-        let mut parser = self.into_parser();
+        let mut parser = Parser(self);
 
         let mut output = SyntaxTree::parse_error();
 

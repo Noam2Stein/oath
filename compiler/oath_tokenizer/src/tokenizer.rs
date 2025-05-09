@@ -6,6 +6,7 @@ pub struct Tokenizer<'src, 'ctx, 'parent> {
     kind: TokenizerKind<'src, 'ctx, 'parent>,
     context: ContextHandle<'ctx>,
     next: Option<PeekToken>,
+    last_span: Span,
 }
 
 #[derive(Spanned)]
@@ -33,6 +34,7 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
             kind: TokenizerKind::Root(RawTokenizer::new(src.as_str(), context)),
             next: None,
             context,
+            last_span: Span::ZERO,
         };
 
         output.update_next();
@@ -65,6 +67,7 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
                         context: self.context,
                         kind: TokenizerKind::Group(group_open, unsafe { transmute(self) }, None),
                         next: None,
+                        last_span: group_open.span,
                     });
 
                     group_tokenizer.update_next();
@@ -74,9 +77,28 @@ impl<'src, 'ctx, 'lexer> Tokenizer<'src, 'ctx, 'lexer> {
             }),
         }
     }
-
     pub fn peek(&self) -> Option<PeekToken> {
         self.next
+    }
+
+    pub fn peek_span(&self) -> Span {
+        if let Some(next) = self.peek() {
+            let span = next.span();
+
+            if span.start().line == self.last_span.end().line {
+                span
+            } else {
+                Span::from_start_len(self.last_span.end(), 1)
+            }
+        } else {
+            Span::from_start_len(self.last_span.end(), 1)
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.peek().is_none()
+    }
+    pub fn is_not_empty(&self) -> bool {
+        self.peek().is_some()
     }
 
     pub fn context(&self) -> ContextHandle<'ctx> {

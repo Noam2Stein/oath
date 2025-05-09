@@ -9,30 +9,21 @@ pub struct Span {
 }
 
 impl Span {
-    #[inline(always)]
-    pub fn from_start_end(start: Position, end: Position) -> Self {
+    pub const ZERO: Self = Self::from_start_end(Position::ZERO, Position::ZERO);
+
+    pub const fn from_start_end(start: Position, end: Position) -> Self {
         Self { start, end }
     }
-    #[inline(always)]
     pub fn from_start_len(start: Position, len: u32) -> Self {
-        Self {
-            start,
-            end: start + len,
-        }
+        Self { start, end: start + len }
     }
-    #[inline(always)]
     pub fn from_end_len(end: Position, len: u32) -> Self {
-        Self {
-            start: end - len,
-            end,
-        }
+        Self { start: end - len, end }
     }
 
-    #[inline(always)]
     pub fn start(self) -> Position {
         self.start
     }
-    #[inline(always)]
     pub fn end(self) -> Position {
         self.end
     }
