@@ -51,7 +51,7 @@ impl<'ctx> ContextHandle<'ctx> {
         self.0.write().unwrap().highlighter.highlight(item, color);
     }
 
-    pub fn highlights(&self) -> Vec<(Span, HighlightColor)> {
+    pub fn clone_highlights(&self) -> Vec<(Span, HighlightColor)> {
         self.0.read().unwrap().highlighter.highlights().into()
     }
 }

@@ -105,18 +105,67 @@ pub fn option_parse_fields(
 
         let detect_delims = detect_field(fields.iter().next().unwrap());
 
-        return quote! {
+        let delims_field_ident = fields.members().next().unwrap();
+        let field_idents = fields.members().skip(1).collect::<Vec<_>>();
+
+        let field_let_idents = fields
+            .iter()
+            .enumerate()
+            .skip(1)
+            .map(|(i, _)| format_ident!("field_{i}"))
+            .collect::<Vec<_>>();
+
+        let field_parse_errors = fields.iter().skip(1).map(field_parse_error);
+
+        let parse_fields = fields
+            .iter()
+            .skip(1)
+            .zip(&field_let_idents)
+            .map(|(field, field_let_ident)| parse_field(field, &quote! { &mut #field_let_ident }));
+
+        return quote_spanned! {
+            fields_span =>
+
             'option_parse_fields: {
                 #ensure_delims
 
                 if #detect_delims != ::oath_parser::Detection::Detected {
-                    break 'option_parse_fields None;
+                    break 'option_parse_fields ::oath_parser::ParseExit::Complete;
                 }
 
                 let tokenizer = match parser.next() {
-                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => tokenizer,
+                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => *tokenizer,
                     _ => unreachable!(),
                 };
+
+                let parser = &mut ::oath_parser::Parser(tokenizer);
+
+                #(
+                    let mut #field_let_idents = #field_parse_errors;
+                )*
+
+                'parse_fields: {
+
+                    #(
+                        match #parse_fields {
+                            ::oath_parser::ParseExit::Complete => {},
+                            ::oath_parser::ParseExit::Cut => {
+                                break 'parse_fields;
+                            },
+                        }
+                    )*
+                };
+
+                let delims = <#delims_type>::try_from(parser.delims()).unwrap();
+
+                *#output = Some(#fields_path {
+                    #delims_field_ident: delims,
+                    #(
+                        #field_idents: #field_let_idents,
+                    )*
+                });
+
+                ::oath_parser::ParseExit::Complete
             }
         };
     }

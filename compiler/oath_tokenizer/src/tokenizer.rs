@@ -129,12 +129,12 @@ impl<'ctx, 'src> Tokenizer<RootSource<'src, 'ctx>> {
     }
 }
 
-impl<'parent, D: DelimitersType, ParentSrc: TokenSource> Tokenizer<GroupSource<'parent, D, ParentSrc>> {
-    pub fn open(&self) -> D::Open {
+impl<'parent, ParentSrc: TokenSource> Tokenizer<GroupSource<'parent, ParentSrc>> {
+    pub fn open(&self) -> OpenDelimiter {
         self.src.open
     }
 
-    pub fn close(&mut self) -> D::Close {
+    pub fn close(&mut self) -> CloseDelimiter {
         while self.peek().is_some() {
             self.next();
         }
@@ -142,8 +142,8 @@ impl<'parent, D: DelimitersType, ParentSrc: TokenSource> Tokenizer<GroupSource<'
         self.src.close.unwrap()
     }
 
-    pub fn delims(&mut self) -> D {
-        Delimiters::new(self.open().span(), self.close().span(), self.)
+    pub fn delims(&mut self) -> Delimiters {
+        Delimiters::new(self.open().span(), self.close().span(), self.open().kind)
     }
 }
 
@@ -158,7 +158,7 @@ pub enum LazyToken<'tokenizer, Src: TokenSource> {
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
-    Group(Box<Tokenizer<GroupSource<'tokenizer, Delimiters, Src>>>),
+    Group(Box<Tokenizer<GroupSource<'tokenizer, Src>>>),
 }
 
 #[derive(Debug, Clone, Copy, Hash)]
@@ -191,10 +191,10 @@ pub struct RootSource<'src, 'ctx> {
     raw: RawTokenizer<'src, 'ctx>,
 }
 
-pub struct GroupSource<'parent, D: DelimitersType, ParentSrc: TokenSource> {
-    open: D::Open,
+pub struct GroupSource<'parent, ParentSrc: TokenSource> {
+    open: OpenDelimiter,
     parent: &'parent mut Tokenizer<ParentSrc>,
-    close: Option<D::Close>,
+    close: Option<CloseDelimiter>,
 }
 
 impl<'src, 'ctx> TokenSource for RootSource<'src, 'ctx> {}
@@ -212,8 +212,8 @@ impl<'src, 'ctx> TokenSourcePrivate for RootSource<'src, 'ctx> {
     }
 }
 
-impl<'parent, D: DelimitersType, ParentSrc: TokenSource> TokenSource for GroupSource<'parent, D, ParentSrc> {}
-impl<'parent, D: DelimitersType, ParentSrc: TokenSource> TokenSourcePrivate for GroupSource<'parent, D, ParentSrc> {
+impl<'parent, ParentSrc: TokenSource> TokenSource for GroupSource<'parent, ParentSrc> {}
+impl<'parent, ParentSrc: TokenSource> TokenSourcePrivate for GroupSource<'parent, ParentSrc> {
     fn context(&self) -> ContextHandle {
         self.parent.context()
     }
@@ -223,7 +223,7 @@ impl<'parent, D: DelimitersType, ParentSrc: TokenSource> TokenSourcePrivate for 
     }
 
     fn close_end(&mut self, close: CloseDelimiter) {
-        if let Ok(close) = close.try_into() {
+        if close.kind == self.open.kind {
             self.close = Some(close);
             self.parent.update_next();
         } else {

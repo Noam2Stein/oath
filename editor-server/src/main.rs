@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, RwLock};
 
-use oath_ast::ParseAstExt;
-use oath_context::{Context, ContextHandle, HighlightColor};
-//use oath_name_res::{DumbNameContext, IntoNamespace};
-use oath_src::{Span, Spanned, SrcFile};
-use oath_tokenizer::{TokenizeExt, KEYWORDS};
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use oath_ast::*;
+use oath_context::*;
+use oath_highlighting::*;
+use oath_interner::*;
+use oath_src::*;
+use oath_tokenizer::*;
+use oath_tokens::*;
+use tower_lsp::{jsonrpc::Result, lsp_types::*, Client, LanguageServer, LspService, Server};
 
 mod span_range;
 use span_range::*;
@@ -123,23 +123,23 @@ impl Backend {
         }
 
         let diagnostics: Vec<Diagnostic> = context
-            .collect_errors()
+            .clone_errors()
             .into_iter()
             .map(|error| Diagnostic {
                 range: span_to_range(error.span()),
                 severity: Some(DiagnosticSeverity::ERROR),
-                message: error.message.to_string(),
+                message: error.to_string_interned(&context.0.read().unwrap().interner),
                 ..Default::default()
             })
-            .chain(context.collect_warnings().into_iter().map(|warning| Diagnostic {
+            .chain(context.clone_warnings().into_iter().map(|warning| Diagnostic {
                 range: span_to_range(warning.span()),
                 severity: Some(DiagnosticSeverity::WARNING),
-                message: warning.message.to_string(),
+                message: warning.to_string_interned(&context.0.read().unwrap().interner),
                 ..Default::default()
             }))
             .collect();
 
-        let highlights = context.collect_highlights();
+        let highlights = context.clone_highlights();
 
         self.highlights
             .lock()

@@ -29,7 +29,11 @@ pub enum BaseItem {
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`< >`"]
-pub struct GenericParams(punct!("<"), pub Trailing<Param, punct!(",")>, Try<punct!(">")>);
+pub struct GenericParams(
+    Discard<punct!("<")>,
+    pub Trailing<Param, punct!(",")>,
+    Discard<Try<punct!(">")>>,
+);
 
 // MOD
 

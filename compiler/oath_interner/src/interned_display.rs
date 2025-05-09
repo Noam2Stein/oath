@@ -1,9 +1,13 @@
 use std::fmt::{Display, Formatter, Result};
 
-use crate::*;
+use super::*;
 
-pub trait InternedDisplay {
+pub trait InternedDisplay: Sized {
     fn interned_fmt(&self, f: &mut Formatter, interner: &Interner) -> Result;
+
+    fn to_string_interned(&self, interner: &Interner) -> String {
+        Interned(self, interner).to_string()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

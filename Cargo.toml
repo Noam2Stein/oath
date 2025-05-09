@@ -3,8 +3,9 @@
 members = [
     "compiler/oath_ast",
     "compiler/oath_context",
-    "compiler/oath_diagnostics", "compiler/oath_highlighting", "compiler/oath_interner",
-    "compiler/oath_name_res",
+    "compiler/oath_diagnostics",
+    "compiler/oath_highlighting",
+    "compiler/oath_interner",
     "compiler/oath_parser",
     "compiler/oath_parser/proc_macros",
     "compiler/oath_src",
