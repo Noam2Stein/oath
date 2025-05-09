@@ -49,12 +49,12 @@ fn struct_parse_error(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
     fields_parse_error(&data.fields, Span::call_site(), &quote! { Self })
 }
 
-fn option_parse_struct(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
-    option_parse_fields(&data.fields, Span::call_site(), &quote! { Self }, &quote! { output })
+fn option_parse_struct(data: &DataStruct, attrs: &[Attribute]) -> TokenStream {
+    option_parse_fields(&data.fields, Span::call_site(), attrs, &quote! { Self }, &quote! { output })
 }
 
-fn detect_struct(data: &DataStruct, _attrs: &[Attribute]) -> TokenStream {
-    detect_fields(&data.fields, Span::call_site())
+fn detect_struct(data: &DataStruct, attrs: &[Attribute]) -> TokenStream {
+    detect_fields(&data.fields, Span::call_site(), attrs)
 }
 
 fn parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
@@ -69,6 +69,7 @@ fn parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         let option_parse_fields = option_parse_fields(
             &variant.fields,
             variant.ident.span(),
+            &variant.attrs,
             &quote! { Self::#variant_ident },
             &quote! { &mut variant_output },
         );
@@ -134,6 +135,7 @@ fn option_parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         let option_parse_fields = option_parse_fields(
             &variant.fields,
             variant.ident.span(),
+            &variant.attrs,
             &quote! { Self::#variant_ident },
             &quote! { &mut variant_output },
         );
@@ -159,6 +161,7 @@ fn option_parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         option_parse_fields(
             &fallback_variant.fields,
             fallback_variant.ident.span(),
+            &fallback_variant.attrs,
             &quote! { Self::#variant_ident },
             &quote! { output },
         )
@@ -179,7 +182,7 @@ fn detect_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
 
     let detect_variants = non_fallback_variants
         .iter()
-        .map(|variant| detect_fields(&variant.fields, variant.span()));
+        .map(|variant| detect_fields(&variant.fields, variant.span(), &variant.attrs));
 
     quote! {
         'detect_enum: { Detection::EmptyDetected #(| #detect_variants)* }

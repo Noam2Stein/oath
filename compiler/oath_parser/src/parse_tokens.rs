@@ -275,3 +275,48 @@ with_tokens!($(
         }
     }
 )*);
+
+impl OptionParse for Delimiters {
+    fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+        if Self::detect(parser) == Detection::Detected {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span(), group.open().kind),
+                _ => unreachable!(),
+            })
+        }
+
+        ParseExit::Complete
+    }
+
+    fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+        match parser.peek() {
+            Some(PeekToken::Group(_)) => Detection::Detected,
+            _ => Detection::NotDetected,
+        }
+    }
+}
+with_tokens!($(
+    impl OptionParse for $delims_type {
+        fn option_parse(parser: &mut Parser<impl TokenSource>, output: &mut Option<Self>) -> ParseExit {
+            if Self::detect(parser) == Detection::Detected {
+                *output = Some(match parser.next() {
+                    Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span()),
+                    _ => unreachable!(),
+                })
+            }
+
+            ParseExit::Complete
+        }
+
+        fn detect(parser: &Parser<impl TokenSource>) -> Detection {
+            match parser.peek() {
+                Some(PeekToken::Group(open)) => if open.kind == DelimiterKind::$delims_type {
+                    Detection::Detected
+                } else {
+                    Detection::NotDetected
+                },
+                _ => Detection::NotDetected,
+            }
+        }
+    }
+)*);

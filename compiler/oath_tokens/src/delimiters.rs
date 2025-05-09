@@ -31,7 +31,7 @@ pub struct CloseDelimiter {
     pub kind: DelimiterKind,
 }
 
-pub trait DelimiterType: Debug + Copy + Spanned + TryFrom<Delimiters> {
+pub trait DelimitersType: Debug + Copy + Spanned + TryFrom<Delimiters> {
     type Open: Debug + Copy + Spanned + TryFrom<OpenDelimiter>;
     type Close: Debug + Copy + Spanned + TryFrom<CloseDelimiter>;
 
@@ -144,7 +144,7 @@ impl DelimiterKind {
     }
 }
 
-impl DelimiterType for Delimiters {
+impl DelimitersType for Delimiters {
     type Open = OpenDelimiter;
     type Close = CloseDelimiter;
 
@@ -161,7 +161,7 @@ impl DelimiterType for Delimiters {
 }
 
 with_tokens!($(
-    impl DelimiterType for $delims_type {
+    impl DelimitersType for $delims_type {
         type Open = $delim_open_type;
         type Close = $delim_close_type;
     

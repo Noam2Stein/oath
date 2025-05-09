@@ -129,7 +129,7 @@ impl<'ctx, 'src> Tokenizer<RootSource<'src, 'ctx>> {
     }
 }
 
-impl<'parent, D: DelimiterType, ParentSrc: TokenSource> Tokenizer<GroupSource<'parent, D, ParentSrc>> {
+impl<'parent, D: DelimitersType, ParentSrc: TokenSource> Tokenizer<GroupSource<'parent, D, ParentSrc>> {
     pub fn open(&self) -> D::Open {
         self.src.open
     }
@@ -140,6 +140,10 @@ impl<'parent, D: DelimiterType, ParentSrc: TokenSource> Tokenizer<GroupSource<'p
         }
 
         self.src.close.unwrap()
+    }
+
+    pub fn delims(&mut self) -> D {
+        Delimiters::new(self.open().span(), self.close().span(), self.)
     }
 }
 
@@ -187,7 +191,7 @@ pub struct RootSource<'src, 'ctx> {
     raw: RawTokenizer<'src, 'ctx>,
 }
 
-pub struct GroupSource<'parent, D: DelimiterType, ParentSrc: TokenSource> {
+pub struct GroupSource<'parent, D: DelimitersType, ParentSrc: TokenSource> {
     open: D::Open,
     parent: &'parent mut Tokenizer<ParentSrc>,
     close: Option<D::Close>,
@@ -208,8 +212,8 @@ impl<'src, 'ctx> TokenSourcePrivate for RootSource<'src, 'ctx> {
     }
 }
 
-impl<'parent, D: DelimiterType, ParentSrc: TokenSource> TokenSource for GroupSource<'parent, D, ParentSrc> {}
-impl<'parent, D: DelimiterType, ParentSrc: TokenSource> TokenSourcePrivate for GroupSource<'parent, D, ParentSrc> {
+impl<'parent, D: DelimitersType, ParentSrc: TokenSource> TokenSource for GroupSource<'parent, D, ParentSrc> {}
+impl<'parent, D: DelimitersType, ParentSrc: TokenSource> TokenSourcePrivate for GroupSource<'parent, D, ParentSrc> {
     fn context(&self) -> ContextHandle {
         self.parent.context()
     }

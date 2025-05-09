@@ -12,6 +12,10 @@ pub fn parse_fields(
     output: &TokenStream,
 ) -> TokenStream {
     if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+        if fields.len() == 0 {
+            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+        }
+
         return Error::new(fields_span, "`#[group]` is not allowed in `Parse`").into_compile_error();
     }
 
@@ -78,7 +82,45 @@ pub fn fields_parse_error(fields: &Fields, fields_span: Span, fields_path: &Toke
 
 // OPTION PARSE
 
-pub fn option_parse_fields(fields: &Fields, fields_span: Span, fields_path: &TokenStream, output: &TokenStream) -> TokenStream {
+pub fn option_parse_fields(
+    fields: &Fields,
+    fields_span: Span,
+    fields_attrs: &[Attribute],
+    fields_path: &TokenStream,
+    output: &TokenStream,
+) -> TokenStream {
+    if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+        if fields.len() == 0 {
+            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+        }
+
+        let delims_type = &fields.iter().next().unwrap().ty;
+        let ensure_delims = quote_spanned! {
+            delims_type.span() =>
+
+            fn ensure_delims<D: ::oath_tokens::DelimitersType>() {}
+
+            ensure_delims::<#delims_type>();
+        };
+
+        let detect_delims = detect_field(fields.iter().next().unwrap());
+
+        return quote! {
+            'option_parse_fields: {
+                #ensure_delims
+
+                if #detect_delims != ::oath_parser::Detection::Detected {
+                    break 'option_parse_fields None;
+                }
+
+                let tokenizer = match parser.next() {
+                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => tokenizer,
+                    _ => unreachable!(),
+                };
+            }
+        };
+    }
+
     if fields.len() == 0 {
         return quote_spanned! {
             fields_span =>
@@ -162,7 +204,15 @@ pub fn option_parse_fields(fields: &Fields, fields_span: Span, fields_path: &Tok
     }
 }
 
-pub fn detect_fields(fields: &Fields, fields_span: Span) -> TokenStream {
+pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribute]) -> TokenStream {
+    if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+        if fields.len() == 0 {
+            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+        }
+
+        return detect_field(fields.iter().next().unwrap());
+    }
+
     let detect_fields = fields.iter().map(detect_field);
 
     quote_spanned! {

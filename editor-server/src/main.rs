@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
 use oath_ast::ParseAstExt;
 use oath_context::{Context, ContextHandle, HighlightColor};
@@ -37,22 +37,18 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::FULL,
-                )),
-                semantic_tokens_provider: Some(
-                    SemanticTokensServerCapabilities::SemanticTokensOptions(
-                        SemanticTokensOptions {
-                            legend: SemanticTokensLegend {
-                                token_types: CUSTOM_LEGEND.into(),
-                                token_modifiers: vec![],
-                            },
-                            full: Some(SemanticTokensFullOptions::Bool(true)),
-                            range: None,
-                            work_done_progress_options: Default::default(),
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+                semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+                    SemanticTokensOptions {
+                        legend: SemanticTokensLegend {
+                            token_types: CUSTOM_LEGEND.into(),
+                            token_modifiers: vec![],
                         },
-                    ),
-                ),
+                        full: Some(SemanticTokensFullOptions::Bool(true)),
+                        range: None,
+                        work_done_progress_options: Default::default(),
+                    },
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -60,9 +56,7 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "Oath lang server initiated")
-            .await;
+        self.client.log_message(MessageType::INFO, "Oath lang server initiated").await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -100,10 +94,7 @@ impl LanguageServer for Backend {
         .await
     }
 
-    async fn semantic_tokens_full(
-        &self,
-        params: SemanticTokensParams,
-    ) -> Result<Option<SemanticTokensResult>> {
+    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
         let uri = params.text_document.uri;
 
         let highlights = self.highlights.lock().unwrap();
@@ -120,11 +111,11 @@ impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
         let src_file = SrcFile::from_str(text);
 
-        let context = Mutex::new(Context::new());
+        let context = RwLock::new(Context::new());
         let context = ContextHandle(&context);
 
         {
-            let _ = src_file.tokenize(context).parse_ast(context);
+            let _ = src_file.tokenize(context).parse_ast();
 
             //let mut name_context = DumbNameContext::new();
             //let _ = ast.into_namespace(&mut name_context, context);
@@ -140,17 +131,12 @@ impl Backend {
                 message: error.message.to_string(),
                 ..Default::default()
             })
-            .chain(
-                context
-                    .collect_warnings()
-                    .into_iter()
-                    .map(|warning| Diagnostic {
-                        range: span_to_range(warning.span()),
-                        severity: Some(DiagnosticSeverity::WARNING),
-                        message: warning.message.to_string(),
-                        ..Default::default()
-                    }),
-            )
+            .chain(context.collect_warnings().into_iter().map(|warning| Diagnostic {
+                range: span_to_range(warning.span()),
+                severity: Some(DiagnosticSeverity::WARNING),
+                message: warning.message.to_string(),
+                ..Default::default()
+            }))
             .collect();
 
         let highlights = context.collect_highlights();
@@ -160,9 +146,7 @@ impl Backend {
             .unwrap()
             .insert(uri.clone(), highlights_to_semantic_tokens(&highlights));
 
-        self.client
-            .publish_diagnostics(uri, diagnostics, Some(version))
-            .await;
+        self.client.publish_diagnostics(uri, diagnostics, Some(version)).await;
     }
 }
 
