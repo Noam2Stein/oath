@@ -5,7 +5,6 @@ pub use highlight::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum HighlightColor {
-    Blue,
     Green,
     Cyan,
     Yellow,

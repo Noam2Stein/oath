@@ -18,12 +18,12 @@ pub enum Stmt {
 pub struct LetStmt {
     pub keyword: keyword!("let"),
     pub name: Try<VarName>,
-    pub init: Try<LetStmtInit>,
+    pub init: Try<Init>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`= ...`"]
-pub struct LetStmtInit {
+pub struct Init {
     pub eq: punct!("="),
     pub init: Try<Expr>,
 }

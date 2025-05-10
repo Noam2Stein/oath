@@ -13,16 +13,16 @@ splat_attribs! {
     use oath_tokenizer::*;
 }
 
+mod attr;
 mod expr;
 mod item;
 mod param;
 mod stmt;
-mod var_name;
+pub use attr::*;
 pub use expr::*;
 pub use item::*;
 pub use param::*;
 pub use stmt::*;
-pub use var_name::*;
 
 pub type SyntaxTree = ModContent;
 

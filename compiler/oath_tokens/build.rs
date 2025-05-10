@@ -33,6 +33,7 @@ fn main() {
             "name": "Oath",
             "patterns": [
                 { "include": "#keywords" },
+                { "include": "#idents" },
                 { "include": "#strings" }
             ],
             "repository": {
@@ -45,6 +46,14 @@ fn main() {
                         {
                             "name": "keyword.other.oath",
                             "match": "\\b(~blue_keywords~)\\b"
+                        }
+                    ]
+                },
+                "idents": {
+                    "patterns": [
+                        {
+                            "name": "other.oath",
+                            "match": "[a-zA-Z_@][a-zA-Z_@0-9]*"
                         }
                     ]
                 },
@@ -66,15 +75,9 @@ fn main() {
         .replace("~pink_keywords~", &[$($pink_keyword), *].join("|"))
     );
 
-    fs::write(
-        Path::new("../../vscode-extension/language-configuration.json"),
-        lang_config,
-    )
-    .expect("Failed to write to language-configuration.json");
+    fs::write(Path::new("../../vscode-extension/language-configuration.json"), lang_config)
+        .expect("Failed to write to language-configuration.json");
 
-    fs::write(
-        Path::new("../../vscode-extension/syntaxes/oath.tmLanguage.json"),
-        tm_lang,
-    )
-    .expect("Failed to write to oath.tmLanguage.json");
+    fs::write(Path::new("../../vscode-extension/syntaxes/oath.tmLanguage.json"), tm_lang)
+        .expect("Failed to write to oath.tmLanguage.json");
 }

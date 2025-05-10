@@ -25,28 +25,31 @@ pub enum StrictBaseExpr {
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a bare unary expression"]
-pub struct BareUnaryExpr<B: OptionParse + Debug + Clone = BaseExpr> {
-    pub base: B,
+pub struct BareUnaryExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
+    pub attrs: Repeated<Attr>,
+    pub base: Try<B>,
     pub postfix: Repeated<ExprPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an unary expression"]
-pub struct UnaryExpr<B: OptionParse + Debug + Clone = BaseExpr> {
+pub struct UnaryExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
+    pub attrs: Repeated<Attr>,
     pub prefix: Repeated<ExprPrefix>,
-    pub base: Try<BareUnaryExpr<B>>,
+    pub base: Try<B>,
+    pub postfix: Repeated<ExprPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a bare expression"]
-pub struct BareExpr<B: OptionParse + Debug + Clone = BaseExpr> {
+pub struct BareExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
     pub base: BareUnaryExpr<B>,
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an expression"]
-pub struct Expr<B: OptionParse + Debug + Clone = BaseExpr> {
+pub struct Expr<B: ParseDesc + Debug + Clone = BaseExpr> {
     pub base: UnaryExpr<B>,
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
@@ -74,7 +77,6 @@ pub enum ExprPrefix {
 pub enum ExprPostfix {
     Member(punct!("."), Try<Member>),
     Call(Tuple),
-    MacroCall(punct!("!"), Try<Tuple>),
     #[group]
     Index(delims!("[ ]"), Try<Box<Expr>>),
     Generics {
@@ -116,7 +118,7 @@ pub enum BinaryOperator {
 #[group]
 pub struct Block {
     pub delims: delims!("{ }"),
-    pub values: Trailing<Stmt, punct!(";")>,
+    pub values: List<Stmt>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -124,7 +126,7 @@ pub struct Block {
 #[group]
 pub struct Tuple {
     pub delims: delims!("( )"),
-    pub values: Trailing<Expr, punct!(",")>,
+    pub values: List<Expr>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -132,7 +134,7 @@ pub struct Tuple {
 #[group]
 pub struct Array {
     pub delims: delims!("[ ]"),
-    pub values: Trailing<Expr, punct!(",")>,
+    pub values: List<Expr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
@@ -149,4 +151,25 @@ pub enum ReferenceBounds {
 pub enum Member {
     Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
     Named(Ident),
+}
+
+pub type List<T> = Trailing<T, ListSep>;
+
+#[derive(Debug, Clone, Copy, OptionParse)]
+#[desc = "`,` / `;`"]
+pub enum ListSep {
+    Comma(punct!(",")),
+    Semi(punct!(";")),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a variable name"]
+pub enum VarName {
+    #[group]
+    Tuple(delims!("( )"), Trailing<VarName, punct!(",")>),
+    Ident(
+        Option<keyword!("mut")>,
+        #[highlight(HighlightColor::Cyan)] Try<Ident>,
+        Option<BareExpr>,
+    ),
 }

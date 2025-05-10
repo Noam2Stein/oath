@@ -161,7 +161,7 @@ fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<S
             delta_line: delta_line as u32,
             delta_start: delta_start as u32,
             length: span.len().unwrap_or(1),
-            token_type: color_to_token_type(color),
+            token_type: convert_highlight_color(color),
             token_modifiers_bitset: 0,
         });
 
@@ -173,22 +173,15 @@ fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<S
 }
 
 const CUSTOM_LEGEND: &[SemanticTokenType] = &[
-    SemanticTokenType::MODIFIER,
     SemanticTokenType::TYPE,
     SemanticTokenType::VARIABLE,
     SemanticTokenType::FUNCTION,
-    SemanticTokenType::KEYWORD,
-    SemanticTokenType::STRING,
-    SemanticTokenType::NUMBER,
-    SemanticTokenType::OPERATOR,
-    SemanticTokenType::COMMENT,
 ];
 
-fn color_to_token_type(color: HighlightColor) -> u32 {
+fn convert_highlight_color(color: HighlightColor) -> u32 {
     match color {
-        HighlightColor::Blue => 0,
-        HighlightColor::Green => 1,
-        HighlightColor::Cyan => 2,
-        HighlightColor::Yellow => 3,
+        HighlightColor::Green => 0,
+        HighlightColor::Cyan => 1,
+        HighlightColor::Yellow => 2,
     }
 }

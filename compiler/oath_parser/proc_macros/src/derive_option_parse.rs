@@ -85,7 +85,7 @@ fn detect_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         .map(|variant| detect_fields(&variant.fields, variant.span(), &variant.attrs));
 
     quote! {
-        'detect_enum: { #((#detect_variants))|* }
+        'detect_enum: { ::oath_parser::Detection::NotDetected #(| #detect_variants)* }
     }
 }
 

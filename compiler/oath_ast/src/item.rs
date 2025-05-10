@@ -5,6 +5,7 @@ use super::*;
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an item modifier"]
 pub struct Item {
+    pub attrs: Repeated<Attr>,
     pub modifiers: Repeated<ItemModifier>,
     pub base: Try<BaseItem>,
 }
@@ -24,20 +25,21 @@ pub enum ItemModifier {
 #[desc = "an item"]
 pub enum BaseItem {
     Mod(Mod),
+    Use(Use),
     Fn(Fn),
     Struct(Struct),
+    Enum(Enum),
     Sys(Sys),
+    Static(Static),
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`< >`"]
 pub struct GenericParams {
-    #[highlight(HighlightColor::Blue)]
-    pub open: punct!("<"),
+    pub open: Discard<punct!("<")>,
     #[highlight(HighlightColor::Green)]
-    pub values: Trailing<Param, punct!(",")>,
-    #[highlight(HighlightColor::Blue)]
-    pub close: Try<punct!(">")>,
+    pub values: List<Param>,
+    pub close: Discard<Try<punct!(">")>>,
 }
 
 // MOD
@@ -64,6 +66,22 @@ pub struct ModContent {
     pub items: Repeated<Item>,
 }
 
+// USE
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a use item"]
+pub struct Use {
+    pub keyword: Discard<keyword!("use")>,
+    pub target: Try<UseTarget>,
+    pub semi: Try<punct!(";")>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a use target"]
+pub enum UseTarget {
+    Mod(keyword!("mod"), Try<Ident>),
+}
+
 // FUNC
 
 #[derive(Debug, Clone, OptionParse)]
@@ -84,7 +102,7 @@ pub struct Fn {
 pub struct FnInput {
     pub delims: delims!("( )"),
     #[highlight(HighlightColor::Cyan)]
-    pub params: Trailing<Param, punct!(",")>,
+    pub params: List<Param>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -103,19 +121,44 @@ pub struct Struct {
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
-    pub fields: Try<StructFields>,
+    pub fields: Try<Fields>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`{ }` / `()`"]
-pub enum StructFields {
+pub enum Fields {
     #[group]
-    Named(
-        delims!("{ }"),
-        #[highlight(HighlightColor::Cyan)] Trailing<Param, punct!(",")>,
-    ),
+    Named(delims!("{ }"), #[highlight(HighlightColor::Cyan)] List<Param>),
     #[group]
-    Unnamed(delims!("( )"), Trailing<UnnamedParam, punct!(",")>),
+    Unnamed(delims!("( )"), List<UnnamedParam>),
+}
+
+// ENUM
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an enum declaration"]
+pub struct Enum {
+    pub keyword: keyword!("enum"),
+    #[highlight(HighlightColor::Green)]
+    pub ident: Try<Ident>,
+    pub generics: Option<GenericParams>,
+    pub variants: Try<Variants>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`{ }`"]
+#[group]
+pub struct Variants {
+    pub delims: delims!("{ }"),
+    pub variants: List<Variant>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a variant"]
+pub struct Variant {
+    #[highlight(HighlightColor::Green)]
+    pub ident: Ident,
+    pub fields: Option<Fields>,
 }
 
 // SYS
@@ -127,5 +170,21 @@ pub struct Sys {
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
+    pub semi: Try<punct!(";")>,
+}
+
+// STATIC
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a static"]
+pub struct Static {
+    pub keyword: Discard<keyword!("static")>,
+    pub mut_: Option<keyword!("mut")>,
+    #[highlight(HighlightColor::Green)]
+    pub ident: Try<Ident>,
+    pub generics: Option<GenericParams>,
+    pub type_: Option<Expr>,
+    pub bounds: Option<Bounds>,
+    pub eq: Try<Init>,
     pub semi: Try<punct!(";")>,
 }

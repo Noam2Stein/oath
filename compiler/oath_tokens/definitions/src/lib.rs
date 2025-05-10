@@ -34,20 +34,18 @@ macro_rules! define_tokens {
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 define_tokens!(
     blue_keywords: [
-        mod, use, pub, package, super, sys, impl,
-        trait, promise, require,
-        type, alias, struct, enum, untagged, val, is,
-        fn, raw, con, async, panic, lock, undef, try, runtime, comptime,
-        macro,
-        const, static,
-        smut, mut, sole,
-        self, Self, out, let, open,
+        package, super,
+        pub, open, raw, con, async, panic, lock, undef, runtime, comptime,
+        mod, use, declare, alias, static,type, struct, enum, trait, impl, sys, fn,
+        promise, require, untagged, val, is,
+        mut, sole, smut,
+        try, self, Self, out, let,
     ],
     pink_keywords: [
         if, else, then, match,
         loop, while, until, for,
         eval, return, break, continue,
-        assume, ensure,
+        assume, ensure, mark,
     ],
     delims: [
         "(" ")" Paren,
@@ -74,6 +72,7 @@ define_tokens!(
         "->" ArrowRight,
         "<=" LessEq,
         ">=" MoreEq,
+        "#!" HashExclamation,
         "<" Less,
         ">" More,
         "+" Plus,
