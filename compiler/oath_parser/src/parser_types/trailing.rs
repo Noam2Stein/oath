@@ -2,20 +2,18 @@ use std::marker::PhantomData;
 
 use super::*;
 
-#[derive(Debug, Clone, OptionSpanned)]
+#[derive(Debug, Clone)]
 pub struct Trailing<T: OptionParse, S: OptionParse> {
-    #[span]
-    #[option_spanned]
     pub values: Vec<T>,
     pub danny: PhantomData<S>,
 }
 
 impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
     fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        let mut option = Self::parse_error();
-        let exit = Self::parse(parser, &mut option);
+        let mut some = Self::parse_error();
+        let exit = Self::parse(parser, &mut some);
 
-        *output = Some(option);
+        *output = Some(some);
 
         exit
     }

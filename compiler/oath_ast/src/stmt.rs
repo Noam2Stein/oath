@@ -7,15 +7,18 @@ pub enum Stmt {
     Expr(Expr),
 }
 
+// LET
+
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a let statement"]
 pub struct LetStmt {
-    pub _keyword: keyword!("let"),
+    pub keyword: keyword!("let"),
     pub name: Try<VarName>,
     pub init: Try<LetStmtInit>,
 }
+
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "a let statement"]
+#[desc = "`= ...`"]
 pub struct LetStmtInit {
     pub eq: punct!("="),
     pub init: Try<Expr>,

@@ -13,6 +13,19 @@ use tower_lsp::{jsonrpc::Result, lsp_types::*, Client, LanguageServer, LspServic
 mod span_range;
 use span_range::*;
 
+#[tokio::main]
+async fn main() {
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        highlights: Default::default(),
+    });
+
+    Server::new(stdin, stdout, socket).serve(service).await;
+}
+
 #[derive(Debug)]
 struct Backend {
     client: Client,
@@ -53,10 +66,6 @@ impl LanguageServer for Backend {
             },
             ..Default::default()
         })
-    }
-
-    async fn initialized(&self, _: InitializedParams) {
-        self.client.log_message(MessageType::INFO, "Oath lang server initiated").await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -110,16 +119,9 @@ impl LanguageServer for Backend {
 impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
         let src_file = SrcFile::from_str(text);
-
         let context = Arc::new(Context::new());
 
-        {
-            let _ = src_file.tokenize(context.clone()).parse_ast();
-
-            //let mut name_context = DumbNameContext::new();
-            //let _ = ast.into_namespace(&mut name_context, context);
-            //let _ = name_context.resolve();
-        }
+        let _ = src_file.tokenize(context.clone()).parse_ast();
 
         let diagnostics: Vec<Diagnostic> = context
             .clone_errors()
@@ -147,19 +149,6 @@ impl Backend {
 
         self.client.publish_diagnostics(uri, diagnostics, Some(version)).await;
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
-    let (service, socket) = LspService::new(|client| Backend {
-        client,
-        highlights: Default::default(),
-    });
-
-    Server::new(stdin, stdout, socket).serve(service).await;
 }
 
 fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<SemanticToken> {

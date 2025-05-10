@@ -5,10 +5,16 @@ use super::*;
 pub struct Discard<T>(PhantomData<T>);
 
 impl<T: OptionParse> OptionParse for Discard<T> {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, _output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut inner = None;
 
-        T::option_parse(parser, &mut inner)
+        let exit = T::option_parse(parser, &mut inner);
+
+        if inner.is_some() {
+            *output = Some(Self(PhantomData));
+        }
+
+        exit
     }
 
     fn detect(parser: &Parser<impl Tokenizer>) -> Detection {

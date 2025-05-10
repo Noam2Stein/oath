@@ -24,23 +24,23 @@ pub enum BaseItem {
     Mod(Mod),
     Fn(Func),
     Struct(Struct),
-    Spec(Sys),
+    Sys(Sys),
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`< >`"]
-pub struct GenericParams(
-    Discard<punct!("<")>,
-    pub Trailing<Param, punct!(",")>,
-    Discard<Try<punct!(">")>>,
-);
+pub struct GenericParams {
+    pub open: Discard<punct!("<")>,
+    pub values: Trailing<Param, punct!(",")>,
+    pub close: Discard<Try<punct!(">")>>,
+}
 
 // MOD
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a module declaration"]
 pub struct Mod {
-    pub _keyword: Discard<keyword!("mod")>,
+    pub keyword: Discard<keyword!("mod")>,
     pub ident: Try<Ident>,
     pub content: Try<ModBlock>,
 }
@@ -63,7 +63,7 @@ pub struct ModContent {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
 pub struct Func {
-    pub _keyword: Discard<keyword!("fn")>,
+    pub keyword: Discard<keyword!("fn")>,
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub input: Try<FuncInput>,
@@ -75,14 +75,14 @@ pub struct Func {
 #[desc = "a function declaration"]
 #[group]
 pub struct FuncInput {
-    pub _delims: delims!("( )"),
+    pub delims: delims!("( )"),
     pub params: Trailing<Param, punct!(",")>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "output try"]
 pub struct FuncOutput {
-    pub _arrow: Discard<punct!("->")>,
+    pub arrow: Discard<punct!("->")>,
     pub type_: Try<Expr>,
 }
 
@@ -99,6 +99,7 @@ pub enum FuncBlock {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a struct declaration"]
 pub struct Struct {
+    pub keyword: keyword!("struct"),
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub fields: Try<StructFields>,
@@ -118,8 +119,8 @@ pub enum StructFields {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a system declaration"]
 pub struct Sys {
-    pub _keyword: Discard<keyword!("sys")>,
+    pub keyword: Discard<keyword!("sys")>,
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
-    pub _semi: Try<punct!(";")>,
+    pub semi: Try<punct!(";")>,
 }

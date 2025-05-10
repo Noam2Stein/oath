@@ -133,18 +133,17 @@ pub fn option_parse_fields(
                     break 'option_parse_fields ::oath_parser::ParseExit::Complete;
                 }
 
-                let tokenizer = match parser.next() {
-                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => tokenizer,
+                let mut parser = match parser.next() {
+                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => ::oath_parser::Parser(tokenizer),
                     _ => unreachable!(),
                 };
-
-                let parser = &mut ::oath_parser::Parser(tokenizer);
 
                 #(
                     let mut #field_let_idents = #field_parse_errors;
                 )*
 
                 'parse_fields: {
+                    let parser = &mut parser;
 
                     #(
                         match #parse_fields {

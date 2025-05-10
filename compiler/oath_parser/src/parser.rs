@@ -41,3 +41,39 @@ impl<T: Tokenizer> Drop for Parser<T> {
         self.context().push_error(SyntaxError::UnexpectedTokens(span));
     }
 }
+
+impl<'src, 'parent> Parser<GroupTokenizer<'src, 'parent>> {
+    pub fn close(&mut self) -> CloseDelimiter {
+        self.finish();
+
+        self.0.close()
+    }
+    pub fn delims(&mut self) -> Delimiters {
+        self.finish();
+
+        self.0.delims()
+    }
+
+    pub fn finish(&mut self) {
+        fn into_span(token: LazyToken) -> Span {
+            match token {
+                LazyToken::Ident(token) => token.span(),
+                LazyToken::Keyword(token) => token.span(),
+                LazyToken::Punct(token) => token.span(),
+                LazyToken::Literal(token) => token.span(),
+                LazyToken::Group(mut token) => token.open().span() + token.close().span(),
+            }
+        }
+
+        let mut span = match self.next() {
+            Some(next) => into_span(next),
+            None => return,
+        };
+
+        while let Some(next) = self.next() {
+            span = span + into_span(next)
+        }
+
+        self.context().push_error(SyntaxError::UnexpectedTokens(span));
+    }
+}

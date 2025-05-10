@@ -3,12 +3,11 @@ use super::*;
 // EXPR TYPES
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "a base expression"]
+#[desc = "an expression"]
 pub enum BaseExpr {
     Ident(Ident),
     Literal(Literal),
     Out(keyword!("out")),
-    UnaryOperator(UnaryOperator, Try<Box<Expr>>),
     #[group]
     Tuple(delims!("( )"), Trailing<Expr, punct!(",")>),
     #[group]
@@ -18,17 +17,31 @@ pub enum BaseExpr {
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an unary operator"]
+#[desc = "an expression"]
+pub struct BareUnaryExpr {
+    pub base: Try<BaseExpr>,
+    pub postfix: Repeated<UnaryExprExtension>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
 pub struct UnaryExpr {
-    pub base: BaseExpr,
-    pub extensions: Repeated<UnaryExprExtension>,
+    pub prefix: Repeated<UnaryOperator>,
+    pub base: Try<BareUnaryExpr>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct BareExpr {
+    pub base: BareUnaryExpr,
+    pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an expression"]
 pub struct Expr {
     pub base: UnaryExpr,
-    pub bin_ops: Repeated<BinaryExprExtension>,
+    pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
 // EXPR EXTENSION TYPES
@@ -37,14 +50,20 @@ pub struct Expr {
 #[desc = "an expression extension"]
 pub enum UnaryExprExtension {
     Member(punct!("."), Try<Member>),
+    #[group]
     Call(delims!("( )"), Trailing<Expr, punct!(",")>),
+    #[group]
     Index(delims!("[ ]"), Try<Box<Expr>>),
-    Generics(punct!("<"), Trailing<Expr, punct!(",")>, Try<punct!(">")>),
+    Generics {
+        open: Discard<punct!("<")>,
+        args: Trailing<BareExpr, punct!(",")>,
+        close: Discard<Try<punct!(">")>>,
+    },
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a binary expr extension"]
-pub struct BinaryExprExtension {
+pub struct ExprBinaryPostfix {
     pub op: BinaryOperator,
     pub rhs: Try<UnaryExpr>,
 }

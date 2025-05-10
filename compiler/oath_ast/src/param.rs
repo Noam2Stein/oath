@@ -6,20 +6,20 @@ use super::*;
 #[desc = "a parameter"]
 pub struct Param {
     pub name: Ident,
-    pub type_: Option<Expr>,
+    pub type_: Option<BareUnaryExpr>,
     pub bounds: Option<Bounds>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an unnamed parameter"]
 pub struct UnnamedParam {
-    pub type_: Expr,
+    pub type_: BareUnaryExpr,
     pub bounds: Option<Bounds>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`: ...`"]
 pub struct Bounds {
-    pub _colon: Discard<punct!(":")>,
+    pub colon: Discard<punct!(":")>,
     pub expr: Try<Expr>,
 }
