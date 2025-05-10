@@ -3,43 +3,51 @@ use super::*;
 // EXPR TYPES
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an expression"]
+#[desc = "a base expression"]
 pub enum BaseExpr {
     Ident(Ident),
     Literal(Literal),
     Out(keyword!("out")),
+    Block(Block),
     Tuple(Tuple),
-    #[group]
-    Array(delims!("[ ]"), Trailing<Expr, punct!(",")>),
-    #[group]
-    Block(delims!("{ }"), Trailing<Stmt, punct!(";")>),
+    Array(Array),
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an expression"]
-pub struct BareUnaryExpr {
-    pub base: Try<BaseExpr>,
+#[desc = "a strict base expression"]
+pub enum StrictBaseExpr {
+    Ident(Ident),
+    Literal(Literal),
+    Out(keyword!("out")),
+    Tuple(Tuple),
+    Array(Array),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a bare unary expression"]
+pub struct BareUnaryExpr<B: OptionParse + Debug + Clone = BaseExpr> {
+    pub base: B,
     pub postfix: Repeated<ExprPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an expression"]
-pub struct UnaryExpr {
+#[desc = "an unary expression"]
+pub struct UnaryExpr<B: OptionParse + Debug + Clone = BaseExpr> {
     pub prefix: Repeated<ExprPrefix>,
-    pub base: Try<BareUnaryExpr>,
+    pub base: Try<BareUnaryExpr<B>>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an expression"]
-pub struct BareExpr {
-    pub base: BareUnaryExpr,
+#[desc = "a bare expression"]
+pub struct BareExpr<B: OptionParse + Debug + Clone = BaseExpr> {
+    pub base: BareUnaryExpr<B>,
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an expression"]
-pub struct Expr {
-    pub base: UnaryExpr,
+pub struct Expr<B: OptionParse + Debug + Clone = BaseExpr> {
+    pub base: UnaryExpr<B>,
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
@@ -104,10 +112,26 @@ pub enum BinaryOperator {
 // ADDITIONAL TYPES
 
 #[derive(Debug, Clone, OptionParse)]
+#[desc = "`{ }`"]
+#[group]
+pub struct Block {
+    pub delims: delims!("{ }"),
+    pub values: Trailing<Stmt, punct!(";")>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
 #[desc = "`( )`"]
 #[group]
 pub struct Tuple {
     pub delims: delims!("( )"),
+    pub values: Trailing<Expr, punct!(",")>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`[ ]`"]
+#[group]
+pub struct Array {
+    pub delims: delims!("[ ]"),
     pub values: Trailing<Expr, punct!(",")>,
 }
 
@@ -123,6 +147,6 @@ pub enum ReferenceBounds {
 #[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
 #[desc = "a `.` expression"]
 pub enum Member {
-    Unnamed(IntLiteral),
+    Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
     Named(Ident),
 }

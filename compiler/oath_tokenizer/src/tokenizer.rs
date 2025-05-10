@@ -305,8 +305,24 @@ impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
     fn handle_close(&mut self, close: CloseDelimiter) -> GroupPeek {
         GroupPeek::Close(if close.kind == self.open.kind {
             match &mut self.parent {
-                ParentTokenizer::Group(parent) => parent.update_peek(),
-                ParentTokenizer::Root(parent) => parent.update_peek(),
+                ParentTokenizer::Group(parent) => {
+                    parent.last_span = close.span;
+                    match &mut parent.peek {
+                        GroupPeek::Token(PeekToken::Group(group)) => group.span = close.span,
+                        _ => unreachable!(),
+                    }
+
+                    parent.update_peek()
+                }
+                ParentTokenizer::Root(parent) => {
+                    parent.last_span = close.span;
+                    match &mut parent.peek {
+                        Some(PeekToken::Group(group)) => group.span = close.span,
+                        _ => unreachable!(),
+                    }
+
+                    parent.update_peek()
+                }
             }
 
             close

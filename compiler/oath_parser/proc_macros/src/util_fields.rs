@@ -181,6 +181,8 @@ pub fn option_parse_fields(
         };
     }
 
+    let detect = detect_fields(fields, fields_span, fields_attrs);
+
     let primary_field = fields.iter().next().unwrap();
     let primary_field_ident = &fields.members().next().unwrap();
     let option_parse_primary_field = option_parse_field(primary_field, &quote! { &mut primary_field });
@@ -214,15 +216,14 @@ pub fn option_parse_fields(
     quote_spanned! {
         fields_span =>
 
-        { #[allow(unused_labels)] 'parse_fields: {
+        { #[allow(unused_labels)] 'option_parse_fields: {
+            if #detect == ::oath_parser::Detection::NotDetected {
+                break 'option_parse_fields ::oath_parser::ParseExit::Complete;
+            }
+
             let mut primary_field = None;
-
             let primary_field_exit = #option_parse_primary_field;
-
-            let primary_field = match primary_field {
-                Some(primary_field) => primary_field,
-                None => break 'parse_fields primary_field_exit,
-            };
+            let primary_field = primary_field.unwrap();
 
             #(
                 let mut #secondary_field_let_idents = #secondary_field_parse_errors;
@@ -231,7 +232,7 @@ pub fn option_parse_fields(
             if primary_field_exit == ::oath_parser::ParseExit::Cut {
                 #set_output;
 
-                break 'parse_fields ::oath_parser::ParseExit::Cut;
+                break 'option_parse_fields ::oath_parser::ParseExit::Cut;
             }
 
             #(
@@ -240,7 +241,7 @@ pub fn option_parse_fields(
                     ::oath_parser::ParseExit::Cut => {
                         #set_output;
 
-                        break 'parse_fields ::oath_parser::ParseExit::Cut;
+                        break 'option_parse_fields ::oath_parser::ParseExit::Cut;
                     },
                 }
             )*

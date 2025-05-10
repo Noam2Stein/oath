@@ -14,6 +14,8 @@ pub struct Item {
 pub enum ItemModifier {
     Pub(keyword!("pub")),
     Open(keyword!("open")),
+    Runtime(keyword!("runtime")),
+    Comptime(keyword!("comptime")),
     Raw(keyword!("raw")),
     Con(keyword!("con")),
 }
@@ -22,7 +24,7 @@ pub enum ItemModifier {
 #[desc = "an item"]
 pub enum BaseItem {
     Mod(Mod),
-    Fn(Func),
+    Fn(Fn),
     Struct(Struct),
     Sys(Sys),
 }
@@ -66,37 +68,29 @@ pub struct ModContent {
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
-pub struct Func {
+pub struct Fn {
     pub keyword: Discard<keyword!("fn")>,
     #[highlight(HighlightColor::Yellow)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
-    pub input: Try<FuncInput>,
-    pub output: Option<FuncOutput>,
-    pub block: Try<FuncBlock>,
+    pub input: Try<FnInput>,
+    pub output: Option<Expr<StrictBaseExpr>>,
+    pub block: Try<FnBlock>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
 #[group]
-pub struct FuncInput {
+pub struct FnInput {
     pub delims: delims!("( )"),
     #[highlight(HighlightColor::Cyan)]
     pub params: Trailing<Param, punct!(",")>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "output try"]
-pub struct FuncOutput {
-    pub arrow: Discard<punct!("->")>,
-    pub type_: Try<Expr>,
-}
-
-#[derive(Debug, Clone, OptionParse)]
 #[desc = "either `{ } or `;`"]
-pub enum FuncBlock {
-    #[group]
-    Block(delims!("{ }"), Trailing<Stmt, punct!(";")>),
+pub enum FnBlock {
+    Block(Block),
     Semi(Discard<punct!(";")>),
 }
 

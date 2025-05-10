@@ -4,6 +4,10 @@ use crate::*;
 #[desc = "a statement"]
 pub enum Stmt {
     Let(LetStmt),
+    Eval(keyword!("eval"), Try<Expr>),
+    Return(keyword!("eval"), Try<Expr>),
+    Break(keyword!("break"), Try<Expr>),
+    Continue(keyword!("continue"), Try<Expr>),
     Expr(Expr),
 }
 
