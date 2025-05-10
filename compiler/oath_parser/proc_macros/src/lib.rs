@@ -8,14 +8,14 @@ mod derive_parse;
 use derive_option_parse::*;
 use derive_parse::*;
 
-#[proc_macro_derive(Parse, attributes(fallback, group))]
+#[proc_macro_derive(Parse, attributes(fallback, group, highlight))]
 pub fn derive_parse_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     use syn::{DeriveInput, parse_macro_input};
 
     derive_parse(&parse_macro_input!(input as DeriveInput)).into()
 }
 
-#[proc_macro_derive(OptionParse, attributes(desc, fallback, group))]
+#[proc_macro_derive(OptionParse, attributes(desc, fallback, group, highlight))]
 pub fn derive_option_parse_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     use syn::{DeriveInput, parse_macro_input};
 

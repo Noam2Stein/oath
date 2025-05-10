@@ -9,3 +9,9 @@ pub enum Literal {
 }
 
 verify_token_type!(Literal);
+
+impl Highlight for Literal {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        h.highlight(self.span(), color);
+    }
+}

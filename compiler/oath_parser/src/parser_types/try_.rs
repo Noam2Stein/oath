@@ -106,3 +106,11 @@ impl<T: ParseDesc> Parse for Try<T> {
         Try::Failure
     }
 }
+
+impl<T: Highlight> Highlight for Try<T> {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        if let Self::Success(value) = self {
+            value.highlight(color, h);
+        }
+    }
+}

@@ -44,8 +44,8 @@ impl Context {
         self.interner.read().unwrap().unintern_fmt(str_id, f)
     }
 
-    pub fn highlight(&self, item: impl OptionSpanned, color: HighlightColor) {
-        self.highlighter.write().unwrap().highlight(item, color);
+    pub fn highlight(&self, span: Span, color: HighlightColor) {
+        self.highlighter.write().unwrap().highlight(span, color);
     }
 
     pub fn clone_highlights(&self) -> Vec<(Span, HighlightColor)> {

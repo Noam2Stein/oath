@@ -32,17 +32,6 @@ struct Backend {
     highlights: Mutex<HashMap<Url, Vec<SemanticToken>>>,
 }
 
-const CUSTOM_LEGEND: &[SemanticTokenType] = &[
-    SemanticTokenType::TYPE,
-    SemanticTokenType::VARIABLE,
-    SemanticTokenType::FUNCTION,
-    SemanticTokenType::KEYWORD,
-    SemanticTokenType::STRING,
-    SemanticTokenType::NUMBER,
-    SemanticTokenType::OPERATOR,
-    SemanticTokenType::COMMENT,
-];
-
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
@@ -152,6 +141,9 @@ impl Backend {
 }
 
 fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<SemanticToken> {
+    let mut highlights = highlights.to_vec();
+    highlights.sort_by(|(span, _), (other_span, _)| span.cmp(other_span));
+
     let mut output = Vec::new();
 
     let mut prev_line = 0;
@@ -169,7 +161,7 @@ fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<S
             delta_line: delta_line as u32,
             delta_start: delta_start as u32,
             length: span.len().unwrap_or(1),
-            token_type: color_to_token_type(*color),
+            token_type: color_to_token_type(color),
             token_modifiers_bitset: 0,
         });
 
@@ -180,10 +172,23 @@ fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<S
     output
 }
 
+const CUSTOM_LEGEND: &[SemanticTokenType] = &[
+    SemanticTokenType::MODIFIER,
+    SemanticTokenType::TYPE,
+    SemanticTokenType::VARIABLE,
+    SemanticTokenType::FUNCTION,
+    SemanticTokenType::KEYWORD,
+    SemanticTokenType::STRING,
+    SemanticTokenType::NUMBER,
+    SemanticTokenType::OPERATOR,
+    SemanticTokenType::COMMENT,
+];
+
 fn color_to_token_type(color: HighlightColor) -> u32 {
     match color {
-        HighlightColor::Green => 0,
-        HighlightColor::Cyan => 1,
-        HighlightColor::Yellow => 2,
+        HighlightColor::Blue => 0,
+        HighlightColor::Green => 1,
+        HighlightColor::Cyan => 2,
+        HighlightColor::Yellow => 3,
     }
 }

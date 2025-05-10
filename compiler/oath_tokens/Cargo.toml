@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 derive-new              = "0.7.0"
 derive_more             = { version = "2.0.1", features = [ "full" ] }
+oath_highlighting       = { path = "../oath_highlighting" }
 oath_interner           = { path = "../oath_interner" }
 oath_src                = { path = "../oath_src" }
 oath_token_definitions  = { path = "definitions" }

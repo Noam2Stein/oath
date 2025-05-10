@@ -67,3 +67,16 @@ impl PunctKind {
         }
     }
 }
+
+impl Highlight for Punct {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        h.highlight(self.span, color);
+    }
+}
+with_tokens!($(
+    impl Highlight for $punct_type {
+        fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+            h.highlight(self.0, color);
+        }
+    }
+)*);

@@ -34,6 +34,11 @@ impl OptionParse for Literal {
         if let Some(PeekToken::Literal(token)) = parser.peek() {
             parser.next();
 
+            match &token {
+                Self::Int(_) | Self::Float(_) => parser.context().highlight(token.span(), HighlightColor::Yellow),
+                _ => {}
+            }
+
             *output = Some(token);
         }
 

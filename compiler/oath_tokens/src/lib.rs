@@ -3,6 +3,7 @@ use std::{fmt::Debug, hash::Hash};
 use derive_more::*;
 use derive_new::*;
 
+use oath_highlighting::*;
 use oath_interner::*;
 use oath_src::*;
 
@@ -36,4 +37,4 @@ macro_rules! verify_token_type {
 }
 
 #[allow(dead_code)]
-const fn verify_token_type_helper<T: Debug + Copy + Eq + Ord + Hash + InternedDisplay + Spanned>() {}
+const fn verify_token_type_helper<T: Debug + Copy + Eq + Ord + Hash + InternedDisplay + Spanned + Highlight>() {}

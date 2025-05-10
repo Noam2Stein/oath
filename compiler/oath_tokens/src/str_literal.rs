@@ -9,3 +9,9 @@ pub struct StrLiteral {
 }
 
 verify_token_type!(StrLiteral);
+
+impl Highlight for StrLiteral {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        h.highlight(self.span, color);
+    }
+}

@@ -56,3 +56,9 @@ impl Ident {
         self.str_id
     }
 }
+
+impl Highlight for Ident {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        h.highlight(self.span, color);
+    }
+}

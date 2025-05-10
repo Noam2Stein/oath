@@ -291,10 +291,30 @@ pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribu
 fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
     let field_type = &field.ty;
 
+    let highlight = field.attrs.iter().find(|attr| attr.path().is_ident("highlight")).map(|attr| {
+        let color = match attr.meta.require_list() {
+            Ok(ok) => &ok.tokens,
+            Err(err) => return err.into_compile_error(),
+        };
+
+        quote_spanned! {
+            field_type.span() =>
+
+            let mut highlighter = parser.context().highlighter.write().unwrap();
+            <#field_type as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut highlighter);
+        }
+    });
+
     quote_spanned! {
         field.span() =>
 
-        <#field_type as ::oath_parser::Parse>::parse(parser, #output)
+        {
+            let exit = <#field_type as ::oath_parser::Parse>::parse(parser, #output);
+
+            #highlight
+
+            exit
+        }
     }
 }
 
@@ -313,10 +333,30 @@ fn field_parse_error(field: &Field) -> TokenStream {
 fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
     let field_type = &field.ty;
 
+    let highlight = field.attrs.iter().find(|attr| attr.path().is_ident("highlight")).map(|attr| {
+        let color = match attr.meta.require_list() {
+            Ok(ok) => &ok.tokens,
+            Err(err) => return err.into_compile_error(),
+        };
+
+        quote_spanned! {
+            field_type.span() =>
+
+            let mut highlighter = parser.context().highlighter.write().unwrap();
+            <Option<#field_type> as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut highlighter);
+        }
+    });
+
     quote_spanned! {
         field.span() =>
 
-        <#field_type as ::oath_parser::OptionParse>::option_parse(parser, #output)
+        {
+            let exit = <#field_type as ::oath_parser::OptionParse>::option_parse(parser, #output);
+
+            #highlight
+
+            exit
+        }
     }
 }
 

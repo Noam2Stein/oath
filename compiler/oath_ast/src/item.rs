@@ -30,9 +30,12 @@ pub enum BaseItem {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`< >`"]
 pub struct GenericParams {
-    pub open: Discard<punct!("<")>,
+    #[highlight(HighlightColor::Blue)]
+    pub open: punct!("<"),
+    #[highlight(HighlightColor::Green)]
     pub values: Trailing<Param, punct!(",")>,
-    pub close: Discard<Try<punct!(">")>>,
+    #[highlight(HighlightColor::Blue)]
+    pub close: Try<punct!(">")>,
 }
 
 // MOD
@@ -41,6 +44,7 @@ pub struct GenericParams {
 #[desc = "a module declaration"]
 pub struct Mod {
     pub keyword: Discard<keyword!("mod")>,
+    #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub content: Try<ModBlock>,
 }
@@ -64,6 +68,7 @@ pub struct ModContent {
 #[desc = "a function declaration"]
 pub struct Func {
     pub keyword: Discard<keyword!("fn")>,
+    #[highlight(HighlightColor::Yellow)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub input: Try<FuncInput>,
@@ -76,6 +81,7 @@ pub struct Func {
 #[group]
 pub struct FuncInput {
     pub delims: delims!("( )"),
+    #[highlight(HighlightColor::Cyan)]
     pub params: Trailing<Param, punct!(",")>,
 }
 
@@ -100,6 +106,7 @@ pub enum FuncBlock {
 #[desc = "a struct declaration"]
 pub struct Struct {
     pub keyword: keyword!("struct"),
+    #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub fields: Try<StructFields>,
@@ -109,7 +116,10 @@ pub struct Struct {
 #[desc = "`{ }` / `()`"]
 pub enum StructFields {
     #[group]
-    Named(delims!("{ }"), Trailing<Param, punct!(",")>),
+    Named(
+        delims!("{ }"),
+        #[highlight(HighlightColor::Cyan)] Trailing<Param, punct!(",")>,
+    ),
     #[group]
     Unnamed(delims!("( )"), Trailing<UnnamedParam, punct!(",")>),
 }
@@ -120,6 +130,7 @@ pub enum StructFields {
 #[desc = "a system declaration"]
 pub struct Sys {
     pub keyword: Discard<keyword!("sys")>,
+    #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub semi: Try<punct!(";")>,

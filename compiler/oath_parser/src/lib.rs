@@ -1,3 +1,10 @@
+use oath_context::*;
+use oath_diagnostics::*;
+use oath_highlighting::*;
+use oath_src::*;
+use oath_tokenizer::*;
+use oath_tokens::*;
+
 mod case;
 mod parse_tokens;
 mod parse_traits;
@@ -7,11 +14,5 @@ pub use case::*;
 pub use parse_traits::*;
 pub use parser::*;
 pub use parser_types::*;
-
-use oath_context::*;
-use oath_diagnostics::*;
-use oath_src::*;
-use oath_tokenizer::*;
-use oath_tokens::*;
 
 pub use oath_parser_proc_macros::{OptionParse, Parse};

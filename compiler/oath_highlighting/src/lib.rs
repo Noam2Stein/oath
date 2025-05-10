@@ -1,7 +1,11 @@
 use oath_src::*;
 
+mod highlight;
+pub use highlight::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum HighlightColor {
+    Blue,
     Green,
     Cyan,
     Yellow,
@@ -13,12 +17,7 @@ pub struct Highlighter {
 }
 
 impl Highlighter {
-    pub fn highlight(&mut self, item: impl OptionSpanned, color: HighlightColor) {
-        let span = match item.option_span() {
-            Some(span) => span,
-            None => return,
-        };
-
+    pub fn highlight(&mut self, span: Span, color: HighlightColor) {
         self.highlights.push((span, color));
     }
 
@@ -29,8 +28,6 @@ impl Highlighter {
 
 impl Highlighter {
     pub fn new() -> Self {
-        Self {
-            highlights: Vec::new(),
-        }
+        Self { highlights: Vec::new() }
     }
 }

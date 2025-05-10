@@ -23,3 +23,9 @@ impl InternedDisplay for IntLiteral {
         Ok(())
     }
 }
+
+impl Highlight for IntLiteral {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        h.highlight(self.span, color);
+    }
+}

@@ -60,3 +60,11 @@ impl<T: ParseDesc, S: OptionParse> ParseDesc for Seperated<T, S> {
         T::desc()
     }
 }
+
+impl<T: ParseDesc + Highlight, S: OptionParse> Highlight for Seperated<T, S> {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        for value in &self.values {
+            value.highlight(color, h);
+        }
+    }
+}

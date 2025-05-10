@@ -62,3 +62,11 @@ impl<T: OptionParse, S: OptionParse> Parse for Trailing<T, S> {
         }
     }
 }
+
+impl<T: OptionParse + Highlight, S: OptionParse> Highlight for Trailing<T, S> {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        for value in &self.values {
+            value.highlight(color, h);
+        }
+    }
+}

@@ -49,3 +49,11 @@ impl<T: OptionParse> Parse for Repeated<T> {
         Self { values: Vec::new() }
     }
 }
+
+impl<T: OptionParse + Highlight> Highlight for Repeated<T> {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        for value in &self.values {
+            value.highlight(color, h);
+        }
+    }
+}
