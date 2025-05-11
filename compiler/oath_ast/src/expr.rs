@@ -1,6 +1,6 @@
 use super::*;
 
-// EXPR TYPES
+// BASE EXPR
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a base expression"]
@@ -11,6 +11,7 @@ pub enum BaseExpr {
     Block(Block),
     Tuple(Tuple),
     Array(Array),
+    If(If),
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -22,6 +23,8 @@ pub enum StrictBaseExpr {
     Tuple(Tuple),
     Array(Array),
 }
+
+// EXPR TYPES
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a bare unary expression"]
@@ -109,6 +112,46 @@ pub enum BinaryOperator {
     Xor(punct!("^")),
 
     Bound(punct!(":")),
+}
+
+// IF ELSE
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an if statement"]
+pub struct If {
+    pub keyword: keyword!("if"),
+    pub condition: Try<Expr<StrictBaseExpr>>,
+    pub target: IfTarget,
+}
+#[derive(Debug, Clone, Parse)]
+pub enum IfTarget {
+    Then {
+        keyword: keyword!("then"),
+        expr: Try<Box<Expr>>,
+        else_: Option<ThenElse>,
+    },
+    #[fallback]
+    Block { block: Try<Block>, else_: Option<Else> },
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an if statement"]
+pub struct Else {
+    pub keyword: keyword!("else"),
+    pub content: ElseContent,
+}
+#[derive(Debug, Clone, Parse)]
+pub enum ElseContent {
+    ElseIf(Box<If>),
+    #[fallback]
+    Else(Try<Block>),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an if statement"]
+pub struct ThenElse {
+    pub keyword: keyword!("else"),
+    pub expr: Try<Box<Expr>>,
 }
 
 // ADDITIONAL TYPES
