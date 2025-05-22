@@ -281,46 +281,71 @@ with_tokens!($(
     }
 )*);
 
-impl OptionParse for Delimiters {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if Self::detect(parser) == Detection::Detected {
-            *output = Some(match parser.next() {
-                Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span(), group.open().kind),
+impl ParseFrame for Delimiters {
+    fn option_parse<P, T: Tokenizer>(
+        parser: &mut Parser<T>,
+        _parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
+        parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
+        output: &mut Option<(Self, P)>,
+    ) -> ParseExit {
+        let mut parser = if Self::detect(parser) == Detection::Detected {
+            match parser.next() {
+                Some(LazyToken::Group(group)) => Parser(group),
                 _ => unreachable!(),
-            })
-        }
+            }
+        } else {
+            return ParseExit::Complete;
+        };
+
+        let (value, _) = parse_group(&mut parser);
+
+        *output = Some((parser.delims(), value));
 
         ParseExit::Complete
     }
 
     fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
-        match parser.peek() {
-            Some(PeekToken::Group(_)) => Detection::Detected,
-            _ => Detection::NotDetected,
+        if let Some(PeekToken::Group(_)) = parser.peek() {
+            Detection::Detected
+        } else {
+            Detection::NotDetected
         }
     }
 }
+
 with_tokens!($(
-    impl OptionParse for $delims_type {
-        fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-            if Self::detect(parser) == Detection::Detected {
-                *output = Some(match parser.next() {
-                    Some(LazyToken::Group(mut group)) => Self::new(group.open().span(), group.close().span()),
+    impl ParseFrame for $delims_type {
+        fn option_parse<P, T: Tokenizer>(
+            parser: &mut Parser<T>,
+            _parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
+            parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
+            output: &mut Option<(Self, P)>,
+        ) -> ParseExit {
+            let mut parser = if Self::detect(parser) == Detection::Detected {
+                match parser.next() {
+                    Some(LazyToken::Group(group)) => Parser(group),
                     _ => unreachable!(),
-                })
-            }
+                }
+            } else {
+                return ParseExit::Complete;
+            };
+
+            let (value, _) = parse_group(&mut parser);
+
+            *output = Some((parser.delims().try_into().unwrap(), value));
 
             ParseExit::Complete
         }
 
         fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
-            match parser.peek() {
-                Some(PeekToken::Group(open)) => if open.kind == DelimiterKind::$delims_type {
+            if let Some(PeekToken::Group(group)) = parser.peek() {
+                if group.kind == DelimiterKind::$delims_type {
                     Detection::Detected
                 } else {
                     Detection::NotDetected
-                },
-                _ => Detection::NotDetected,
+                }
+            } else {
+                Detection::NotDetected
             }
         }
     }

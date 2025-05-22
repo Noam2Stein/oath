@@ -1,7 +1,7 @@
 use crate::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Spanned, InternedDisplay)]
-#[display("{}", self.str_id)]
+#[display("{str_id}")]
 pub struct Ident {
     #[span]
     pub span: Span,

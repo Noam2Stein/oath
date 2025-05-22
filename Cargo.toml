@@ -8,6 +8,7 @@ members = [
     "compiler/oath_interner",
     "compiler/oath_parser",
     "compiler/oath_parser/proc_macros",
+    "compiler/oath_resolution",
     "compiler/oath_src",
     "compiler/oath_tokenizer",
     "compiler/oath_tokens",

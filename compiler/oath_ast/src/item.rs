@@ -1,13 +1,11 @@
 use super::*;
 
-// ITEM
-
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an item modifier"]
+#[desc = "an item"]
 pub struct Item {
     pub attrs: Repeated<Attr>,
     pub modifiers: Repeated<ItemModifier>,
-    pub base: Try<BaseItem>,
+    pub core: Try<ItemCore>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -23,7 +21,8 @@ pub enum ItemModifier {
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an item"]
-pub enum BaseItem {
+pub enum ItemCore {
+    Attr(InnerAttr),
     Mod(Mod),
     Use(Use),
     Fn(Fn),
@@ -31,15 +30,7 @@ pub enum BaseItem {
     Enum(Enum),
     Sys(Sys),
     Static(Static),
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "`< >`"]
-pub struct GenericParams {
-    pub open: Discard<punct!("<")>,
-    #[highlight(HighlightColor::Green)]
-    pub values: List<Param>,
-    pub close: Discard<Try<punct!(">")>>,
+    Trait(Trait),
 }
 
 // MOD
@@ -50,39 +41,52 @@ pub struct Mod {
     pub keyword: Discard<keyword!("mod")>,
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
-    pub content: Try<ModBlock>,
+    pub content: Try<ModBody>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "either `{ } or `;`"]
-pub enum ModBlock {
-    #[group]
-    Block(delims!("{ }"), ModContent),
+pub enum ModBody {
+    #[framed]
+    Block(delims!("{ }"), Repeated<Item>),
     Semi(Discard<punct!(";")>),
-}
-
-#[derive(Debug, Clone, Parse)]
-pub struct ModContent {
-    pub items: Repeated<Item>,
 }
 
 // USE
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "a use item"]
+#[desc = "a use statement"]
 pub struct Use {
     pub keyword: Discard<keyword!("use")>,
-    pub target: Try<UseTarget>,
-    pub semi: Try<punct!(";")>,
+    pub body: Try<UseBody>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a use target"]
-pub enum UseTarget {
-    Mod(keyword!("mod"), Try<Ident>),
+pub enum UseBody {
+    Mod(Mod),
+    UsePath(UsePath, Try<punct!(";")>),
 }
 
-// FUNC
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an import path"]
+pub enum UsePath {
+    Ident(Ident, Option<UseDot>),
+    Super(keyword!("super"), Option<UseDot>),
+    Lib(keyword!("lib"), Option<UseDot>),
+    All(punct!("*")),
+    #[framed]
+    List(delims!("{ }"), List<UsePath>),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`.`"]
+pub struct UseDot {
+    pub dot: Discard<punct!(".")>,
+    pub members: Box<Try<UsePath>>,
+}
+
+// FN
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
@@ -92,13 +96,14 @@ pub struct Fn {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub input: Try<FnInput>,
-    pub output: Option<Expr<StrictBaseExpr>>,
-    pub block: Try<FnBlock>,
+    pub output: Option<BraceExpr>,
+    pub contract: Contract,
+    pub body: Try<FnBody>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a function declaration"]
-#[group]
+#[framed]
 pub struct FnInput {
     pub delims: delims!("( )"),
     #[highlight(HighlightColor::Cyan)]
@@ -107,7 +112,7 @@ pub struct FnInput {
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "either `{ } or `;`"]
-pub enum FnBlock {
+pub enum FnBody {
     Block(Block),
     Semi(Discard<punct!(";")>),
 }
@@ -121,16 +126,17 @@ pub struct Struct {
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
+    pub contract: Contract,
     pub fields: Try<Fields>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`{ }` / `()`"]
 pub enum Fields {
-    #[group]
-    Named(delims!("{ }"), #[highlight(HighlightColor::Cyan)] List<Param>),
-    #[group]
-    Unnamed(delims!("( )"), List<UnnamedParam>),
+    #[framed]
+    Named(delims!("{ }"), #[highlight(HighlightColor::Cyan)] List<Param>, Contract),
+    #[framed]
+    Unnamed(delims!("( )"), List<UnnamedParam>, Contract),
 }
 
 // ENUM
@@ -142,15 +148,17 @@ pub struct Enum {
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
+    pub contract: Contract,
     pub variants: Try<Variants>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "`{ }`"]
-#[group]
+#[framed]
 pub struct Variants {
     pub delims: delims!("{ }"),
     pub variants: List<Variant>,
+    pub contract: Contract,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -170,6 +178,7 @@ pub struct Sys {
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
+    pub contract: Contract,
     pub semi: Try<punct!(";")>,
 }
 
@@ -185,6 +194,104 @@ pub struct Static {
     pub generics: Option<GenericParams>,
     pub type_: Option<Expr>,
     pub bounds: Option<Bounds>,
-    pub eq: Try<Init>,
+    pub contract: Contract,
+    pub eq: Try<VarInit>,
     pub semi: Try<punct!(";")>,
+}
+
+// TRAIT
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a trait"]
+pub struct Trait {
+    pub keyword: Discard<keyword!("trait")>,
+    pub mut_: Option<keyword!("mut")>,
+    #[highlight(HighlightColor::Green)]
+    pub ident: Try<Ident>,
+    pub generics: Option<GenericParams>,
+    pub target: Option<TraitTarget>,
+    pub contract: Contract,
+    pub body: Try<ApiBody>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a trait target type"]
+#[framed]
+pub struct TraitTarget {
+    pub frame: delims!("( )"),
+    pub target: Try<Expr>,
+}
+
+// PARAM
+
+#[derive(Debug, Clone, Spanned, OptionParse)]
+#[desc = "a parameter"]
+pub struct Param {
+    #[span]
+    pub name: Ident,
+    pub type_: Option<AngleUnaryExpr>,
+    pub bounds: Option<Bounds>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an unnamed parameter"]
+pub struct UnnamedParam {
+    pub type_: AngleUnaryExpr,
+    pub bounds: Option<Bounds>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`: ...`"]
+pub struct Bounds {
+    pub colon: Discard<punct!(":")>,
+    pub expr: Try<Expr>,
+}
+
+impl Highlight for Param {
+    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+        self.name.highlight(color, h);
+    }
+}
+
+// GENERICS
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`< >`"]
+#[framed]
+pub struct GenericParams {
+    pub frame: Discard<Angles>,
+    #[highlight(HighlightColor::Green)]
+    pub values: List<Param>,
+}
+
+// API
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "either `{ } or `;`"]
+pub enum ApiBody {
+    #[framed]
+    Block(delims!("{ }"), Repeated<Item>),
+    Semi(Discard<punct!(";")>),
+}
+
+// CONTRACT
+
+#[derive(Debug, Clone, Parse)]
+pub struct Contract {
+    pub segments: Repeated<ContractSegment>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a contract segment"]
+pub enum ContractSegment {
+    Require(keyword!("require"), Try<ContractBody>),
+    Promise(keyword!("promise"), Try<ContractBody>),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`[ ]`"]
+#[framed]
+pub struct ContractBody {
+    pub delims: delims!("[ ]"),
+    pub items: List<Expr>,
 }

@@ -1,8 +1,8 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote, quote_spanned};
 use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Expr, Fields, GenericParam, Ident,
-    LitInt, Token, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, GenericParam, Ident, parse_macro_input, parse_quote,
+    spanned::Spanned,
 };
 
 #[proc_macro_derive(InternedDisplay, attributes(display))]
@@ -22,8 +22,8 @@ pub fn derive_interned_display(input: proc_macro::TokenStream) -> proc_macro::To
     }
 
     let output_expr = match data {
-        Data::Struct(data) => struct_span(&data, &attrs),
-        Data::Enum(data) => enum_span(&data),
+        Data::Struct(data) => struct_output(&data, &attrs),
+        Data::Enum(data) => enum_output(&data),
         Data::Union(_) => Err(Error::new(
             Span::call_site(),
             "`InternedDisplay` cannot be derived for unions",
@@ -47,39 +47,37 @@ pub fn derive_interned_display(input: proc_macro::TokenStream) -> proc_macro::To
     .into()
 }
 
-fn struct_span(data: &DataStruct, attrs: &Vec<Attribute>) -> Result<TokenStream, Error> {
-    fields_span(
+fn struct_output(data: &DataStruct, attrs: &Vec<Attribute>) -> Result<TokenStream, Error> {
+    fields_output(
         &data.fields,
         attrs,
-        |field_ident, field_index| {
+        |(field_index, field_ident)| {
             if field_ident.is_some() {
-                quote_spanned! { field_ident.span() => self.#field_ident }
+                quote_spanned! { field_ident.span() => &self.#field_ident }
             } else {
-                let field_ident =
-                    LitInt::new(&field_index.to_string(), field_ident.span()).to_token_stream();
+                let field_ident = Literal::usize_unsuffixed(field_index);
 
-                quote_spanned! { field_ident.span() => self.#field_ident }
+                quote_spanned! { field_ident.span() => &self.#field_ident }
             }
         },
         Span::call_site(),
     )
 }
 
-fn enum_span(data: &DataEnum) -> Result<TokenStream, Error> {
+fn enum_output(data: &DataEnum) -> Result<TokenStream, Error> {
     let match_variants = data.variants.iter().map(|variant| {
         let variant_ident = &variant.ident;
 
         let original_field_idents = variant.fields.iter().map(|field| &field.ident);
 
-        let field_idents =
-            (0..variant.fields.len()).map(|field_index| format_ident!("field_{field_index}"));
+        let field_idents = (0..variant.fields.len()).map(|field_index| format_ident!("field_{field_index}"));
 
-        let output_expr = match fields_span(
+        let output_expr = match fields_output(
             &variant.fields,
             &variant.attrs,
-            |_, field_index| format_ident!("field_{field_index}").to_token_stream(),
+            |(field_index, _)| format_ident!("field_{field_index}").to_token_stream(),
             variant.span(),
-        ){
+        ) {
             Ok(ok) => ok,
             Err(err) => err.to_compile_error(),
         };
@@ -110,49 +108,51 @@ fn enum_span(data: &DataEnum) -> Result<TokenStream, Error> {
     })
 }
 
-fn fields_span(
+fn fields_output(
     fields: &Fields,
     fields_attrs: &Vec<Attribute>,
-    get_field_path: impl Fn(Option<&Ident>, usize) -> TokenStream,
+    get_field_path: impl Fn((usize, &Option<Ident>)) -> TokenStream,
     fields_span: Span,
 ) -> Result<TokenStream, Error> {
     let (display_attr, display_attr_errors) = {
-        let mut display_attr_iter = fields_attrs
-            .iter()
-            .filter(|attr| attr.path().is_ident("display"));
+        let mut display_attr_iter = fields_attrs.iter().filter(|attr| attr.path().is_ident("display"));
         let output = display_attr_iter.next();
 
-        let display_attr_errors = display_attr_iter.map(|attr| {
-            Error::new(attr.span(), "multiple `#[display(...)]` attributes").to_compile_error()
-        });
+        let display_attr_errors =
+            display_attr_iter.map(|attr| Error::new(attr.span(), "multiple `#[display(...)]` attributes").to_compile_error());
 
         (output, display_attr_errors)
     };
 
     if let Some(display_attr) = display_attr {
-        let list = display_attr.meta.require_list()?;
+        let tokens = &display_attr.meta.require_list()?.tokens;
 
-        let mut items = list
-            .parse_args_with(Punctuated::<Expr, Token![,]>::parse_terminated)?
-            .into_iter();
+        let field_idents = fields.iter().enumerate().map(|(field_index, field)| match &field.ident {
+            Some(ident) => ident.clone(),
+            None => format_ident!("field_{field_index}"),
+        });
 
-        let literal = items.next();
+        let field_paths = fields.iter().map(|field| &field.ident).enumerate().map(get_field_path);
 
         Ok(quote_spanned! {
             fields_span =>
 
-            write!(f, #literal, #(::oath_interner::Interned(&#items, interner)), *)
+            {
+                #(
+                    #[allow(unused_variables)]
+                    let #field_idents = ::oath_interner::Interned(#field_paths, interner);
+                )*
+
+                write!(f, #tokens)
+            }
         })
     } else if fields.len() != 1 {
-        Err(Error::new(
-            fields_span,
-            "expected a single field or `#[display(...)]`",
-        ))
+        Err(Error::new(fields_span, "expected a single field or `#[display(...)]`"))
     } else {
         let field = fields.iter().next().unwrap();
 
         let field_type = &field.ty;
-        let field_path = get_field_path(field.ident.as_ref(), 0);
+        let field_path = get_field_path((0, &field.ident));
 
         Ok(quote_spanned! {
             field_type.span() =>

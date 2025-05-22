@@ -92,7 +92,7 @@ with_tokens!(
         IntLiteral(&'src str),
         #[regex(r"[0-9][0-9_]*\.[0-9_@a-zA-Z]+")]
         FloatLiteral(&'src str),
-        #[regex("\".*\"")]
+        #[regex(r#""([^"\\]|\\.)*""#)]
         StrLiteral(&'src str),
         #[regex("'.'")]
         CharLiteral(&'src str),

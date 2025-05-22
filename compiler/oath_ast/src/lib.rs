@@ -1,30 +1,21 @@
 use std::fmt::Debug;
 
-use splat_attribs::splat_attribs;
-splat_attribs! {
-    #[allow(unused_imports)]:
-
-    use oath_context::*;
-    use oath_diagnostics::*;
-    use oath_highlighting::*;
-    use oath_parser::*;
-    use oath_src::*;
-    use oath_tokens::*;
-    use oath_tokenizer::*;
-}
+use oath_highlighting::*;
+use oath_parser::*;
+use oath_src::*;
+use oath_tokenizer::*;
+use oath_tokens::*;
 
 mod attr;
+mod block;
 mod expr;
 mod item;
-mod param;
-mod stmt;
 pub use attr::*;
+pub use block::*;
 pub use expr::*;
 pub use item::*;
-pub use param::*;
-pub use stmt::*;
 
-pub type SyntaxTree = ModContent;
+pub type SyntaxTree = Repeated<Item>;
 
 #[allow(private_bounds)]
 pub trait ParseAstExt: Seal {

@@ -5,8 +5,10 @@ use oath_interner::*;
 use oath_src::*;
 use oath_tokens::*;
 
+mod name;
 mod syntax;
 mod token;
+pub use name::*;
 pub use syntax::*;
 pub use token::*;
 
@@ -22,6 +24,7 @@ pub struct Diagnostics {
 pub enum Error {
     Token(TokenError),
     Syntax(SyntaxError),
+    Name(NameError),
 }
 
 #[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]

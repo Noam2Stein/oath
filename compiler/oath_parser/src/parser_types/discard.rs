@@ -38,6 +38,26 @@ impl<T: ParseDesc> ParseDesc for Discard<T> {
     }
 }
 
+impl<F: ParseFrame> ParseFrame for Discard<F> {
+    fn option_parse<P, T: Tokenizer>(
+        parser: &mut Parser<T>,
+        parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
+        parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
+        output: &mut Option<(Self, P)>,
+    ) -> ParseExit {
+        let mut value = None;
+        let parse_exit = F::option_parse(parser, parse_t, parse_group, &mut value);
+
+        *output = value.map(|(_, value)| (Self(PhantomData), value));
+
+        parse_exit
+    }
+
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+        F::detect(parser)
+    }
+}
+
 impl<T> Clone for Discard<T> {
     fn clone(&self) -> Self {
         *self

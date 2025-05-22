@@ -18,6 +18,17 @@ pub trait ParseDesc: OptionParse {
     fn desc() -> &'static str;
 }
 
+pub trait ParseFrame: Sized {
+    fn option_parse<P, T: Tokenizer>(
+        parser: &mut Parser<T>,
+        parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
+        parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
+        output: &mut Option<(Self, P)>,
+    ) -> ParseExit;
+
+    fn detect(parser: &Parser<impl Tokenizer>) -> Detection;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ParseExit {
     Complete,

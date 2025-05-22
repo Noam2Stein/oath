@@ -1,66 +1,34 @@
 use super::*;
 
-// BASE EXPR
+// UNARY EXPR
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "a base expression"]
-pub enum BaseExpr {
+#[desc = "an expression"]
+pub enum ExprCore {
     Ident(Ident),
+    Keyword(ExprKeyword),
     Literal(Literal),
-    Out(keyword!("out")),
     Block(Block),
-    Tuple(Tuple),
-    Array(Array),
-    If(If),
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "a strict base expression"]
-pub enum StrictBaseExpr {
-    Ident(Ident),
-    Literal(Literal),
-    Out(keyword!("out")),
-    Tuple(Tuple),
-    Array(Array),
-}
-
-// EXPR TYPES
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "a bare unary expression"]
-pub struct BareUnaryExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
-    pub attrs: Repeated<Attr>,
-    pub base: Try<B>,
-    pub postfix: Repeated<ExprPostfix>,
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "an unary expression"]
-pub struct UnaryExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
-    pub attrs: Repeated<Attr>,
-    pub prefix: Repeated<ExprPrefix>,
-    pub base: Try<B>,
-    pub postfix: Repeated<ExprPostfix>,
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "a bare expression"]
-pub struct BareExpr<B: ParseDesc + Debug + Clone = BaseExpr> {
-    pub base: BareUnaryExpr<B>,
-    pub bin_ops: Repeated<ExprBinaryPostfix>,
+    #[framed]
+    Tuple(delims!("( )"), List<Expr>),
+    #[framed]
+    Array(delims!("[ ]"), List<Expr>),
+    If {
+        keyword: keyword!("if"),
+        condition: Try<Box<BraceExpr>>,
+        body: IfBody,
+    },
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an expression"]
-pub struct Expr<B: ParseDesc + Debug + Clone = BaseExpr> {
-    pub base: UnaryExpr<B>,
-    pub bin_ops: Repeated<ExprBinaryPostfix>,
+pub enum ExprKeyword {
+    Fn(keyword!("fn")),
+    Out(keyword!("out")),
 }
 
-// UNARY TYPES
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, OptionParse)]
-#[desc = "an unary operator"]
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression prefix"]
 pub enum ExprPrefix {
     Neg(punct!("-")),
     Not(punct!("!")),
@@ -73,23 +41,47 @@ pub enum ExprPrefix {
     MoreEq(punct!(">=")),
     LessEq(punct!("<=")),
     Question(punct!("?")),
+    Lifetime(Lifetime),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
+pub enum ReferenceBounds {
+    #[fallback]
+    Default,
+    Mut(keyword!("mut")),
+    Sole(keyword!("sole")),
+    SoleMut(keyword!("smut")),
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an expression extension"]
+#[desc = "an expression postfix"]
 pub enum ExprPostfix {
     Member(punct!("."), Try<Member>),
-    Call(Tuple),
-    #[group]
+    #[framed]
+    Call(delims!("( )"), List<Expr>),
+    #[framed]
     Index(delims!("[ ]"), Try<Box<Expr>>),
-    Generics {
-        open: Discard<punct!("<")>,
-        args: Trailing<BareExpr, punct!(",")>,
-        close: Discard<Try<punct!(">")>>,
-    },
+    #[framed]
+    Generics(Angles, List<AngleExpr>),
 }
 
-// BINARY
+#[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
+#[desc = "a `.` expression"]
+pub enum Member {
+    Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
+    Named(Ident),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct UnaryExpr {
+    pub attrs: Repeated<Attr>,
+    pub prefix: Repeated<ExprPrefix>,
+    pub core: Try<ExprCore>,
+    pub postfix: Repeated<ExprPostfix>,
+}
+
+// BINARY EXPR
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a binary expr extension"]
@@ -114,17 +106,97 @@ pub enum BinaryOperator {
     Bound(punct!(":")),
 }
 
-// IF ELSE
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct Expr {
+    pub lhs: UnaryExpr,
+    pub bin_ops: Repeated<ExprBinaryPostfix>,
+}
+
+// ANGLE EXPR
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an if statement"]
-pub struct If {
-    pub keyword: keyword!("if"),
-    pub condition: Try<Expr<StrictBaseExpr>>,
-    pub target: IfTarget,
+#[desc = "an expression prefix"]
+pub enum AngleExprPrefix {
+    Neg(punct!("-")),
+    Not(punct!("!")),
+    Deref(punct!("*")),
+    Ref(punct!("&"), ReferenceBounds),
+    Eq(punct!("==")),
+    NotEq(punct!("!=")),
+    MoreEq(punct!(">=")),
+    LessEq(punct!("<=")),
+    Question(punct!("?")),
+    Lifetime(Lifetime),
 }
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct AngleUnaryExpr {
+    pub attrs: Repeated<Attr>,
+    pub prefix: Repeated<AngleExprPrefix>,
+    pub core: Try<ExprCore>,
+    pub postfix: Repeated<ExprPostfix>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct AngleExpr {
+    pub base: AngleUnaryExpr,
+    pub bin_ops: Repeated<ExprBinaryPostfix>,
+}
+
+// BRACE EXPR
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub enum BraceExprCore {
+    Ident(Ident),
+    Keyword(ExprKeyword),
+    Literal(Literal),
+    #[framed]
+    Tuple(delims!("( )"), List<Expr>),
+    #[framed]
+    Array(delims!("[ ]"), List<Expr>),
+    If {
+        keyword: keyword!("if"),
+        condition: Try<Box<BraceExpr>>,
+        body: IfBody,
+    },
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression postfix"]
+pub enum BraceExprPostfix {
+    Member(punct!("."), Try<Member>),
+    #[framed]
+    Call(delims!("( )"), List<Expr>),
+    #[framed]
+    Index(delims!("[ ]"), Try<Box<Expr>>),
+    #[framed]
+    Generics(Angles, List<AngleExpr>),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct UnaryBraceExpr {
+    pub attrs: Repeated<Attr>,
+    pub prefix: Repeated<ExprPrefix>,
+    pub core: Try<BraceExprCore>,
+    pub postfix: Repeated<BraceExprPostfix>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "an expression"]
+pub struct BraceExpr {
+    pub lhs: UnaryBraceExpr,
+    pub bin_ops: Repeated<ExprBinaryPostfix>,
+}
+
+// IF ELSE
+
 #[derive(Debug, Clone, Parse)]
-pub enum IfTarget {
+pub enum IfBody {
     Then {
         keyword: keyword!("then"),
         expr: Try<Box<Expr>>,
@@ -135,14 +207,19 @@ pub enum IfTarget {
 }
 
 #[derive(Debug, Clone, OptionParse)]
-#[desc = "an if statement"]
+#[desc = "`else`"]
 pub struct Else {
     pub keyword: keyword!("else"),
-    pub content: ElseContent,
+    pub body: ElseBody,
 }
+
 #[derive(Debug, Clone, Parse)]
-pub enum ElseContent {
-    ElseIf(Box<If>),
+pub enum ElseBody {
+    ElseIf {
+        keyword: keyword!("if"),
+        condition: Try<Box<BraceExpr>>,
+        body: Box<IfBody>,
+    },
     #[fallback]
     Else(Try<Block>),
 }
@@ -154,47 +231,7 @@ pub struct ThenElse {
     pub expr: Try<Box<Expr>>,
 }
 
-// ADDITIONAL TYPES
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "`{ }`"]
-#[group]
-pub struct Block {
-    pub delims: delims!("{ }"),
-    pub values: List<Stmt>,
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "`( )`"]
-#[group]
-pub struct Tuple {
-    pub delims: delims!("( )"),
-    pub values: List<Expr>,
-}
-
-#[derive(Debug, Clone, OptionParse)]
-#[desc = "`[ ]`"]
-#[group]
-pub struct Array {
-    pub delims: delims!("[ ]"),
-    pub values: List<Expr>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
-pub enum ReferenceBounds {
-    #[fallback]
-    Default,
-    Mut(keyword!("mut")),
-    Sole(keyword!("sole")),
-    SoleMut(keyword!("smut")),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
-#[desc = "a `.` expression"]
-pub enum Member {
-    Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
-    Named(Ident),
-}
+// LIST
 
 pub type List<T> = Trailing<T, ListSep>;
 
@@ -205,14 +242,30 @@ pub enum ListSep {
     Semi(punct!(";")),
 }
 
+// VAR
+
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a variable name"]
 pub enum VarName {
-    #[group]
+    #[framed]
     Tuple(delims!("( )"), Trailing<VarName, punct!(",")>),
     Ident(
         Option<keyword!("mut")>,
         #[highlight(HighlightColor::Cyan)] Try<Ident>,
-        Option<BareExpr>,
+        Option<AngleExpr>,
     ),
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`= ...`"]
+pub struct VarInit {
+    pub eq: punct!("="),
+    pub init: Try<Expr>,
+}
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "`'`"]
+pub struct Lifetime {
+    pub punct: punct!("'"),
+    pub ident: Try<Ident>,
 }

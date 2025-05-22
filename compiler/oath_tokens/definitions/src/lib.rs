@@ -34,18 +34,17 @@ macro_rules! define_tokens {
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 define_tokens!(
     blue_keywords: [
-        package, super,
+        lib, super, mod, use, declare, static, struct, enum, trait, impl, sys, fn,
         pub, open, raw, con, async, panic, lock, undef, runtime, comptime,
-        mod, use, declare, alias, static,type, struct, enum, trait, impl, sys, fn,
         promise, require, untagged, val, is,
         mut, sole, smut,
-        try, self, Self, out, let,
+        try, self, Self, out, let, run,
     ],
     pink_keywords: [
         if, else, then, match,
-        loop, while, until, for,
+        loop, while, until, for, in,
         eval, return, break, continue,
-        assume, ensure, mark,
+        assume,
     ],
     delims: [
         "(" ")" Paren,
@@ -94,6 +93,7 @@ define_tokens!(
         "`" Backtick,
         "#" Hash,
         "!" Exclamation,
+        "'" Apostrophe,
     ],
 );
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS

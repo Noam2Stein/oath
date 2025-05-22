@@ -11,12 +11,12 @@ pub fn parse_fields(
     fields_path: &TokenStream,
     output: &TokenStream,
 ) -> TokenStream {
-    if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+    if fields_attrs.iter().any(|attr| attr.path().is_ident("framed")) {
         if fields.len() == 0 {
-            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+            return Error::new(fields_span, "`#[framed]` expects a frame field").into_compile_error();
         }
 
-        return Error::new(fields_span, "`#[group]` is not allowed in `Parse`").into_compile_error();
+        return Error::new(fields_span, "`#[framed]` is not allowed in `Parse`").into_compile_error();
     }
 
     let field_idents = fields.members().collect::<Vec<_>>();
@@ -89,23 +89,14 @@ pub fn option_parse_fields(
     fields_path: &TokenStream,
     output: &TokenStream,
 ) -> TokenStream {
-    if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+    if fields_attrs.iter().any(|attr| attr.path().is_ident("framed")) {
         if fields.len() == 0 {
-            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+            return Error::new(fields_span, "`#[framed]` expects a frame field").into_compile_error();
         }
 
-        let delims_type = &fields.iter().next().unwrap().ty;
-        let ensure_delims = quote_spanned! {
-            delims_type.span() =>
+        let frame_type = &fields.iter().next().unwrap().ty;
+        let frame_field_ident = fields.members().next().unwrap();
 
-            fn ensure_delims<D: ::oath_tokens::DelimitersType>() {}
-
-            ensure_delims::<#delims_type>();
-        };
-
-        let detect_delims = detect_field(fields.iter().next().unwrap());
-
-        let delims_field_ident = fields.members().next().unwrap();
         let field_idents = fields.members().skip(1).collect::<Vec<_>>();
 
         let field_let_idents = fields
@@ -115,56 +106,77 @@ pub fn option_parse_fields(
             .map(|(i, _)| format_ident!("field_{i}"))
             .collect::<Vec<_>>();
 
-        let field_parse_errors = fields.iter().skip(1).map(field_parse_error);
+        let field_parse_errors = fields.iter().skip(1).map(field_parse_error).collect::<Vec<_>>();
 
         let parse_fields = fields
             .iter()
             .skip(1)
             .zip(&field_let_idents)
-            .map(|(field, field_let_ident)| parse_field(field, &quote! { &mut #field_let_ident }));
+            .map(|(field, field_let_ident)| parse_field(field, &quote! { &mut #field_let_ident }))
+            .collect::<Vec<_>>();
 
         return quote_spanned! {
             fields_span =>
 
-            'option_parse_fields: {
-                #ensure_delims
+            {
+                let mut frame_output = None;
 
-                if #detect_delims != ::oath_parser::Detection::Detected {
-                    break 'option_parse_fields ::oath_parser::ParseExit::Complete;
+                let parse_exit = <#frame_type as ::oath_parser::ParseFrame>::option_parse(
+                    parser,
+                    |parser|  {
+                        #[allow(unused_parens)]
+                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
+
+                        #[allow(unused_labels)]
+                        let parse_exit = 'parse_fields: {
+                            #(
+                                match #parse_fields {
+                                    ::oath_parser::ParseExit::Complete => {},
+                                    ::oath_parser::ParseExit::Cut => {
+                                        break 'parse_fields ::oath_parser::ParseExit::Cut;
+                                    },
+                                }
+                            )*
+
+                            ::oath_parser::ParseExit::Complete
+                        };
+
+                        ((#(#field_let_idents), *), parse_exit)
+                    },
+                    |parser|  {
+                        #[allow(unused_parens)]
+                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
+
+                        #[allow(unused_labels)]
+                        let parse_exit = 'parse_fields: {
+                            #(
+                                match #parse_fields {
+                                    ::oath_parser::ParseExit::Complete => {},
+                                    ::oath_parser::ParseExit::Cut => {
+                                        break 'parse_fields ::oath_parser::ParseExit::Cut;
+                                    },
+                                }
+                            )*
+
+                            ::oath_parser::ParseExit::Complete
+                        };
+
+                        ((#(#field_let_idents), *), parse_exit)
+                    },
+                    &mut frame_output,
+                );
+
+                #[allow(unused_parens)]
+                if let Some((frame, (#(#field_let_idents), *))) = frame_output {
+                    *#output = Some(#fields_path {
+                        #frame_field_ident: frame,
+                        #(
+                            #field_idents: #field_let_idents,
+                        )*
+                    });
                 }
 
-                let mut parser = match parser.next() {
-                    Some(::oath_tokenizer::LazyToken::Group(tokenizer)) => ::oath_parser::Parser(tokenizer),
-                    _ => unreachable!(),
-                };
-
-                #(
-                    let mut #field_let_idents = #field_parse_errors;
-                )*
-
-                'parse_fields: {
-                    let parser = &mut parser;
-
-                    #(
-                        match #parse_fields {
-                            ::oath_parser::ParseExit::Complete => {},
-                            ::oath_parser::ParseExit::Cut => {
-                                break 'parse_fields;
-                            },
-                        }
-                    )*
-                };
-
-                let delims = <#delims_type>::try_from(parser.delims()).unwrap();
-
-                *#output = Some(#fields_path {
-                    #delims_field_ident: delims,
-                    #(
-                        #field_idents: #field_let_idents,
-                    )*
-                });
-
-                ::oath_parser::ParseExit::Complete
+                parse_exit
             }
         };
     }
@@ -254,12 +266,18 @@ pub fn option_parse_fields(
 }
 
 pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribute]) -> TokenStream {
-    if fields_attrs.iter().any(|attr| attr.path().is_ident("group")) {
+    if fields_attrs.iter().any(|attr| attr.path().is_ident("framed")) {
         if fields.len() == 0 {
-            return Error::new(fields_span, "`#[group]` expects a delimiters field").into_compile_error();
+            return Error::new(fields_span, "`#[framed]` expects a frame field").into_compile_error();
         }
 
-        return detect_field(fields.iter().next().unwrap());
+        let field_type = &fields.iter().next().unwrap().ty;
+
+        return quote_spanned! {
+            field_type.span() =>
+
+            <#field_type as ::oath_parser::ParseFrame>::detect(parser)
+        };
     }
 
     let detect_fields = fields.iter().map(detect_field);
