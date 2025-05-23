@@ -38,10 +38,10 @@ pub enum ItemCore {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a module declaration"]
 pub struct Mod {
-    pub keyword: Discard<keyword!("mod")>,
+    pub keyword: keyword!("mod"),
     #[highlight(HighlightColor::Green)]
     pub ident: Try<Ident>,
-    pub content: Try<ModBody>,
+    pub body: Try<ModBody>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -68,15 +68,15 @@ pub enum UseBody {
     UsePath(UsePath, Try<punct!(";")>),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, Clone, OptionParse, Spanned)]
 #[desc = "an import path"]
 pub enum UsePath {
-    Ident(Ident, Option<UseDot>),
-    Super(keyword!("super"), Option<UseDot>),
-    Lib(keyword!("lib"), Option<UseDot>),
+    Ident(#[span] Ident, Option<UseDot>),
+    Super(#[span] keyword!("super"), Option<UseDot>),
+    Lib(#[span] keyword!("lib"), Option<UseDot>),
     All(punct!("*")),
     #[framed]
-    List(delims!("{ }"), List<UsePath>),
+    List(#[span] delims!("{ }"), List<UsePath>),
 }
 
 #[derive(Debug, Clone, OptionParse)]

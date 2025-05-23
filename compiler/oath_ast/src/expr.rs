@@ -142,7 +142,7 @@ pub struct AngleUnaryExpr {
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "an expression"]
 pub struct AngleExpr {
-    pub base: AngleUnaryExpr,
+    pub lhs: AngleUnaryExpr,
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 

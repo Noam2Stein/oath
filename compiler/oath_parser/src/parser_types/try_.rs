@@ -8,6 +8,13 @@ pub enum Try<T> {
 }
 
 impl<T> Try<T> {
+    pub fn success(self) -> Option<T> {
+        match self {
+            Self::Success(value) => Some(value),
+            Self::Failure => None,
+        }
+    }
+
     pub fn is_success(&self) -> bool {
         match self {
             Self::Success(_) => true,

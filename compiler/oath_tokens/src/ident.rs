@@ -52,6 +52,11 @@ impl Ident {
         }
     }
 
+    #[inline(always)]
+    pub unsafe fn from_id_unchecked(str_id: StrId, span: Span) -> Self {
+        Self { str_id, span }
+    }
+
     pub fn str_id(&self) -> StrId {
         self.str_id
     }

@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name    = "oath_name_res"
+name    = "oath_nameres"
 version = "0.1.0"
 
 [dependencies]
@@ -15,4 +15,3 @@ oath_parser       = { path = "../oath_parser" }
 oath_src          = { path = "../oath_src" }
 oath_tokenizer    = { path = "../oath_tokenizer" }
 oath_tokens       = { path = "../oath_tokens" }
-splat_attribs     = "1.0.0"

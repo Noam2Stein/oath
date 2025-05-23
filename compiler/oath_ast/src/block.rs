@@ -5,20 +5,22 @@ use super::*;
 #[framed]
 pub struct Block {
     pub delims: delims!("{ }"),
-    pub stmts: List<Stmt>,
+    pub stmts: Repeated<Stmt>,
 }
 
 #[derive(Debug, Clone, OptionParse)]
 #[desc = "a statement"]
 pub enum Stmt {
+    Item(Item),
     Let {
         keyword: keyword!("let"),
         name: Try<VarName>,
         init: Try<VarInit>,
+        semi: Try<punct!(";")>,
     },
-    Eval(keyword!("eval"), Try<Expr>),
-    Return(keyword!("eval"), Try<Expr>),
-    Break(keyword!("break"), Try<Expr>),
-    Continue(keyword!("continue"), Try<Expr>),
-    Expr(Expr),
+    Eval(keyword!("eval"), Try<Expr>, Try<punct!(";")>),
+    Return(keyword!("eval"), Try<Expr>, Try<punct!(";")>),
+    Break(keyword!("break"), Try<Expr>, Try<punct!(";")>),
+    Continue(keyword!("continue"), Try<Expr>, Try<punct!(";")>),
+    Expr(Expr, Try<punct!(";")>),
 }

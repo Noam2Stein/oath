@@ -25,6 +25,8 @@ pub enum Error {
     Token(TokenError),
     Syntax(SyntaxError),
     Name(NameError),
+    #[display("unfinished")]
+    Unfinished(Span),
 }
 
 #[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]

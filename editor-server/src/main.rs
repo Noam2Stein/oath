@@ -5,7 +5,7 @@ use oath_ast::*;
 use oath_context::*;
 use oath_highlighting::*;
 use oath_interner::*;
-//use oath_name_res::*;
+use oath_nameres::*;
 use oath_src::*;
 use oath_tokenizer::*;
 use oath_tokens::*;
@@ -111,7 +111,7 @@ impl Backend {
         let src_file = SrcFile::from_str(text);
         let context = Arc::new(Context::new());
 
-        let _ = src_file.tokenize(context.clone()).parse_ast(); //.name_res(&context);
+        let _ = src_file.tokenize(context.clone()).parse_ast().nameres(&context);
 
         let diagnostics: Vec<Diagnostic> = context
             .clone_errors()
