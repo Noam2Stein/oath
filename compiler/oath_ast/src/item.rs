@@ -72,8 +72,7 @@ pub enum UseBody {
 #[desc = "an import path"]
 pub enum UsePath {
     Ident(#[span] Ident, Option<UseDot>),
-    Super(#[span] keyword!("super"), Option<UseDot>),
-    Lib(#[span] keyword!("lib"), Option<UseDot>),
+    Parent(#[span] keyword!("parent"), Option<UseDot>),
     All(punct!("*")),
     #[framed]
     List(#[span] delims!("{ }"), List<UsePath>),

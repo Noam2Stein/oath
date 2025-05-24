@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "oath_context"
+name    = "oath_parse_context"
 version = "0.1.0"
 
 [dependencies]
-derive-new        = "0.7.0"
 oath_diagnostics  = { path = "../oath_diagnostics" }
 oath_highlighting = { path = "../oath_highlighting" }
 oath_interner     = { path = "../oath_interner" }
 oath_src          = { path = "../oath_src" }
+oath_tokens       = { path = "../oath_tokens" }

@@ -99,9 +99,8 @@ impl<T: ParseDesc> Parse for Try<T> {
 
             exit
         } else {
-            parser
-                .context()
-                .push_error(SyntaxError::Expected(parser.peek_span(), T::desc()));
+            let span = parser.peek_span();
+            parser.context().push_error(SyntaxError::Expected(span, T::desc()));
 
             *output = Try::Failure;
 

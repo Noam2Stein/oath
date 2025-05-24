@@ -11,7 +11,7 @@ pub struct Ident {
 verify_token_type!(Ident);
 
 impl Ident {
-    pub fn new(str: &str, span: Span, interner: &mut Interner) -> Option<Self> {
+    pub fn new(str: &str, span: Span, interner: &Interner) -> Option<Self> {
         if is_keyword(&str) {
             None
         } else {
@@ -21,7 +21,7 @@ impl Ident {
             })
         }
     }
-    pub fn new_adjusted(str: &str, span: Span, interner: &mut Interner) -> Self {
+    pub fn new_adjusted(str: &str, span: Span, interner: &Interner) -> Self {
         if is_keyword(&str) {
             Self {
                 str_id: interner.intern(&format!("@{str}")),
@@ -35,13 +35,13 @@ impl Ident {
         }
     }
     #[inline(always)]
-    pub unsafe fn new_unchecked(str: &str, span: Span, interner: &mut Interner) -> Self {
+    pub unsafe fn new_unchecked(str: &str, span: Span, interner: &Interner) -> Self {
         Self {
             str_id: interner.intern(str),
             span,
         }
     }
-    pub fn new_or_keyword(str: &str, span: Span, interner: &mut Interner) -> Result<Self, Keyword> {
+    pub fn new_or_keyword(str: &str, span: Span, interner: &Interner) -> Result<Self, Keyword> {
         if let Some(keyword) = Keyword::from_str(&str, span) {
             Err(keyword)
         } else {

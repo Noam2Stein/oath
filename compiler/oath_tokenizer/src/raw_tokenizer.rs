@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use logos::{Lexer, Logos};
 
 use super::*;
@@ -14,14 +12,14 @@ pub enum RawToken {
     CloseDelimiter(CloseDelimiter),
 }
 
-#[derive(Debug, Clone)]
-pub struct RawTokenizer<'src> {
-    lexer: Lexer<'src, LogosToken<'src>>,
-    context: Arc<Context>,
+#[derive(Debug)]
+pub struct RawTokenizer<'ctx> {
+    lexer: Lexer<'ctx, LogosToken<'ctx>>,
+    context: &'ctx mut ParseContext,
 }
 
-impl<'src> RawTokenizer<'src> {
-    pub fn new(src: &'src str, context: Arc<Context>) -> Self {
+impl<'ctx> RawTokenizer<'ctx> {
+    pub fn new(src: &'ctx str, context: &'ctx mut ParseContext) -> Self {
         let lexer = LogosToken::lexer(src);
 
         Self { lexer, context }
@@ -47,7 +45,7 @@ impl<'src> RawTokenizer<'src> {
                 Some(with_tokens_expr! {
                         match next {
                             LogosToken::IdentOrKeyword(str) => {
-                                match Ident::new_or_keyword(str, span, &mut self.context.interner.write().unwrap()) {
+                                match Ident::new_or_keyword(str, span, &self.context.interner) {
                                     Ok(ident) => RawToken::Ident(ident),
                                     Err(keyword) => RawToken::Keyword(keyword),
                                 }
@@ -57,10 +55,10 @@ impl<'src> RawTokenizer<'src> {
                                     RawToken::Punct(Punct::new(span, PunctKind::$punct_variant))
                                 },
                             )*
-                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, &self.context))),
-                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, &self.context))),
-                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, &self.context))),
-                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, &self.context))),
+                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.context))),
+                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.context))),
                             $(
                                 LogosToken::$delim_open_type => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
                                 LogosToken::$delim_close_type => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
@@ -73,8 +71,8 @@ impl<'src> RawTokenizer<'src> {
         }
     }
 
-    pub fn context(&self) -> &Arc<Context> {
-        &self.context
+    pub fn context(&mut self) -> &mut ParseContext {
+        self.context
     }
 }
 

@@ -1,23 +1,23 @@
 use std::collections::HashMap;
 
 use oath_ast::*;
-use oath_context::*;
 use oath_diagnostics::*;
 use oath_highlighting::*;
 use oath_interner::*;
+use oath_parse_context::*;
 use oath_parser::*;
 use oath_src::*;
 use oath_tokens::*;
 
 #[allow(private_bounds)]
 pub trait NameresExt: Seal {
-    fn nameres(self, context: &Context);
+    fn nameres(self, context: &mut ParseContext);
 }
 trait Seal {}
 
 impl Seal for SyntaxTree {}
 impl NameresExt for SyntaxTree {
-    fn nameres(self, context: &Context) {
+    fn nameres(self, context: &mut ParseContext) {
         let mut idents = Vec::new();
         let mut namespaces = Vec::new();
 
@@ -40,7 +40,7 @@ struct Namespace {
 }
 
 impl Namespace {
-    fn insert(&mut self, ident: Ident, color: HighlightColor, context: &Context) {
+    fn insert(&mut self, ident: Ident, color: HighlightColor, context: &mut ParseContext) {
         if self.names.contains_key(&ident.str_id()) {
             context.push_error(NameError::AlreadyExists(ident));
         } else {
@@ -48,7 +48,7 @@ impl Namespace {
         }
     }
 
-    fn resolve(&self, ident: Ident, context: &Context, namespaces: &Vec<Namespace>) {
+    fn resolve(&self, ident: Ident, context: &mut ParseContext, namespaces: &Vec<Namespace>) {
         if let Some(color) = self.names.get(&ident.str_id()) {
             context.highlight(ident.span, *color);
         } else if let Some(parent) = self.parent {
@@ -60,11 +60,23 @@ impl Namespace {
 }
 
 trait Setup {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context);
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    );
 }
 
 impl<T: Setup> Setup for Vec<T> {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         for t in self {
             t.setup(namespace, idents, namespaces, context);
         }
@@ -72,20 +84,38 @@ impl<T: Setup> Setup for Vec<T> {
 }
 
 impl<T: Setup> Setup for Box<T> {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         T::setup(&self, namespace, idents, namespaces, context);
     }
 }
 
 impl<T: Setup> Setup for Try<T> {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         if let Try::Success(t) = self {
             t.setup(namespace, idents, namespaces, context);
         }
     }
 }
 impl<T: Setup> Setup for Option<T> {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         if let Some(t) = self {
             t.setup(namespace, idents, namespaces, context);
         }
@@ -93,13 +123,25 @@ impl<T: Setup> Setup for Option<T> {
 }
 
 impl Setup for Ident {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, _namespaces: &mut Vec<Namespace>, _context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        _namespaces: &mut Vec<Namespace>,
+        _context: &mut ParseContext,
+    ) {
         idents.push((*self, namespace));
     }
 }
 
 impl Setup for Item {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match &self.core {
             Try::Success(ItemCore::Attr(item)) => item.body.setup(namespace, idents, namespaces, context),
             Try::Success(ItemCore::Enum(item)) => {
@@ -212,24 +254,48 @@ impl Setup for Item {
 }
 
 impl Setup for VarInit {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.init.setup(namespace, idents, namespaces, context);
     }
 }
 
 impl Setup for Variants {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.variants.values.setup(namespace, idents, namespaces, context);
     }
 }
 impl Setup for Variant {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.fields.setup(namespace, idents, namespaces, context);
     }
 }
 
 impl Setup for ModBody {
-    fn setup(&self, _namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        _namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Block(_, items) => {
                 let namespace = namespaces.len();
@@ -243,7 +309,13 @@ impl Setup for ModBody {
 }
 
 impl Setup for UseBody {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Mod(body) => {
                 let span = body.ident.option_span().unwrap_or(body.keyword.span());
@@ -271,14 +343,26 @@ impl Setup for UseBody {
 }
 
 impl Setup for AttrBody {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.ident.setup(namespace, idents, namespaces, context);
         self.value.setup(namespace, idents, namespaces, context);
     }
 }
 
 impl Setup for AttrInput {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             AttrInput::Eq(_, expr) => expr.setup(namespace, idents, namespaces, context),
             AttrInput::Parens(_, exprs) => exprs.values.setup(namespace, idents, namespaces, context),
@@ -287,7 +371,13 @@ impl Setup for AttrInput {
 }
 
 impl Setup for Fields {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         namespaces.push(Namespace {
             parent: Some(namespace),
             names: HashMap::new(),
@@ -318,7 +408,13 @@ impl Setup for Fields {
 }
 
 impl Setup for FnInput {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         for param in &self.params.values {
             namespaces[namespace].insert(param.name, HighlightColor::Cyan, context);
 
@@ -329,7 +425,13 @@ impl Setup for FnInput {
 }
 
 impl Setup for Expr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.lhs.setup(namespace, idents, namespaces, context);
 
         for rhs in &self.bin_ops.values {
@@ -338,7 +440,13 @@ impl Setup for Expr {
     }
 }
 impl Setup for AngleExpr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.lhs.setup(namespace, idents, namespaces, context);
 
         for rhs in &self.bin_ops.values {
@@ -347,7 +455,13 @@ impl Setup for AngleExpr {
     }
 }
 impl Setup for BraceExpr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.lhs.setup(namespace, idents, namespaces, context);
 
         for rhs in &self.bin_ops.values {
@@ -356,13 +470,25 @@ impl Setup for BraceExpr {
     }
 }
 impl Setup for UnaryExpr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.core.setup(namespace, idents, namespaces, context);
         self.postfix.values.setup(namespace, idents, namespaces, context);
     }
 }
 impl Setup for ExprPostfix {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Call(_, args) => args.values.setup(namespace, idents, namespaces, context),
             Self::Generics(_, args) => args.values.setup(namespace, idents, namespaces, context),
@@ -372,7 +498,13 @@ impl Setup for ExprPostfix {
     }
 }
 impl Setup for BraceExprPostfix {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Call(_, args) => args.values.setup(namespace, idents, namespaces, context),
             Self::Generics(_, args) => args.values.setup(namespace, idents, namespaces, context),
@@ -383,7 +515,13 @@ impl Setup for BraceExprPostfix {
 }
 
 impl Setup for ExprCore {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Array(_, items) => items.values.setup(namespace, idents, namespaces, context),
             Self::Block(block) => {}
@@ -400,13 +538,25 @@ impl Setup for ExprCore {
     }
 }
 impl Setup for UnaryBraceExpr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.core.setup(namespace, idents, namespaces, context);
         self.postfix.values.setup(namespace, idents, namespaces, context);
     }
 }
 impl Setup for BraceExprCore {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Array(_, items) => items.values.setup(namespace, idents, namespaces, context),
             Self::Ident(expr) => expr.setup(namespace, idents, namespaces, context),
@@ -422,14 +572,26 @@ impl Setup for BraceExprCore {
     }
 }
 impl Setup for AngleUnaryExpr {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.core.setup(namespace, idents, namespaces, context);
         self.postfix.values.setup(namespace, idents, namespaces, context);
     }
 }
 
 impl Setup for Literal {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Literal::Int(lit) => lit.suffix.setup(namespace, idents, namespaces, context),
             Literal::Float(lit) => lit.suffix.setup(namespace, idents, namespaces, context),
@@ -440,7 +602,13 @@ impl Setup for Literal {
 }
 
 impl Setup for GenericParams {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         for param in &self.values.values {
             namespaces[namespace].insert(param.name, HighlightColor::Green, context);
 
@@ -451,18 +619,36 @@ impl Setup for GenericParams {
 }
 
 impl Setup for Bounds {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.expr.setup(namespace, idents, namespaces, context);
     }
 }
 
 impl Setup for Contract {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.segments.values.setup(namespace, idents, namespaces, context);
     }
 }
 impl Setup for ContractSegment {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         match self {
             Self::Promise(_, body) => body.setup(namespace, idents, namespaces, context),
             Self::Require(_, body) => body.setup(namespace, idents, namespaces, context),
@@ -470,7 +656,13 @@ impl Setup for ContractSegment {
     }
 }
 impl Setup for ContractBody {
-    fn setup(&self, namespace: usize, idents: &mut Vec<(Ident, usize)>, namespaces: &mut Vec<Namespace>, context: &Context) {
+    fn setup(
+        &self,
+        namespace: usize,
+        idents: &mut Vec<(Ident, usize)>,
+        namespaces: &mut Vec<Namespace>,
+        context: &mut ParseContext,
+    ) {
         self.items.values.setup(namespace, idents, namespaces, context);
     }
 }

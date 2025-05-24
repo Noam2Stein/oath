@@ -1,15 +1,15 @@
 [package]
 edition = "2024"
-name    = "oath_nameres"
+name    = "oath"
 version = "0.1.0"
 
 [dependencies]
-derive_more        = { version = "2.0.1", features = [ "full" ] }
-nonempty           = "0.11.0"
+dashmap            = "6.1.0"
 oath_ast           = { path = "../oath_ast" }
 oath_diagnostics   = { path = "../oath_diagnostics" }
 oath_highlighting  = { path = "../oath_highlighting" }
 oath_interner      = { path = "../oath_interner" }
+oath_nameres       = { path = "../oath_nameres" }
 oath_parse_context = { path = "../oath_parse_context" }
 oath_parser        = { path = "../oath_parser" }
 oath_src           = { path = "../oath_src" }

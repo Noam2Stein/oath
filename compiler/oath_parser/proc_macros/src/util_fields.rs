@@ -319,8 +319,7 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         quote_spanned! {
             field_type.span() =>
 
-            let mut highlighter = parser.context().highlighter.write().unwrap();
-            <#field_type as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut highlighter);
+            <#field_type as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut parser.context().highlighter);
         }
     });
 
@@ -361,8 +360,7 @@ fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         quote_spanned! {
             field_type.span() =>
 
-            let mut highlighter = parser.context().highlighter.write().unwrap();
-            <Option<#field_type> as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut highlighter);
+            <Option<#field_type> as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut parser.context().highlighter);
         }
     });
 

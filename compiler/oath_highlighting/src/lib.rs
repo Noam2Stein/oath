@@ -12,7 +12,7 @@ pub enum HighlightColor {
 
 #[derive(Debug, Clone)]
 pub struct Highlighter {
-    highlights: Vec<(Span, HighlightColor)>,
+    pub highlights: Vec<(Span, HighlightColor)>,
 }
 
 impl Highlighter {

@@ -34,7 +34,7 @@ macro_rules! define_tokens {
 // TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS TOKENS
 define_tokens!(
     blue_keywords: [
-        lib, super, mod, use, declare, static, struct, enum, trait, impl, sys, fn,
+        parent, mod, use, declare, static, struct, enum, trait, impl, sys, fn,
         pub, open, raw, con, async, panic, lock, undef, runtime, comptime,
         promise, require, untagged, val, is,
         mut, sole, smut,

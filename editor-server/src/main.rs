@@ -1,14 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use oath_ast::*;
-use oath_context::*;
-use oath_highlighting::*;
-use oath_interner::*;
-use oath_nameres::*;
-use oath_src::*;
-use oath_tokenizer::*;
-use oath_tokens::*;
+use oath::*;
 use tower_lsp::{jsonrpc::Result, lsp_types::*, Client, LanguageServer, LspService, Server};
 
 mod span_range;

@@ -1,4 +1,4 @@
-use std::{mem::transmute, sync::Arc};
+use std::mem::transmute;
 
 use super::*;
 
@@ -14,7 +14,7 @@ pub trait Tokenizer {
     fn peek(&self) -> Option<PeekToken>;
     fn peek_span(&self) -> Span;
 
-    fn context(&self) -> &Arc<Context>;
+    fn context(&mut self) -> &mut ParseContext;
 }
 
 //
@@ -111,13 +111,13 @@ impl<'src> Tokenizer for RootTokenizer<'src> {
         }
     }
 
-    fn context(&self) -> &Arc<Context> {
+    fn context(&mut self) -> &mut ParseContext {
         self.raw.context()
     }
 }
 
 impl<'src> RootTokenizer<'src> {
-    pub fn new(src: &'src SrcFile, context: Arc<Context>) -> Self {
+    pub fn new(src: &'src SrcFile, context: &'src mut ParseContext) -> Self {
         let mut output = Self {
             raw: RawTokenizer::new(src.as_str(), context),
             peek: Some(PeekToken::Punct(Punct::new(Span::ZERO, PunctKind::And))),
@@ -239,8 +239,8 @@ impl<'src, 'parent> Tokenizer for GroupTokenizer<'src, 'parent> {
         }
     }
 
-    fn context(&self) -> &Arc<Context> {
-        match &self.parent {
+    fn context(&mut self) -> &mut ParseContext {
+        match &mut self.parent {
             ParentTokenizer::Root(parent) => parent.context(),
             ParentTokenizer::Group(parent) => parent.context(),
         }
@@ -282,7 +282,8 @@ impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
 
         self.peek = match self.parent.raw_next() {
             None => {
-                self.context().push_error(TokenError::Unclosed(self.open));
+                let open = self.open;
+                self.context().push_error(TokenError::Unclosed(open));
 
                 match &mut self.parent {
                     ParentTokenizer::Group(parent) => parent.update_peek(),
@@ -327,7 +328,8 @@ impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
 
             close
         } else {
-            self.context().push_error(TokenError::Unclosed(self.open));
+            let open = self.open;
+            self.context().push_error(TokenError::Unclosed(open));
 
             match &mut self.parent {
                 ParentTokenizer::Group(parent) => parent.peek = parent.handle_close(close),

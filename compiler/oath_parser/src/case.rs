@@ -1,18 +1,18 @@
 use crate::*;
 
 pub trait ExpectCase {
-    fn expect_case(&self, case: IdentCase, context: &Context);
+    fn expect_case(&self, case: IdentCase, context: &mut ParseContext);
 }
 
 impl<T: ExpectCase> ExpectCase for Option<T> {
-    fn expect_case(&self, case: IdentCase, context: &Context) {
+    fn expect_case(&self, case: IdentCase, context: &mut ParseContext) {
         if let Some(value) = self {
             value.expect_case(case, context);
         }
     }
 }
 impl<T: ExpectCase> ExpectCase for Try<T> {
-    fn expect_case(&self, case: IdentCase, context: &Context) {
+    fn expect_case(&self, case: IdentCase, context: &mut ParseContext) {
         if let Try::Success(value) = self {
             value.expect_case(case, context);
         }
@@ -20,7 +20,7 @@ impl<T: ExpectCase> ExpectCase for Try<T> {
 }
 
 impl ExpectCase for Ident {
-    fn expect_case(&self, case: IdentCase, context: &Context) {
+    fn expect_case(&self, case: IdentCase, context: &mut ParseContext) {
         let str = context.unintern(self.str_id());
         let first_char = str.chars().next().unwrap();
 
