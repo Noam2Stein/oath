@@ -1,5 +1,6 @@
-use std::path::PathBuf;
 use std::sync::RwLock;
+use std::thread;
+use std::{path::PathBuf, sync::Arc};
 
 use oath::*;
 use tower_lsp::{
@@ -15,8 +16,8 @@ async fn main() {
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::new(|client| Backend {
-        client,
-        oath: OathCompiler::new(),
+        client: Arc::new(client),
+        oath: Arc::new(OathCompiler::new()),
         lib: RwLock::new(None),
         root: RwLock::new(PathBuf::new()),
     });
@@ -26,8 +27,8 @@ async fn main() {
 
 #[derive(Debug)]
 struct Backend {
-    client: Client,
-    oath: OathCompiler,
+    client: Arc<Client>,
+    oath: Arc<OathCompiler>,
     lib: RwLock<Option<LibId>>,
     root: RwLock<PathBuf>,
 }
@@ -37,6 +38,36 @@ impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         *self.root.write().unwrap() = params.root_uri.unwrap().to_file_path().unwrap();
         *self.lib.write().unwrap() = Some(self.oath.create_lib(self.root.read().unwrap().to_path_buf(), []));
+
+        let weak = Arc::downgrade(&self.oath);
+        let client = self.client.clone();
+        thread::spawn(move || {
+            while let Some(oath) = weak.upgrade() {
+                let mut refresh_highlights = false;
+                for (path, diagnostics, _) in oath.check_libs() {
+                    pollster::block_on(client.log_message(MessageType::LOG, format!("AAA {}", path.display())));
+
+                    let diagnostics = diagnostics
+                        .map(|diagnostic| LspDiagnostic {
+                            range: span_to_range(diagnostic.span()),
+                            severity: Some(DiagnosticSeverity::ERROR),
+                            message: oath.format_diagnostic(&diagnostic),
+                            ..Default::default()
+                        })
+                        .collect();
+
+                    pollster::block_on(client.publish_diagnostics(Url::from_file_path(path).unwrap(), diagnostics, None));
+
+                    refresh_highlights = true;
+                }
+
+                if refresh_highlights {
+                    pollster::block_on(client.semantic_tokens_refresh()).unwrap();
+                }
+
+                thread::sleep(std::time::Duration::from_millis(100));
+            }
+        });
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {

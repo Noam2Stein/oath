@@ -1,9 +1,11 @@
 use std::{
     fs::File,
     io::Read,
+    iter::once,
     mem::take,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, RwLock},
+    time::SystemTime,
 };
 
 use dashmap::*;
@@ -45,7 +47,24 @@ impl OathCompiler {
             .unwrap();
 
         let lib = Lib {
-            root_mod: self.find_root_mod(&dir_path),
+            root_mod: RwLock::new(self.find_root_mod_path(&dir_path).map(|path| {
+                let mut file = File::open(&path).unwrap();
+
+                let mut mod_ = Mod {
+                    path,
+                    time: file.metadata().unwrap().modified().unwrap(),
+                    can_have_children: true,
+                    parser_diagnostics: Vec::new(),
+                    semantic_diagnostics: Vec::new(),
+                    highlights: Vec::new(),
+                };
+
+                let mut text = String::new();
+                file.read_to_string(&mut text).unwrap();
+                self.update_mod(&mut mod_, &text);
+
+                mod_
+            })),
             dir_path,
         };
 
@@ -54,10 +73,78 @@ impl OathCompiler {
         id
     }
 
+    pub fn check_libs(
+        &self,
+    ) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>, impl Iterator<Item = HighlightInfo>)> {
+        self.libs
+            .iter()
+            .map(|lib| {
+                let root_path = self.find_root_mod_path(&lib.dir_path);
+
+                let (changed_path, deleted_path) = match (root_path, lib.root_mod.read().unwrap().as_ref()) {
+                    (Ok(path), Ok(mod_)) => {
+                        if path != mod_.path {
+                            (Some(path), Some(mod_.path.clone()))
+                        } else {
+                            let file = File::open(&path).unwrap();
+                            let file_time = file.metadata().unwrap().modified().unwrap();
+
+                            if file_time > mod_.time {
+                                (Some(path.clone()), None)
+                            } else {
+                                (None, None)
+                            }
+                        }
+                    }
+                    (Ok(path), Err(_)) => (Some(path), None),
+                    (Err(_), Ok(mod_)) => (None, Some(mod_.path.clone())),
+                    (Err(_), Err(_)) => (None, None),
+                };
+
+                let changed_mod = changed_path.map(|path| {
+                    let mut file = File::open(&path).unwrap();
+
+                    let mut mod_ = Mod {
+                        path: path.clone(),
+                        time: file.metadata().unwrap().modified().unwrap(),
+                        can_have_children: true,
+                        parser_diagnostics: Vec::new(),
+                        semantic_diagnostics: Vec::new(),
+                        highlights: Vec::new(),
+                    };
+
+                    let mut text = String::new();
+                    file.read_to_string(&mut text).unwrap();
+                    self.update_mod(&mut mod_, &text);
+
+                    let parser_diagnostics = mod_.parser_diagnostics.clone();
+                    let semantic_diagnostics = mod_.semantic_diagnostics.clone();
+                    let highlights = mod_.highlights.clone();
+                    *lib.root_mod.write().unwrap() = Ok(mod_);
+
+                    (
+                        path,
+                        parser_diagnostics
+                            .into_iter()
+                            .chain(semantic_diagnostics.into_iter())
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                        highlights.into_iter(),
+                    )
+                });
+
+                let delected_mod = deleted_path.map(|path| (path, Vec::new().into_iter(), Vec::new().into_iter()));
+
+                once(changed_mod).chain(once(delected_mod))
+            })
+            .flatten()
+            .flatten()
+    }
+
     pub fn get_lib_diagnostics(&self, lib: LibId) -> impl IntoIterator<Item = Diagnostic> {
         let lib = self.libs.get(&lib).unwrap();
 
-        match &lib.root_mod {
+        match &lib.root_mod.read().unwrap().as_ref() {
             Ok(root_mod) => root_mod
                 .parser_diagnostics
                 .iter()
@@ -72,9 +159,9 @@ impl OathCompiler {
 
         for lib in self.libs.iter() {
             if path.parent().unwrap() == lib.dir_path
-                && (path.file_name().unwrap() == "main" || path.file_name().unwrap() == "lib")
+                && (path.file_name().unwrap() == "main.oh" || path.file_name().unwrap() == "lib.oh")
             {
-                return match &lib.root_mod {
+                return match &lib.root_mod.read().unwrap().as_ref() {
                     Ok(root_mod) => root_mod.semantic_diagnostics.iter().cloned().collect(),
                     Err(_) => Vec::new(),
                 }
@@ -90,9 +177,9 @@ impl OathCompiler {
 
         for lib in self.libs.iter() {
             if path.parent().unwrap() == lib.dir_path
-                && (path.file_name().unwrap() == "main" || path.file_name().unwrap() == "lib")
+                && (path.file_name().unwrap() == "main.oh" || path.file_name().unwrap() == "lib.oh")
             {
-                return match &lib.root_mod {
+                return match &lib.root_mod.read().unwrap().as_ref() {
                     Ok(root_mod) => root_mod.highlights.iter().cloned().collect(),
                     Err(_) => Vec::new(),
                 }
@@ -123,12 +210,13 @@ impl OathCompiler {
 #[derive(Debug)]
 struct Lib {
     pub dir_path: PathBuf,
-    pub root_mod: Result<Mod, ModError>,
+    pub root_mod: RwLock<Result<Mod, ModError>>,
 }
 
 #[derive(Debug)]
 struct Mod {
-    pub dir_path: PathBuf,
+    pub time: SystemTime,
+    pub path: PathBuf,
     pub can_have_children: bool,
     pub parser_diagnostics: Vec<Diagnostic>,
     pub semantic_diagnostics: Vec<Diagnostic>,
@@ -142,11 +230,14 @@ enum ModError {
 }
 
 impl OathCompiler {
-    fn find_root_mod(&self, dir_path: &Path) -> Result<Mod, ModError> {
-        let main_file = File::open(dir_path.join("main.oh")).ok();
-        let lib_file = File::open(dir_path.join("lib.oh")).ok();
+    fn find_root_mod_path(&self, dir_path: &Path) -> Result<PathBuf, ModError> {
+        let main_path = dir_path.join("main.oh");
+        let lib_path = dir_path.join("lib.oh");
 
-        let mut file = match (main_file, lib_file) {
+        let main_path = if main_path.exists() { Some(main_path) } else { None };
+        let lib_path = if lib_path.exists() { Some(lib_path) } else { None };
+
+        let path = match (main_path, lib_path) {
             (Some(main_file), None) => main_file,
             (None, Some(lib_file)) => lib_file,
             (Some(_), Some(_)) => {
@@ -163,57 +254,7 @@ impl OathCompiler {
             }
         };
 
-        let mut output = Mod {
-            dir_path: dir_path.to_path_buf(),
-            can_have_children: true,
-            parser_diagnostics: Vec::new(),
-            semantic_diagnostics: Vec::new(),
-            highlights: Vec::new(),
-        };
-
-        let mut text = String::new();
-        file.read_to_string(&mut text).unwrap();
-        self.update_mod(&mut output, &text);
-
-        Ok(output)
-    }
-
-    fn find_child_mod(&self, parent: &Mod, name: StrId) -> Result<Mod, ModError> {
-        let name = self.interner.unintern(name);
-
-        let file_file = File::open(parent.dir_path.join(format!("{name}.oh"))).ok();
-        let dir_file = File::open(parent.dir_path.join(&name).join("mod.oh")).ok();
-
-        let (mut file, dir_path) = match (file_file, dir_file) {
-            (Some(file_file), None) => (file_file, parent.dir_path.clone()),
-            (None, Some(dir_file)) => (dir_file, parent.dir_path.join(&name)),
-            (Some(_), Some(_)) => {
-                return Err(ModError::FoundBoth(format!(
-                    "found both `{name}.oh` and `{name}/mod.oh` in {}",
-                    parent.dir_path.display()
-                )));
-            }
-            (None, None) => {
-                return Err(ModError::CantFind(format!(
-                    "can't find `{name}.oh` or `{name}/mod.oh` in {}",
-                    parent.dir_path.display()
-                )));
-            }
-        };
-
-        let mut output = Mod {
-            dir_path,
-            can_have_children: true,
-            parser_diagnostics: Vec::new(),
-            semantic_diagnostics: Vec::new(),
-            highlights: Vec::new(),
-        };
-
-        let mut text = String::new();
-        file.read_to_string(&mut text).unwrap();
-        self.update_mod(&mut output, &text);
-
-        Ok(output)
+        Ok(path)
     }
 
     fn update_mod(&self, mod_: &mut Mod, text: &str) {
@@ -227,6 +268,47 @@ impl OathCompiler {
         mod_.parser_diagnostics = take(&mut context.diagnostics);
 
         ast.nameres(&mut context);
+
         mod_.semantic_diagnostics = context.diagnostics;
+        mod_.highlights = context.highlighter.highlights;
     }
 }
+
+/*
+fn find_child_mod(&self, parent: &Mod, name: StrId) -> Result<Mod, ModError> {
+        let name = self.interner.unintern(name);
+
+        let file_file = File::open(parent.path.parent().unwrap().join(format!("{name}.oh"))).ok();
+        let dir_file = File::open(parent.path.parent().unwrap().join(&name).join("mod.oh")).ok();
+
+        let path = match (file_file, dir_file) {
+            (Some(file_file), None) => (file_file, parent.path.parent().unwrap().to_path_buf()),
+            (None, Some(dir_file)) => (dir_file, parent.path.parent().unwrap().join(&name)),
+            (Some(_), Some(_)) => {
+                return Err(ModError::FoundBoth(format!(
+                    "found both `{name}.oh` and `{name}/mod.oh` in {}",
+                    parent.path.parent().unwrap().display()
+                )));
+            }
+            (None, None) => {
+                return Err(ModError::CantFind(format!(
+                    "can't find `{name}.oh` or `{name}/mod.oh` in {}",
+                    parent.path.parent().unwrap().display()
+                )));
+            }
+        };
+
+        let mut output = Mod {
+            path,
+            can_have_children: true,
+            parser_diagnostics: Vec::new(),
+            semantic_diagnostics: Vec::new(),
+            highlights: Vec::new(),
+        };
+
+        let mut text = String::new();
+        file.read_to_string(&mut text).unwrap();
+        self.update_mod(&mut output, &text);
+
+        Ok(output)
+    } */
