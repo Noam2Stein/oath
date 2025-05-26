@@ -2,7 +2,7 @@ use derive_more::Display;
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]
+#[derive(Debug, Clone, Hash, Spanned, InternedDisplay)]
 pub enum SyntaxError {
     #[display("Syntax: expected {}", field_1)]
     Expected(#[span] Span, &'static str),

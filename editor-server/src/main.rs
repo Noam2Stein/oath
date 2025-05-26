@@ -1,8 +1,10 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
+use std::sync::RwLock;
 
 use oath::*;
-use tower_lsp::{jsonrpc::Result, lsp_types::*, Client, LanguageServer, LspService, Server};
+use tower_lsp::{
+    jsonrpc::Result, lsp_types::Diagnostic as LspDiagnostic, lsp_types::*, Client, LanguageServer, LspService, Server,
+};
 
 mod span_range;
 use span_range::*;
@@ -14,7 +16,9 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        highlights: Default::default(),
+        oath: OathCompiler::new(),
+        lib: RwLock::new(None),
+        root: RwLock::new(PathBuf::new()),
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
@@ -23,12 +27,17 @@ async fn main() {
 #[derive(Debug)]
 struct Backend {
     client: Client,
-    highlights: Mutex<HashMap<Url, Vec<SemanticToken>>>,
+    oath: OathCompiler,
+    lib: RwLock<Option<LibId>>,
+    root: RwLock<PathBuf>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        *self.root.write().unwrap() = params.root_uri.unwrap().to_file_path().unwrap();
+        *self.lib.write().unwrap() = Some(self.oath.create_lib(self.root.read().unwrap().to_path_buf(), []));
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -87,13 +96,8 @@ impl LanguageServer for Backend {
     }
 
     async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
-        let uri = params.text_document.uri;
-
-        let highlights = self.highlights.lock().unwrap();
-        let tokens = highlights.get(&uri).cloned().unwrap_or_default();
-
         Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
-            data: tokens,
+            data: highlights_to_semantic_tokens(self.oath.get_mod_highligts(params.text_document.uri.to_file_path().unwrap())),
             result_id: None,
         })))
     }
@@ -101,49 +105,40 @@ impl LanguageServer for Backend {
 
 impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
-        let src_file = SrcFile::from_str(text);
-        let context = Arc::new(Context::new());
+        let parser_diagnostics = self.oath.parse_text(text);
 
-        let _ = src_file.tokenize(context.clone()).parse_ast().nameres(&context);
-
-        let diagnostics: Vec<Diagnostic> = context
-            .clone_errors()
-            .into_iter()
-            .map(|error| Diagnostic {
-                range: span_to_range(error.span()),
+        let diagnostics = self
+            .oath
+            .get_mod_semantic_diagnostics(uri.to_file_path().unwrap())
+            .chain(parser_diagnostics)
+            .map(|diagnostic| LspDiagnostic {
+                range: span_to_range(diagnostic.span()),
                 severity: Some(DiagnosticSeverity::ERROR),
-                message: error.to_string_interned(&context.interner.read().unwrap()),
+                message: self.oath.format_diagnostic(&diagnostic),
                 ..Default::default()
             })
-            .chain(context.clone_warnings().into_iter().map(|warning| Diagnostic {
-                range: span_to_range(warning.span()),
-                severity: Some(DiagnosticSeverity::WARNING),
-                message: warning.to_string_interned(&context.interner.read().unwrap()),
-                ..Default::default()
-            }))
             .collect();
-
-        let highlights = context.clone_highlights();
-
-        self.highlights
-            .lock()
-            .unwrap()
-            .insert(uri.clone(), highlights_to_semantic_tokens(&highlights));
 
         self.client.publish_diagnostics(uri, diagnostics, Some(version)).await;
     }
 }
 
-fn highlights_to_semantic_tokens(highlights: &[(Span, HighlightColor)]) -> Vec<SemanticToken> {
-    let mut highlights = highlights.to_vec();
-    highlights.sort_by(|(span, _), (other_span, _)| span.cmp(other_span));
+fn highlights_to_semantic_tokens(highlights: impl Iterator<Item = HighlightInfo>) -> Vec<SemanticToken> {
+    let mut highlights = highlights.collect::<Vec<_>>();
+    highlights.sort_by(
+        |HighlightInfo { span, color: _ },
+         HighlightInfo {
+             span: other_span,
+             color: _,
+         }| span.cmp(other_span),
+    );
 
     let mut output = Vec::new();
 
     let mut prev_line = 0;
     let mut prev_start = 0;
 
-    for (span, color) in highlights {
+    for HighlightInfo { span, color } in highlights {
         let delta_line = span.line().unwrap_or(0) - prev_line;
         let delta_start = if delta_line == 0 {
             span.start().char - prev_start
@@ -170,6 +165,7 @@ const CUSTOM_LEGEND: &[SemanticTokenType] = &[
     SemanticTokenType::TYPE,
     SemanticTokenType::VARIABLE,
     SemanticTokenType::FUNCTION,
+    SemanticTokenType::ENUM_MEMBER,
 ];
 
 fn convert_highlight_color(color: HighlightColor) -> u32 {
@@ -177,5 +173,6 @@ fn convert_highlight_color(color: HighlightColor) -> u32 {
         HighlightColor::Green => 0,
         HighlightColor::Cyan => 1,
         HighlightColor::Yellow => 2,
+        HighlightColor::Blue => 3,
     }
 }

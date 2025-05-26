@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 dashmap            = "6.1.0"
+derive_more        = { version = "2.0.1", features = [ "full" ] }
 oath_ast           = { path = "../oath_ast" }
 oath_diagnostics   = { path = "../oath_diagnostics" }
 oath_highlighting  = { path = "../oath_highlighting" }

@@ -6,8 +6,8 @@ pub trait TokenizeExt: Seal {
 }
 trait Seal {}
 
-impl Seal for SrcFile {}
-impl TokenizeExt for SrcFile {
+impl Seal for str {}
+impl TokenizeExt for str {
     fn tokenize<'ctx>(&'ctx self, context: &'ctx mut ParseContext) -> RootTokenizer<'ctx> {
         RootTokenizer::new(self, context)
     }

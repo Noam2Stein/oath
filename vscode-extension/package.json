@@ -14,7 +14,7 @@
       {
         "id": "oath",
         "aliases": ["Oath", "oath"],
-        "extensions": [".oath"],
+        "extensions": [".oh"],
         "configuration": "./language-configuration.json"
       }
     ],

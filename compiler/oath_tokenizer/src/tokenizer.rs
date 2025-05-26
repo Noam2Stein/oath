@@ -116,10 +116,10 @@ impl<'src> Tokenizer for RootTokenizer<'src> {
     }
 }
 
-impl<'src> RootTokenizer<'src> {
-    pub fn new(src: &'src SrcFile, context: &'src mut ParseContext) -> Self {
+impl<'ctx> RootTokenizer<'ctx> {
+    pub fn new(src: &'ctx str, context: &'ctx mut ParseContext) -> Self {
         let mut output = Self {
-            raw: RawTokenizer::new(src.as_str(), context),
+            raw: RawTokenizer::new(src, context),
             peek: Some(PeekToken::Punct(Punct::new(Span::ZERO, PunctKind::And))),
             last_span: Span::ZERO,
         };
