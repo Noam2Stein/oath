@@ -4,8 +4,11 @@ use super::*;
 pub enum TypeItem {}
 
 #[derive(Debug)]
-pub enum ItemId {
-    Type(Id<TypeItem>),
+pub struct Mod {
+    ident: Try<Ident>,
+    types: Vec<Owned<TypeItem>>,
 }
 
-impl QueryType for TypeItem {}
+impl QueryType for TypeItem {
+    type Ast = ;
+}

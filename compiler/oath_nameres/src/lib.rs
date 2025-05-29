@@ -5,7 +5,6 @@ use oath_diagnostics::*;
 use oath_highlighting::*;
 use oath_interner::*;
 use oath_parse_context::*;
-use oath_parser::*;
 use oath_src::*;
 use oath_tokens::*;
 
@@ -50,7 +49,7 @@ impl Namespace {
 
     fn resolve(&self, ident: Ident, context: &mut ParseContext, namespaces: &Vec<Namespace>) {
         if let Some(color) = self.names.get(&ident.str_id()) {
-            context.highlight(ident.span, *color);
+            context.highlight(ident, *color);
         } else if let Some(parent) = self.parent {
             namespaces[parent].resolve(ident, context, namespaces);
         } else {
@@ -144,21 +143,38 @@ impl Setup for Item {
     ) {
         match &self.core {
             Try::Success(ItemCore::Attr(item)) => item.body.setup(namespace, idents, namespaces, context),
-            Try::Success(ItemCore::Enum(item)) => {
-                if let Try::Success(ident) = item.ident {
-                    namespaces[namespace].insert(ident, HighlightColor::Green, context);
+            Try::Success(ItemCore::Type(item)) => match item {
+                TypeItem::Struct(item) => {
+                    if let Try::Success(ident) = item.ident {
+                        namespaces[namespace].insert(ident, HighlightColor::Green, context);
+                    }
+
+                    namespaces.push(Namespace {
+                        parent: Some(namespace),
+                        names: HashMap::new(),
+                    });
+                    let namespace = namespaces.len() - 1;
+
+                    item.generics.setup(namespace, idents, namespaces, context);
+                    item.contract.setup(namespace, idents, namespaces, context);
+                    item.fields.setup(namespace, idents, namespaces, context);
                 }
+                TypeItem::Enum(item) => {
+                    if let Try::Success(ident) = item.ident {
+                        namespaces[namespace].insert(ident, HighlightColor::Green, context);
+                    }
 
-                namespaces.push(Namespace {
-                    parent: Some(namespace),
-                    names: HashMap::new(),
-                });
-                let namespace = namespaces.len() - 1;
+                    namespaces.push(Namespace {
+                        parent: Some(namespace),
+                        names: HashMap::new(),
+                    });
+                    let namespace = namespaces.len() - 1;
 
-                item.generics.setup(namespace, idents, namespaces, context);
-                item.contract.setup(namespace, idents, namespaces, context);
-                item.variants.setup(namespace, idents, namespaces, context);
-            }
+                    item.generics.setup(namespace, idents, namespaces, context);
+                    item.contract.setup(namespace, idents, namespaces, context);
+                    item.variants.setup(namespace, idents, namespaces, context);
+                }
+            },
             Try::Success(ItemCore::Fn(item)) => {
                 if let Try::Success(ident) = item.ident {
                     namespaces[namespace].insert(ident, HighlightColor::Yellow, context);
@@ -203,21 +219,6 @@ impl Setup for Item {
                 item.generics.setup(namespace, idents, namespaces, context);
                 item.contract.setup(namespace, idents, namespaces, context);
                 item.eq.setup(namespace, idents, namespaces, context);
-            }
-            Try::Success(ItemCore::Struct(item)) => {
-                if let Try::Success(ident) = item.ident {
-                    namespaces[namespace].insert(ident, HighlightColor::Green, context);
-                }
-
-                namespaces.push(Namespace {
-                    parent: Some(namespace),
-                    names: HashMap::new(),
-                });
-                let namespace = namespaces.len() - 1;
-
-                item.generics.setup(namespace, idents, namespaces, context);
-                item.contract.setup(namespace, idents, namespaces, context);
-                item.fields.setup(namespace, idents, namespaces, context);
             }
             Try::Success(ItemCore::Sys(item)) => {
                 if let Try::Success(ident) = item.ident {

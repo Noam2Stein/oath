@@ -29,9 +29,3 @@ impl InternedDisplay for FloatLiteral {
         Ok(())
     }
 }
-
-impl Highlight for FloatLiteral {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
-        h.highlight(self.span, color);
-    }
-}

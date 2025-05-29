@@ -3,7 +3,6 @@ use std::{fmt::Debug, hash::Hash};
 use derive_more::*;
 use derive_new::*;
 
-use oath_highlighting::*;
 use oath_interner::*;
 use oath_src::*;
 
@@ -19,6 +18,7 @@ mod keyword;
 mod literal;
 mod punct;
 mod str_literal;
+mod try_;
 pub use char_literal::*;
 pub use delimiters::*;
 pub use float_literal::*;
@@ -28,6 +28,7 @@ pub use keyword::*;
 pub use literal::*;
 pub use punct::*;
 pub use str_literal::*;
+pub use try_::*;
 
 #[macro_export(local_inner_macros)]
 macro_rules! verify_token_type {
@@ -37,4 +38,4 @@ macro_rules! verify_token_type {
 }
 
 #[allow(dead_code)]
-const fn verify_token_type_helper<T: Debug + Copy + Eq + Ord + Hash + InternedDisplay + Spanned + Highlight>() {}
+const fn verify_token_type_helper<T: Debug + Copy + Eq + Ord + Hash + InternedDisplay + Spanned>() {}

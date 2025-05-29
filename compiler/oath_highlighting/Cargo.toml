@@ -4,4 +4,5 @@ name    = "oath_highlighting"
 version = "0.1.0"
 
 [dependencies]
-oath_src = { path = "../oath_src" }
+oath_src    = { path = "../oath_src" }
+oath_tokens = { path = "../oath_tokens" }

@@ -9,9 +9,3 @@ pub struct CharLiteral {
 }
 
 verify_token_type!(CharLiteral);
-
-impl Highlight for CharLiteral {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
-        h.highlight(self.span, color);
-    }
-}

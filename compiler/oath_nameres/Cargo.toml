@@ -11,7 +11,6 @@ oath_diagnostics   = { path = "../oath_diagnostics" }
 oath_highlighting  = { path = "../oath_highlighting" }
 oath_interner      = { path = "../oath_interner" }
 oath_parse_context = { path = "../oath_parse_context" }
-oath_parser        = { path = "../oath_parser" }
 oath_src           = { path = "../oath_src" }
 oath_tokenizer     = { path = "../oath_tokenizer" }
 oath_tokens        = { path = "../oath_tokens" }

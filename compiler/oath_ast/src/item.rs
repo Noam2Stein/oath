@@ -26,8 +26,7 @@ pub enum ItemCore {
     Mod(Mod),
     Use(Use),
     Fn(Fn),
-    Struct(Struct),
-    Enum(Enum),
+    Type(TypeItem),
     Sys(Sys),
     Static(Static),
     Trait(Trait),
@@ -114,6 +113,15 @@ pub struct FnInput {
 pub enum FnBody {
     Block(Block),
     Semi(Discard<punct!(";")>),
+}
+
+// TYPE
+
+#[derive(Debug, Clone, OptionParse)]
+#[desc = "a type declaration"]
+pub enum TypeItem {
+    Struct(Struct),
+    Enum(Enum),
 }
 
 // STRUCT

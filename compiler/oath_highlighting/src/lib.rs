@@ -1,4 +1,5 @@
 use oath_src::*;
+use oath_tokens::*;
 
 mod highlight;
 pub use highlight::*;
@@ -27,7 +28,7 @@ impl Highlighter {
         Self { highlights: Vec::new() }
     }
 
-    pub fn highlight(&mut self, span: Span, color: HighlightColor) {
+    pub fn highlight_span(&mut self, span: Span, color: HighlightColor) {
         self.highlights.push(HighlightInfo { span, color });
     }
 }

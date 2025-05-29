@@ -36,7 +36,10 @@ impl ParseContext {
         self.interner.unintern_fmt(str_id, f)
     }
 
-    pub fn highlight(&mut self, span: Span, color: HighlightColor) {
-        self.highlighter.highlight(span, color);
+    pub fn highlight(&mut self, target: impl Highlight, color: HighlightColor) {
+        target.highlight(color, &mut self.highlighter);
+    }
+    pub fn highlight_span(&mut self, span: Span, color: HighlightColor) {
+        self.highlighter.highlight_span(span, color);
     }
 }

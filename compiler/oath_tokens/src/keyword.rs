@@ -67,16 +67,3 @@ impl KeywordKind {
         }
     }
 }
-
-impl Highlight for Keyword {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
-        h.highlight(self.span, color);
-    }
-}
-with_tokens!($(
-    impl Highlight for $keyword_type {
-        fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
-            h.highlight(self.0, color);
-        }
-    }
-)*);
