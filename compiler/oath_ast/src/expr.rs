@@ -2,7 +2,7 @@ use super::*;
 
 // UNARY EXPR
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub enum ExprCore {
     Ident(Ident),
@@ -27,7 +27,7 @@ pub enum ExprKeyword {
     Out(keyword!("out")),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression prefix"]
 pub enum ExprPrefix {
     Neg(punct!("-")),
@@ -53,7 +53,7 @@ pub enum ReferenceBounds {
     SoleMut(keyword!("smut")),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression postfix"]
 pub enum ExprPostfix {
     Member(punct!("."), Try<Member>),
@@ -65,14 +65,14 @@ pub enum ExprPostfix {
     Generics(Angles, List<AngleExpr>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Spanned, OptionParse)]
+#[derive(Debug, PartialEq, Eq, Spanned, OptionParse)]
 #[desc = "a `.` expression"]
 pub enum Member {
     Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
     Named(Ident),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct UnaryExpr {
     pub attrs: Repeated<Attr>,
@@ -83,7 +83,7 @@ pub struct UnaryExpr {
 
 // BINARY EXPR
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "a binary expr extension"]
 pub struct ExprBinaryPostfix {
     pub op: BinaryOperator,
@@ -106,7 +106,7 @@ pub enum BinaryOperator {
     Bound(punct!(":")),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct Expr {
     pub lhs: UnaryExpr,
@@ -115,7 +115,7 @@ pub struct Expr {
 
 // ANGLE EXPR
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression prefix"]
 pub enum AngleExprPrefix {
     Neg(punct!("-")),
@@ -130,7 +130,7 @@ pub enum AngleExprPrefix {
     Lifetime(Lifetime),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct AngleUnaryExpr {
     pub attrs: Repeated<Attr>,
@@ -139,7 +139,7 @@ pub struct AngleUnaryExpr {
     pub postfix: Repeated<ExprPostfix>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct AngleExpr {
     pub lhs: AngleUnaryExpr,
@@ -148,7 +148,7 @@ pub struct AngleExpr {
 
 // BRACE EXPR
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub enum BraceExprCore {
     Ident(Ident),
@@ -165,7 +165,7 @@ pub enum BraceExprCore {
     },
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression postfix"]
 pub enum BraceExprPostfix {
     Member(punct!("."), Try<Member>),
@@ -177,7 +177,7 @@ pub enum BraceExprPostfix {
     Generics(Angles, List<AngleExpr>),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct UnaryBraceExpr {
     pub attrs: Repeated<Attr>,
@@ -186,7 +186,7 @@ pub struct UnaryBraceExpr {
     pub postfix: Repeated<BraceExprPostfix>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an expression"]
 pub struct BraceExpr {
     pub lhs: UnaryBraceExpr,
@@ -195,7 +195,7 @@ pub struct BraceExpr {
 
 // IF ELSE
 
-#[derive(Debug, Clone, Parse)]
+#[derive(Debug, Parse)]
 pub enum IfBody {
     Then {
         keyword: keyword!("then"),
@@ -206,14 +206,14 @@ pub enum IfBody {
     Block { block: Try<Block>, else_: Option<Else> },
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "`else`"]
 pub struct Else {
     pub keyword: keyword!("else"),
     pub body: ElseBody,
 }
 
-#[derive(Debug, Clone, Parse)]
+#[derive(Debug, Parse)]
 pub enum ElseBody {
     ElseIf {
         keyword: keyword!("if"),
@@ -224,7 +224,7 @@ pub enum ElseBody {
     Else(Try<Block>),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an if statement"]
 pub struct ThenElse {
     pub keyword: keyword!("else"),
@@ -244,7 +244,7 @@ pub enum ListSep {
 
 // VAR
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "a variable name"]
 pub enum VarName {
     #[framed]
@@ -256,14 +256,14 @@ pub enum VarName {
     ),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "`= ...`"]
 pub struct VarInit {
     pub eq: punct!("="),
     pub init: Try<Expr>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "`'`"]
 pub struct Lifetime {
     pub punct: punct!("'"),

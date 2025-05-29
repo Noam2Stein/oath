@@ -35,7 +35,7 @@ impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
                 return sep_exit;
             }
 
-            let mut item = Try::Failure;
+            let mut item = Try::parse_error();
             let item_exit = Try::<T>::parse(parser, &mut item);
 
             if let Try::Success(item) = item {

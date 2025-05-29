@@ -1,20 +1,20 @@
 use super::*;
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an attribute"]
 pub struct Attr {
     pub hash: punct!("#"),
     pub body: Try<AttrBody>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "an attribute"]
 pub struct InnerAttr {
     pub hash: punct!("#!"),
     pub body: Try<AttrBody>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "`[ ]`"]
 #[framed]
 pub struct AttrBody {
@@ -23,7 +23,7 @@ pub struct AttrBody {
     pub value: Option<AttrInput>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "a meta value"]
 pub enum AttrInput {
     #[framed]

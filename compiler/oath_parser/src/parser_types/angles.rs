@@ -1,9 +1,9 @@
 use super::*;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Angles {
     pub open: punct!("<"),
-    pub close: punct!(">"),
+    pub close: Try<MorePunct>,
 }
 
 impl ParseFrame for Angles {
@@ -25,33 +25,18 @@ impl ParseFrame for Angles {
 
         match parse_exit {
             ParseExit::Complete => {
-                let mut close = Try::Failure;
-                Try::<punct!(">")>::parse(parser, &mut close);
+                let mut close = Try::parse_error();
+                let exit = Try::<punct!(">")>::parse(parser, &mut close);
 
-                match close {
-                    Try::Success(close) => {
-                        *output = Some((Self { open, close }, value));
+                *output = Some((Self { open, close }, value));
 
-                        ParseExit::Complete
-                    }
-                    Try::Failure => {
-                        *output = Some((
-                            Self {
-                                open,
-                                close: punct!(">")(parser.peek_span()),
-                            },
-                            value,
-                        ));
-
-                        ParseExit::Cut
-                    }
-                }
+                exit
             }
             ParseExit::Cut => {
                 *output = Some((
                     Self {
                         open,
-                        close: punct!(">")(parser.peek_span()),
+                        close: Try::parse_error(),
                     },
                     value,
                 ));

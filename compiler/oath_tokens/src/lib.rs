@@ -18,7 +18,6 @@ mod keyword;
 mod literal;
 mod punct;
 mod str_literal;
-mod try_;
 pub use char_literal::*;
 pub use delimiters::*;
 pub use float_literal::*;
@@ -28,7 +27,6 @@ pub use keyword::*;
 pub use literal::*;
 pub use punct::*;
 pub use str_literal::*;
-pub use try_::*;
 
 #[macro_export(local_inner_macros)]
 macro_rules! verify_token_type {

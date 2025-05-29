@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use oath_diagnostics::*;
 use oath_highlighting::*;
 use oath_parser::*;
 use oath_src::*;

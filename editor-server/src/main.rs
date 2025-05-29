@@ -3,9 +3,14 @@ use std::thread;
 use std::{path::PathBuf, sync::Arc};
 
 use oath::*;
-use tower_lsp::{
-    jsonrpc::Result, lsp_types::Diagnostic as LspDiagnostic, lsp_types::*, Client, LanguageServer, LspService, Server,
+use tower_lsp::lsp_types::{
+    CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DiagnosticSeverity, DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams, Hover, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, MessageType,
+    SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, Url,
 };
+use tower_lsp::{jsonrpc::Result, lsp_types::Diagnostic as LspDiagnostic, Client, LanguageServer, LspService, Server};
 
 mod span_range;
 use span_range::*;
@@ -43,10 +48,8 @@ impl LanguageServer for Backend {
         let client = self.client.clone();
         thread::spawn(move || {
             while let Some(oath) = weak.upgrade() {
-                let mut refresh_highlights = false;
-                for (path, diagnostics, _) in oath.check_libs() {
-                    pollster::block_on(client.log_message(MessageType::LOG, format!("AAA {}", path.display())));
-
+                oath.check_libs();
+                for (path, diagnostics) in oath.dirty_diagnostics() {
                     let diagnostics = diagnostics
                         .map(|diagnostic| LspDiagnostic {
                             range: span_to_range(diagnostic.span()),
@@ -57,12 +60,6 @@ impl LanguageServer for Backend {
                         .collect();
 
                     pollster::block_on(client.publish_diagnostics(Url::from_file_path(path).unwrap(), diagnostics, None));
-
-                    refresh_highlights = true;
-                }
-
-                if refresh_highlights {
-                    pollster::block_on(client.semantic_tokens_refresh()).unwrap();
                 }
 
                 thread::sleep(std::time::Duration::from_millis(100));
@@ -128,7 +125,7 @@ impl LanguageServer for Backend {
 
     async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
         Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
-            data: highlights_to_semantic_tokens(self.oath.get_mod_highligts(params.text_document.uri.to_file_path().unwrap())),
+            data: highlights_to_semantic_tokens(self.oath.file_highligts(params.text_document.uri.to_file_path().unwrap())),
             result_id: None,
         })))
     }
@@ -138,9 +135,14 @@ impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
         let parser_diagnostics = self.oath.parse_text(text);
 
+        self.client
+            .log_message(MessageType::LOG, format!("GHEGHEOUIGHIUOG {}", parser_diagnostics.len()))
+            .await;
+
         let diagnostics = self
             .oath
-            .get_mod_semantic_diagnostics(uri.to_file_path().unwrap())
+            .file_diagnostics(uri.to_file_path().unwrap())
+            .filter(|diagnostic| !diagnostic.is_live())
             .chain(parser_diagnostics)
             .map(|diagnostic| LspDiagnostic {
                 range: span_to_range(diagnostic.span()),

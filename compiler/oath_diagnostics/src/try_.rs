@@ -1,13 +1,22 @@
 use super::*;
 
 #[must_use]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, OptionSpanned)]
+#[derive(Debug)]
 pub enum Try<T> {
-    Success(#[option_spanned] T),
-    Failure,
+    Success(T),
+    Failure(Option<DiagnosticHandle>),
 }
 
-impl<T> Try<T> {
+impl<T: OptionSpanned> OptionSpanned for Try<T> {
+    fn option_span(&self) -> Option<Span> {
+        match self {
+            Self::Success(t) => t.option_span(),
+            Self::Failure(_) => None,
+        }
+    }
+}
+
+/*impl<T> Try<T> {
     pub fn success(self) -> Option<T> {
         match self {
             Self::Success(value) => Some(value),
@@ -74,3 +83,4 @@ impl<T> Try<T> {
         }
     }
 }
+*/

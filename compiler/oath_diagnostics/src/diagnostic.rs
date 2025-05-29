@@ -73,3 +73,15 @@ pub enum NameError {
     #[display("`{field_0}` already exists in this context")]
     AlreadyExists(Ident),
 }
+
+impl Diagnostic {
+    pub fn is_live(&self) -> bool {
+        match self {
+            Self::Error(Error::Name(_)) => false,
+            Self::Error(Error::Syntax(_)) => true,
+            Self::Error(Error::Token(_)) => true,
+            Self::Error(Error::Unfinished(_)) => false,
+            Self::Warning(Warning::Syntax(_)) => true,
+        }
+    }
+}

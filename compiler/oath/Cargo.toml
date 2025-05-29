@@ -10,7 +10,6 @@ oath_ast           = { path = "../oath_ast" }
 oath_diagnostics   = { path = "../oath_diagnostics" }
 oath_highlighting  = { path = "../oath_highlighting" }
 oath_interner      = { path = "../oath_interner" }
-oath_nameres       = { path = "../oath_nameres" }
 oath_parse_context = { path = "../oath_parse_context" }
 oath_parser        = { path = "../oath_parser" }
 oath_src           = { path = "../oath_src" }

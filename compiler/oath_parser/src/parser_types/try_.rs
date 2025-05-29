@@ -25,15 +25,14 @@ impl<T: ParseDesc> Parse for Try<T> {
             exit
         } else {
             let span = parser.peek_span();
-            parser.context().push_error(SyntaxError::Expected(span, T::desc()));
 
-            *output = Try::Failure;
+            *output = Try::Failure(Some(parser.context().push_error(SyntaxError::Expected(span, T::desc()))));
 
             ParseExit::Cut
         }
     }
 
     fn parse_error() -> Self {
-        Try::Failure
+        Try::Failure(None)
     }
 }

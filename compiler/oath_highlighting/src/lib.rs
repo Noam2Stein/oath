@@ -1,3 +1,4 @@
+use oath_diagnostics::*;
 use oath_src::*;
 use oath_tokens::*;
 

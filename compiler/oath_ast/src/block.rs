@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "`{ }`"]
 #[framed]
 pub struct Block {
@@ -8,7 +8,7 @@ pub struct Block {
     pub stmts: Repeated<Stmt>,
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, OptionParse)]
 #[desc = "a statement"]
 pub enum Stmt {
     Item(Item),

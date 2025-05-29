@@ -5,6 +5,12 @@ pub struct Repeated<T: OptionParse> {
     pub values: Vec<T>,
 }
 
+impl<T: OptionParse> Default for Repeated<T> {
+    fn default() -> Self {
+        Self { values: Vec::new() }
+    }
+}
+
 impl<T: OptionParse> OptionParse for Repeated<T> {
     fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
         let mut option = Self::parse_error();

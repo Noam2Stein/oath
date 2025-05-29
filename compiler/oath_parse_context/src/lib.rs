@@ -1,5 +1,6 @@
 use std::{
     fmt::{self, Formatter},
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -10,20 +11,21 @@ use oath_src::*;
 
 #[derive(Debug)]
 pub struct ParseContext {
+    pub path: PathBuf,
     pub interner: Arc<Interner>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Diagnostics,
     pub highlighter: Highlighter,
 }
 
 impl ParseContext {
-    pub fn push_diagnostic(&mut self, diagnostic: impl Into<Diagnostic>) {
-        self.diagnostics.push(diagnostic.into());
+    pub fn push_diagnostic(&mut self, diagnostic: impl Into<Diagnostic>) -> DiagnosticHandle {
+        self.diagnostics.push_diagnostic(self.path.clone(), diagnostic)
     }
-    pub fn push_error(&mut self, diagnostic: impl Into<Error>) {
-        self.diagnostics.push(Diagnostic::Error(diagnostic.into()));
+    pub fn push_error(&mut self, diagnostic: impl Into<Error>) -> DiagnosticHandle {
+        self.diagnostics.push_error(self.path.clone(), diagnostic)
     }
-    pub fn push_warning(&mut self, diagnostic: impl Into<Warning>) {
-        self.diagnostics.push(Diagnostic::Warning(diagnostic.into()));
+    pub fn push_warning(&mut self, diagnostic: impl Into<Warning>) -> DiagnosticHandle {
+        self.diagnostics.push_warning(self.path.clone(), diagnostic)
     }
 
     pub fn intern(&mut self, str: &str) -> StrId {

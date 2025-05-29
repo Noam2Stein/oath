@@ -1,7 +1,5 @@
 use std::{
-    iter::Flatten,
     path::{Path, PathBuf},
-    slice::Iter,
     sync::{Arc, Weak},
 };
 
@@ -11,11 +9,14 @@ use oath_src::*;
 use oath_tokens::*;
 
 mod diagnostic;
+mod try_;
 pub use diagnostic::*;
+pub use try_::*;
 
 #[derive(Debug)]
 pub struct Diagnostics(Arc<InnerDiagnostics>);
 
+#[must_use]
 #[derive(Debug)]
 pub struct DiagnosticHandle {
     file: PathBuf,
@@ -37,6 +38,10 @@ impl Diagnostics {
             files: DashMap::with_capacity(100),
             dirty_files: DashSet::new(),
         }))
+    }
+
+    pub fn arc_clone(&self) -> Self {
+        Self(self.0.clone())
     }
 
     pub fn push_diagnostic(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Diagnostic>) -> DiagnosticHandle {
@@ -66,7 +71,21 @@ impl Diagnostics {
 
         DiagnosticHandle { file, index, weak }
     }
+    pub fn push_error(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Error>) -> DiagnosticHandle {
+        self.push_diagnostic(file, diagnostic.into())
+    }
+    pub fn push_warning(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Warning>) -> DiagnosticHandle {
+        self.push_diagnostic(file, diagnostic.into())
+    }
 
+    pub fn diagnostics(&self) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+        self.0.files.iter().map(|pair| {
+            (
+                pair.key().clone(),
+                self.file_diagnostics(pair.key()).collect::<Vec<_>>().into_iter(),
+            )
+        })
+    }
     pub fn file_diagnostics(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
         let file = file.as_ref();
 
@@ -81,15 +100,19 @@ impl Diagnostics {
             .flatten()
     }
 
-    pub fn clean_dirty_files(&self, mut f: impl FnMut(PathBuf, Flatten<Iter<Option<Diagnostic>>>)) {
-        self.0.dirty_files.retain(|file| {
-            let file_diagnostics = self.0.files.get(file).unwrap();
-            let iter = file_diagnostics.iter().flatten();
+    pub fn dirty_files(&self) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+        let mut files = Vec::with_capacity(self.0.dirty_files.len());
 
-            f(file.clone(), iter);
+        self.0.dirty_files.retain(|file| {
+            files.push(file.clone());
 
             false
         });
+
+        files.into_iter().map(|file| {
+            let diagnostics = self.file_diagnostics(&file).collect::<Vec<_>>().into_iter();
+            (file, diagnostics)
+        })
     }
 }
 

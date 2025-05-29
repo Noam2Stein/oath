@@ -1,8 +1,6 @@
 use std::{
     fs::File,
     io::Read,
-    iter::once,
-    mem::take,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
     time::SystemTime,
@@ -11,13 +9,13 @@ use std::{
 use dashmap::*;
 use derive_more::Display;
 use oath_ast::*;
+use oath_diagnostics::*;
 use oath_highlighting::*;
 use oath_interner::*;
-use oath_nameres::*;
 use oath_parse_context::*;
 use oath_tokenizer::*;
 
-pub use oath_diagnostics::*;
+pub use oath_diagnostics::{Diagnostic, Error, IdentCase, NameError, SyntaxError, SyntaxWarning, TokenError, Warning};
 pub use oath_highlighting::{Highlight, HighlightColor, HighlightInfo};
 pub use oath_src::*;
 pub use oath_tokens::KEYWORDS;
@@ -25,6 +23,7 @@ pub use oath_tokens::KEYWORDS;
 #[derive(Debug)]
 pub struct OathCompiler {
     interner: Arc<Interner>,
+    diagnostics: Diagnostics,
     libs: DashMap<LibId, Lib>,
 }
 
@@ -35,6 +34,7 @@ impl OathCompiler {
     pub fn new() -> Self {
         Self {
             interner: Arc::new(Interner::new()),
+            diagnostics: Diagnostics::new(),
             libs: DashMap::new(),
         }
     }
@@ -54,8 +54,7 @@ impl OathCompiler {
                     path,
                     time: file.metadata().unwrap().modified().unwrap(),
                     can_have_children: true,
-                    parser_diagnostics: Vec::new(),
-                    semantic_diagnostics: Vec::new(),
+                    ast: SyntaxTree::default(),
                     highlights: Vec::new(),
                 };
 
@@ -73,107 +72,58 @@ impl OathCompiler {
         id
     }
 
-    pub fn check_libs(
-        &self,
-    ) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>, impl Iterator<Item = HighlightInfo>)> {
-        self.libs
-            .iter()
-            .map(|lib| {
-                let root_path = self.find_root_mod_path(&lib.dir_path);
+    pub fn check_libs(&self) {
+        for lib in &self.libs {
+            let root_path = self.find_root_mod_path(&lib.dir_path);
 
-                let (changed_path, deleted_path) = match (root_path, lib.root_mod.read().unwrap().as_ref()) {
-                    (Ok(path), Ok(mod_)) => {
-                        if path != mod_.path {
-                            (Some(path), Some(mod_.path.clone()))
-                        } else {
-                            let file = File::open(&path).unwrap();
-                            let file_time = file.metadata().unwrap().modified().unwrap();
+            let changed_path = match (root_path, lib.root_mod.read().unwrap().as_ref()) {
+                (Ok(path), Ok(mod_)) => {
+                    if path != mod_.path {
+                        Some(path)
+                    } else {
+                        let file = File::open(&path).unwrap();
+                        let file_time = file.metadata().unwrap().modified().unwrap();
 
-                            if file_time > mod_.time {
-                                (Some(path.clone()), None)
-                            } else {
-                                (None, None)
-                            }
-                        }
+                        if file_time > mod_.time { Some(path.clone()) } else { None }
                     }
-                    (Ok(path), Err(_)) => (Some(path), None),
-                    (Err(_), Ok(mod_)) => (None, Some(mod_.path.clone())),
-                    (Err(_), Err(_)) => (None, None),
+                }
+                (Ok(path), Err(_)) => Some(path),
+                (Err(_), Ok(_)) => None,
+                (Err(_), Err(_)) => None,
+            };
+
+            if let Some(changed_path) = changed_path {
+                let mut file = File::open(&changed_path).unwrap();
+
+                let mut mod_ = Mod {
+                    path: changed_path.clone(),
+                    time: file.metadata().unwrap().modified().unwrap(),
+                    can_have_children: true,
+                    ast: SyntaxTree::default(),
+                    highlights: Vec::new(),
                 };
 
-                let changed_mod = changed_path.map(|path| {
-                    let mut file = File::open(&path).unwrap();
+                let mut text = String::new();
+                file.read_to_string(&mut text).unwrap();
+                self.update_mod(&mut mod_, &text);
 
-                    let mut mod_ = Mod {
-                        path: path.clone(),
-                        time: file.metadata().unwrap().modified().unwrap(),
-                        can_have_children: true,
-                        parser_diagnostics: Vec::new(),
-                        semantic_diagnostics: Vec::new(),
-                        highlights: Vec::new(),
-                    };
-
-                    let mut text = String::new();
-                    file.read_to_string(&mut text).unwrap();
-                    self.update_mod(&mut mod_, &text);
-
-                    let parser_diagnostics = mod_.parser_diagnostics.clone();
-                    let semantic_diagnostics = mod_.semantic_diagnostics.clone();
-                    let highlights = mod_.highlights.clone();
-                    *lib.root_mod.write().unwrap() = Ok(mod_);
-
-                    (
-                        path,
-                        parser_diagnostics
-                            .into_iter()
-                            .chain(semantic_diagnostics.into_iter())
-                            .collect::<Vec<_>>()
-                            .into_iter(),
-                        highlights.into_iter(),
-                    )
-                });
-
-                let delected_mod = deleted_path.map(|path| (path, Vec::new().into_iter(), Vec::new().into_iter()));
-
-                once(changed_mod).chain(once(delected_mod))
-            })
-            .flatten()
-            .flatten()
-    }
-
-    pub fn get_lib_diagnostics(&self, lib: LibId) -> impl IntoIterator<Item = Diagnostic> {
-        let lib = self.libs.get(&lib).unwrap();
-
-        match &lib.root_mod.read().unwrap().as_ref() {
-            Ok(root_mod) => root_mod
-                .parser_diagnostics
-                .iter()
-                .chain(root_mod.semantic_diagnostics.iter())
-                .cloned()
-                .collect(),
-            Err(_) => Vec::new(),
-        }
-    }
-    pub fn get_mod_semantic_diagnostics(&self, path: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
-        let path = path.as_ref();
-
-        for lib in self.libs.iter() {
-            if path.parent().unwrap() == lib.dir_path
-                && (path.file_name().unwrap() == "main.oh" || path.file_name().unwrap() == "lib.oh")
-            {
-                return match &lib.root_mod.read().unwrap().as_ref() {
-                    Ok(root_mod) => root_mod.semantic_diagnostics.iter().cloned().collect(),
-                    Err(_) => Vec::new(),
-                }
-                .into_iter();
+                *lib.root_mod.write().unwrap() = Ok(mod_);
             }
         }
-
-        Vec::new().into_iter()
     }
 
-    pub fn get_mod_highligts(&self, path: impl AsRef<Path>) -> impl Iterator<Item = HighlightInfo> {
-        let path = path.as_ref();
+    pub fn diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+        self.diagnostics.diagnostics()
+    }
+    pub fn file_diagnostics(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
+        self.diagnostics.file_diagnostics(file)
+    }
+    pub fn dirty_diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+        self.diagnostics.dirty_files()
+    }
+
+    pub fn file_highligts(&self, file: impl AsRef<Path>) -> impl Iterator<Item = HighlightInfo> {
+        let path = file.as_ref();
 
         for lib in self.libs.iter() {
             if path.parent().unwrap() == lib.dir_path
@@ -192,14 +142,18 @@ impl OathCompiler {
 
     pub fn parse_text(&self, text: &str) -> Vec<Diagnostic> {
         let mut context = ParseContext {
-            diagnostics: Vec::new(),
-            highlighter: Highlighter::new(),
+            path: PathBuf::new(),
             interner: self.interner.clone(),
+            diagnostics: Diagnostics::new(),
+            highlighter: Highlighter::new(),
         };
 
-        let _ = text.tokenize(&mut context).parse_ast();
+        let ast = text.tokenize(&mut context).parse_ast();
+        let output = context.diagnostics.file_diagnostics(&PathBuf::new()).collect();
 
-        context.diagnostics
+        drop(ast);
+
+        output
     }
 
     pub fn format_diagnostic(&self, diagnostic: &Diagnostic) -> String {
@@ -218,8 +172,7 @@ struct Mod {
     pub time: SystemTime,
     pub path: PathBuf,
     pub can_have_children: bool,
-    pub parser_diagnostics: Vec<Diagnostic>,
-    pub semantic_diagnostics: Vec<Diagnostic>,
+    pub ast: SyntaxTree,
     pub highlights: Vec<HighlightInfo>,
 }
 
@@ -259,17 +212,13 @@ impl OathCompiler {
 
     fn update_mod(&self, mod_: &mut Mod, text: &str) {
         let mut context = ParseContext {
-            diagnostics: Vec::new(),
+            path: mod_.path.clone(),
             highlighter: Highlighter::new(),
+            diagnostics: self.diagnostics.arc_clone(),
             interner: self.interner.clone(),
         };
 
-        let ast = text.tokenize(&mut context).parse_ast();
-        mod_.parser_diagnostics = take(&mut context.diagnostics);
-
-        ast.nameres(&mut context);
-
-        mod_.semantic_diagnostics = context.diagnostics;
+        mod_.ast = text.tokenize(&mut context).parse_ast();
         mod_.highlights = context.highlighter.highlights;
     }
 }
