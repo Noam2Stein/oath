@@ -4,6 +4,7 @@ name    = "oath_diagnostics"
 version = "0.1.0"
 
 [dependencies]
+dashmap       = "6.1.0"
 derive-new    = "0.7.0"
 derive_more   = "2.0.1"
 oath_interner = { path = "../oath_interner" }

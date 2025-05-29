@@ -1,6 +1,38 @@
-use derive_more::Display;
+use derive_more::{Display, From, TryInto};
 
-use crate::*;
+use super::*;
+
+#[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
+pub enum Diagnostic {
+    Error(Error),
+    Warning(Warning),
+}
+
+#[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
+pub enum Error {
+    Token(TokenError),
+    Syntax(SyntaxError),
+    Name(NameError),
+    #[display("unfinished")]
+    Unfinished(Span),
+}
+
+#[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
+pub enum Warning {
+    Syntax(SyntaxWarning),
+}
+
+#[derive(Debug, Clone, Spanned, InternedDisplay)]
+pub enum TokenError {
+    #[display("unknown token")]
+    UnknownToken(#[span] Span),
+    #[display("unclosed {field_0}")]
+    Unclosed(OpenDelimiter),
+    #[display("unopened {field_0}")]
+    Unopened(CloseDelimiter),
+    #[display("out of bounds literal")]
+    OutOfBoundsLiteral(#[span] Span),
+}
 
 #[derive(Debug, Clone, Hash, Spanned, InternedDisplay)]
 pub enum SyntaxError {
@@ -32,4 +64,12 @@ pub enum IdentCase {
     UpperCamelCase,
     #[display("lowerCamelCase")]
     LowerCamelCase,
+}
+
+#[derive(Debug, Clone, Hash, Spanned, InternedDisplay)]
+pub enum NameError {
+    #[display("`{field_0}` doesn't exist in this context")]
+    DoesntExist(Ident),
+    #[display("`{field_0}` already exists in this context")]
+    AlreadyExists(Ident),
 }
