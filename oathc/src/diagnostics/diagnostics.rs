@@ -4,14 +4,8 @@ use std::{
 };
 
 use dashmap::{DashMap, DashSet};
-use oath_interner::*;
-use oath_src::*;
-use oath_tokens::*;
 
-mod diagnostic;
-mod try_;
-pub use diagnostic::*;
-pub use try_::*;
+use super::*;
 
 #[derive(Debug)]
 pub struct Diagnostics(Arc<InnerDiagnostics>);
@@ -23,6 +17,8 @@ pub struct DiagnosticHandle {
     index: usize,
     weak: Weak<InnerDiagnostics>,
 }
+
+// Private
 
 #[derive(Debug)]
 struct InnerDiagnostics {

@@ -27,29 +27,19 @@ with_tokens!($(
     const _: () = verify_token_type::<$keyword_type>();
 )*);
 
-pub const KEYWORDS: &[&str] = with_tokens_expr! {
-    &[$($keyword), *]
-};
-
-pub fn is_keyword(str: &str) -> bool {
-    with_tokens_expr! {
-        match str {
-            $($keyword => true,)*
-            _ => false,
-        }
-    }
-}
-
 impl Keyword {
+    #[allow(dead_code)]
     pub fn from_str(str: &str, span: Span) -> Option<Self> {
         KeywordKind::from_str(str).map(|kind| Self { span, kind })
     }
 
+    #[allow(dead_code)]
     pub fn as_str(self) -> &'static str {
         self.kind.as_str()
     }
 }
 impl KeywordKind {
+    #[allow(dead_code)]
     pub fn from_str(str: &str) -> Option<Self> {
         with_tokens_expr! {
             match str {
@@ -59,6 +49,7 @@ impl KeywordKind {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_str(self) -> &'static str {
         with_tokens_expr! {
             match self {$(

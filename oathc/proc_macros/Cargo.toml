@@ -8,6 +8,7 @@ proc-macro = true
 
 [dependencies]
 derive-syn-parse        = "0.2.0"
+nonempty                = "0.11.0"
 oathc_token_definitions = { path = "../token_definitions" }
 proc-macro2             = "1.0.93"
 quote                   = "1.0.38"

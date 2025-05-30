@@ -6,10 +6,9 @@ use super::*;
 #[derive(Spanned)]
 #[display("`{} {}`", kind.open_str(), kind.close_str())]
 pub struct Delimiters {
-    #[span]
     pub open_span: Span,
-    #[span]
     pub close_span: Span,
+    #[not_spanned]
     pub kind: DelimiterKind,
 }
 
@@ -35,9 +34,12 @@ pub trait DelimitersType: Debug + Copy + Spanned + TryFrom<Delimiters> {
     type Open: Debug + Copy + Spanned + TryFrom<OpenDelimiter>;
     type Close: Debug + Copy + Spanned + TryFrom<CloseDelimiter>;
 
+    #[allow(dead_code)]
     fn kind(&self) -> DelimiterKind;
 
+    #[allow(dead_code)]
     fn open(&self) -> Self::Open;
+    #[allow(dead_code)]
     fn close(&self) -> Self::Close;
 }
 
@@ -52,9 +54,7 @@ with_tokens!(
         #[derive(Spanned)]
         #[display("`{} {}`", $delim_open, $delim_close)]
         pub struct $delims_type {
-            #[span]
             pub open_span: Span,
-            #[span]
             pub close_span: Span,
         }
 
@@ -72,6 +72,7 @@ with_tokens!(
 
 with_tokens!(
     impl Delimiters {
+        #[allow(dead_code)]
         pub fn new(open_span: Span, close_span: Span, kind: DelimiterKind) -> Self {
             Self {
                 open_span,
@@ -81,6 +82,7 @@ with_tokens!(
         }
 
         $(
+            #[allow(dead_code)]
             pub fn $delims_fn(open_span: Span, close_span: Span) -> Self {
                 Self::new(open_span, close_span, DelimiterKind::$delims_type)
             }
@@ -88,6 +90,7 @@ with_tokens!(
     }
 
     impl OpenDelimiter {
+        #[allow(dead_code)]
         pub fn new(span: Span, kind: DelimiterKind) -> Self {
             Self {
                 span,
@@ -96,6 +99,7 @@ with_tokens!(
         }
 
         $(
+            #[allow(dead_code)]
             pub fn $delim_fn(span: Span) -> Self {
                 Self::new(span, DelimiterKind::$delims_type)
             }
@@ -103,6 +107,7 @@ with_tokens!(
     }
 
     impl CloseDelimiter {
+        #[allow(dead_code)]
         pub fn new(span: Span, kind: DelimiterKind) -> Self {
             Self {
                 span,
@@ -111,6 +116,7 @@ with_tokens!(
         }
 
         $(
+            #[allow(dead_code)]
             pub fn $delim_fn(span: Span) -> Self {
                 Self::new(span, DelimiterKind::$delims_type)
             }
@@ -119,7 +125,7 @@ with_tokens!(
 
     $(
         impl $delims_type {
-            #[inline(always)]
+            #[allow(dead_code)]
             pub fn new(open_span: Span, close_span: Span) -> Self {
                 Self { open_span, close_span }
             }

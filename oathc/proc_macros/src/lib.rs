@@ -11,12 +11,12 @@ pub fn derive_interned_display(input: proc_macro::TokenStream) -> proc_macro::To
 
 // Span
 
-#[proc_macro_derive(Spanned, attributes(span, option_spanned))]
+#[proc_macro_derive(Spanned, attributes(span, option_spanned, not_spanned))]
 pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     span::spanned_derive_macro(input)
 }
 
-#[proc_macro_derive(OptionSpanned, attributes(span, option_spanned))]
+#[proc_macro_derive(OptionSpanned, attributes(span, option_spanned, not_spanned))]
 pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     span::option_spanned_derive_macro(input)
 }

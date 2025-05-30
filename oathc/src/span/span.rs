@@ -1,5 +1,3 @@
-use std::ops::{Add, AddAssign};
-
 use super::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -40,64 +38,6 @@ impl Span {
             Some(self.end.char - self.start.char)
         } else {
             None
-        }
-    }
-
-    pub fn connect(a: impl Into<Option<Self>>, b: impl Into<Option<Self>>) -> Option<Self> {
-        match (a.into(), b.into()) {
-            (Some(a), Some(b)) => Some(a + b),
-            (a, None) => a,
-            (None, b) => b,
-        }
-    }
-}
-
-impl Add for Span {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            start: self.start.min(rhs.start),
-            end: self.end.max(rhs.end),
-        }
-    }
-}
-impl AddAssign for Span {
-    fn add_assign(&mut self, rhs: Self) {
-        self.start = self.start.min(rhs.start);
-        self.end = self.end.max(rhs.end);
-    }
-}
-
-impl Add<Option<Span>> for Span {
-    type Output = Self;
-
-    fn add(self, rhs: Option<Span>) -> Self::Output {
-        match rhs {
-            Some(rhs) => self + rhs,
-            None => self,
-        }
-    }
-}
-impl AddAssign<Option<Span>> for Span {
-    fn add_assign(&mut self, rhs: Option<Span>) {
-        if let Some(rhs) = rhs {
-            *self += rhs;
-        }
-    }
-}
-
-impl Add<Span> for Option<Span> {
-    type Output = Span;
-
-    fn add(self, rhs: Span) -> Self::Output {
-        rhs + self
-    }
-}
-impl AddAssign<Span> for Option<Span> {
-    fn add_assign(&mut self, rhs: Span) {
-        if let Some(lhs) = self {
-            *lhs += rhs;
         }
     }
 }

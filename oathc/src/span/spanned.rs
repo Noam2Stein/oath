@@ -22,6 +22,6 @@ impl<T: Spanned> Spanned for Box<T> {
 
 impl<T: Spanned> Spanned for NonEmpty<T> {
     fn span(&self) -> Span {
-        self.iter().fold(None, |a, b| Span::connect(a, b.span())).unwrap()
+        self.iter().fold(None, |a, b| Some(a.connect(b.span()))).unwrap()
     }
 }

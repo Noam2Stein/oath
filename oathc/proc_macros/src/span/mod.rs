@@ -1,13 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote, quote_spanned};
 use syn::{
-    Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, Ident, LitInt, parse_macro_input, parse_quote,
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, LitInt, parse_macro_input, parse_quote,
     spanned::Spanned,
 };
 
+mod fields;
+use fields::*;
+
 pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
-        attrs: _,
+        attrs,
         vis: _,
         ident,
         mut generics,
@@ -20,9 +23,9 @@ pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::Token
         }
     }
 
-    let parse_output = match data {
-        Data::Struct(data) => struct_span(data, false),
-        Data::Enum(data) => enum_span(data, false),
+    let output = match data {
+        Data::Struct(data) => struct_span(data, &attrs),
+        Data::Enum(data) => enum_span(data),
         Data::Union(_) => quote! { compile_error!("`Spanned` cannot be derived for unions") },
     };
 
@@ -31,7 +34,12 @@ pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::Token
     quote! {
         impl #impl_generics Spanned for #ident #ty_generics #where_clause {
             fn span(&self) -> Span {
-                #parse_output
+                #output
+            }
+        }
+        impl #impl_generics OptionSpanned for #ident #ty_generics #where_clause {
+            fn option_span(&self) -> Option<Span> {
+                Some(<Self as Spanned>::span(self))
             }
         }
     }
@@ -40,7 +48,7 @@ pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::Token
 
 pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
-        attrs: _,
+        attrs,
         vis: _,
         ident,
         mut generics,
@@ -53,9 +61,9 @@ pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro
         }
     }
 
-    let parse_output = match data {
-        Data::Struct(data) => struct_span(data, true),
-        Data::Enum(data) => enum_span(data, true),
+    let output = match data {
+        Data::Struct(data) => struct_span(data, &attrs),
+        Data::Enum(data) => enum_span(data),
         Data::Union(_) => quote! { compile_error!("`OptionSpanned` cannot be derived for unions") },
     };
 
@@ -64,30 +72,26 @@ pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro
     quote! {
         impl #impl_generics OptionSpanned for #ident #ty_generics #where_clause {
             fn option_span(&self) -> Option<Span> {
-                #parse_output
+                #output
             }
         }
     }
     .into()
 }
 
-fn struct_span(data: DataStruct, expect_option: bool) -> TokenStream {
-    fields_span(
-        &data.fields,
-        |field_ident, field_index| {
-            if field_ident.is_some() {
-                quote_spanned! { field_ident.span() => self.#field_ident }
-            } else {
-                let field_ident = LitInt::new(&field_index.to_string(), field_ident.span()).to_token_stream();
+fn struct_span(data: DataStruct, attrs: &[Attribute]) -> TokenStream {
+    fields_span(&data.fields, attrs, |field_ident, field_index| {
+        if field_ident.is_some() {
+            quote_spanned! { field_ident.span() => self.#field_ident }
+        } else {
+            let field_ident = LitInt::new(&field_index.to_string(), field_ident.span()).to_token_stream();
 
-                quote_spanned! { field_ident.span() => self.#field_ident }
-            }
-        },
-        expect_option,
-    )
+            quote_spanned! { field_ident.span() => self.#field_ident }
+        }
+    })
 }
 
-fn enum_span(data: DataEnum, expect_option: bool) -> TokenStream {
+fn enum_span(data: DataEnum) -> TokenStream {
     let match_variants = data.variants.into_iter().map(|variant| {
         let variant_ident = &variant.ident;
 
@@ -95,11 +99,9 @@ fn enum_span(data: DataEnum, expect_option: bool) -> TokenStream {
 
         let field_idents = (0..variant.fields.len()).map(|field_index| format_ident!("field_{field_index}"));
 
-        let span = fields_span(
-            &variant.fields,
-            |_, field_index| format_ident!("field_{field_index}").to_token_stream(),
-            expect_option,
-        );
+        let span = fields_span(&variant.fields, &variant.attrs, |_, field_index| {
+            format_ident!("field_{field_index}").to_token_stream()
+        });
 
         match variant.fields {
             Fields::Named(_) => quote_spanned! {
@@ -123,67 +125,6 @@ fn enum_span(data: DataEnum, expect_option: bool) -> TokenStream {
     quote! {
         match self {
             #(#match_variants)*
-        }
-    }
-}
-
-fn fields_span(
-    fields: &Fields,
-    get_field_path: impl Fn(Option<&Ident>, usize) -> TokenStream,
-    expect_option: bool,
-) -> TokenStream {
-    let span_field = fields
-        .iter()
-        .zip(0..)
-        .find(|(field, _)| field.attrs.iter().any(|attr| attr.path().is_ident("span")));
-
-    let span_fields = if let Some(span_field) = span_field {
-        vec![span_field]
-    } else {
-        fields.iter().zip(0..).collect()
-    };
-
-    let mut is_always_some = false;
-
-    let field_spans_addition = span_fields
-        .iter()
-        .map(|(field, field_index)| {
-            let field_type = &field.ty;
-            let field_path = get_field_path(field.ident.as_ref(), *field_index);
-
-            if field.attrs.iter().any(|attr| attr.path().is_ident("option_spanned")) {
-                quote! {
-                    <#field_type as OptionSpanned>::option_span(&#field_path)
-                }
-            } else {
-                is_always_some = true;
-
-                quote! {
-                    Some(<#field_type as Spanned>::span(&#field_path))
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let output = if is_always_some && !expect_option {
-        quote! {
-            span.unwrap()
-        }
-    } else {
-        quote! {
-            span
-        }
-    };
-
-    quote! {
-        {
-            let mut span = None::<Span>;
-
-            #(
-                span = Span::connect(span, #field_spans_addition);
-            )*
-
-            #output
         }
     }
 }

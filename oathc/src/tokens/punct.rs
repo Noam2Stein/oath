@@ -11,6 +11,7 @@ pub struct Punct {
 with_tokens!(
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
     pub enum PunctKind {$(
+        #[allow(dead_code)]
         #[display($punct)]
         $punct_variant,
     )*}
@@ -27,29 +28,19 @@ with_tokens!($(
     const _: () = verify_token_type::<$punct_type>();
 )*);
 
-pub const PUNCTS: &[&str] = with_tokens_expr! {
-    &[$($punct), *]
-};
-
-pub fn is_punct(str: &str) -> bool {
-    with_tokens_expr! {
-        match str {
-            $($punct => true,)*
-            _ => false,
-        }
-    }
-}
-
 impl Punct {
+    #[allow(dead_code)]
     pub fn from_str(str: &str, span: Span) -> Option<Self> {
         PunctKind::from_str(str).map(|kind| Self { span, kind })
     }
 
+    #[allow(dead_code)]
     pub fn as_str(self) -> &'static str {
         self.kind.as_str()
     }
 }
 impl PunctKind {
+    #[allow(dead_code)]
     pub fn from_str(str: &str) -> Option<Self> {
         with_tokens_expr! {
             match str {
@@ -59,6 +50,7 @@ impl PunctKind {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_str(self) -> &'static str {
         with_tokens_expr! {
             match self {
