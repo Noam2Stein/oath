@@ -14,6 +14,12 @@ impl Spanned for Span {
     }
 }
 
+impl<T: Spanned> Spanned for &T {
+    fn span(&self) -> Span {
+        T::span(&self)
+    }
+}
+
 impl<T: Spanned> Spanned for Box<T> {
     fn span(&self) -> Span {
         T::span(&self)

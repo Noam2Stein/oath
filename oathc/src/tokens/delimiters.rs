@@ -7,7 +7,7 @@ use super::*;
 #[display("`{} {}`", kind.open_str(), kind.close_str())]
 pub struct Delimiters {
     pub open_span: Span,
-    pub close_span: Span,
+    pub close_span: Try<Span>,
     #[not_spanned]
     pub kind: DelimiterKind,
 }

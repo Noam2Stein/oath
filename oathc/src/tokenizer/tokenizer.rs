@@ -1,4 +1,7 @@
-use std::mem::transmute;
+use std::{
+    mem::{replace, transmute},
+    path::Path,
+};
 
 use super::*;
 
@@ -11,10 +14,13 @@ use super::*;
 pub trait Tokenizer {
     fn next(&mut self) -> Option<LazyToken>;
 
-    fn peek(&self) -> Option<PeekToken>;
+    fn peek(&self) -> Option<&PeekToken>;
     fn peek_span(&self) -> Span;
 
-    fn context(&mut self) -> &mut ParseContext;
+    fn path(&self) -> &Path;
+    fn interner(&self) -> &Interner;
+    fn diagnostics(&self) -> &Diagnostics;
+    fn highlights(&mut self) -> &mut Vec<HighlightInfo>;
 }
 
 //
@@ -23,15 +29,17 @@ pub trait Tokenizer {
 //
 //
 
-pub enum LazyToken<'src, 'tokenizer> {
+#[derive(Debug)]
+pub enum LazyToken<'ctx, 'tokenizer> {
     Ident(Ident),
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
-    Group(GroupTokenizer<'src, 'tokenizer>),
+    Group(GroupTokenizer<'ctx, 'tokenizer>),
+    Error(DiagnosticHandle),
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug)]
 #[derive(Spanned)]
 pub enum PeekToken {
     Ident(Ident),
@@ -39,6 +47,7 @@ pub enum PeekToken {
     Punct(Punct),
     Literal(Literal),
     Group(OpenDelimiter),
+    Error(DiagnosticHandle),
 }
 
 //
@@ -47,15 +56,17 @@ pub enum PeekToken {
 //
 //
 
-pub struct RootTokenizer<'src> {
-    raw: RawTokenizer<'src>,
+#[derive(Debug)]
+pub struct RootTokenizer<'ctx> {
+    raw: RawTokenizer<'ctx>,
     peek: Option<PeekToken>,
     last_span: Span,
+    ended: bool,
 }
 
-impl<'src> Tokenizer for RootTokenizer<'src> {
+impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
     fn next(&mut self) -> Option<LazyToken> {
-        match self.peek {
+        match replace(&mut self.peek, None) {
             None => None,
             Some(token) => Some(match token {
                 PeekToken::Ident(token) => {
@@ -90,12 +101,17 @@ impl<'src> Tokenizer for RootTokenizer<'src> {
 
                     LazyToken::Group(unsafe { transmute(group_tokenizer) })
                 }
+                PeekToken::Error(token) => {
+                    self.update_peek();
+
+                    LazyToken::Error(token)
+                }
             }),
         }
     }
 
-    fn peek(&self) -> Option<PeekToken> {
-        self.peek
+    fn peek(&self) -> Option<&PeekToken> {
+        self.peek.as_ref()
     }
     fn peek_span(&self) -> Span {
         if let Some(next) = self.peek() {
@@ -111,17 +127,33 @@ impl<'src> Tokenizer for RootTokenizer<'src> {
         }
     }
 
-    fn context(&mut self) -> &mut ParseContext {
-        self.raw.context()
+    fn path(&self) -> &Path {
+        self.raw.path()
+    }
+    fn interner(&self) -> &Interner {
+        self.raw.interner()
+    }
+    fn diagnostics(&self) -> &Diagnostics {
+        self.raw.diagnostics()
+    }
+    fn highlights(&mut self) -> &mut Vec<HighlightInfo> {
+        self.raw.highlights()
     }
 }
 
 impl<'ctx> RootTokenizer<'ctx> {
-    pub fn new(src: &'ctx str, context: &'ctx mut ParseContext) -> Self {
+    pub fn new(
+        src: &'ctx str,
+        path: &'ctx Path,
+        interner: &'ctx Interner,
+        diagnostics: &'ctx Diagnostics,
+        highlights: &'ctx mut Vec<HighlightInfo>,
+    ) -> Self {
         let mut output = Self {
-            raw: RawTokenizer::new(src, context),
+            raw: RawTokenizer::new(src, path, interner, diagnostics, highlights),
             peek: Some(PeekToken::Punct(Punct::new(Span::ZERO, PunctKind::And))),
             last_span: Span::ZERO,
+            ended: false,
         };
 
         output.update_peek();
@@ -130,9 +162,8 @@ impl<'ctx> RootTokenizer<'ctx> {
     }
 
     fn update_peek(&mut self) {
-        match self.peek {
-            Some(token) => self.last_span = token.span(),
-            None => return,
+        if self.ended {
+            return;
         }
 
         self.peek = match self.raw.next() {
@@ -143,13 +174,10 @@ impl<'ctx> RootTokenizer<'ctx> {
                 RawToken::Punct(raw_token) => Some(PeekToken::Punct(raw_token)),
                 RawToken::Literal(raw_token) => Some(PeekToken::Literal(raw_token)),
                 RawToken::OpenDelimiter(raw_token) => Some(PeekToken::Group(raw_token)),
-                RawToken::CloseDelimiter(close) => {
-                    self.context().push_error(TokenError::Unopened(close));
-
-                    self.update_peek();
-
-                    return;
-                }
+                RawToken::CloseDelimiter(close) => Some(PeekToken::Error(
+                    self.diagnostics().push_error(self.path(), TokenError::Unopened(close)),
+                )),
+                RawToken::Unknown(error) => Some(PeekToken::Error(error)),
             },
         };
     }
@@ -161,26 +189,30 @@ impl<'ctx> RootTokenizer<'ctx> {
 //
 //
 
-pub struct GroupTokenizer<'src, 'parent> {
-    parent: ParentTokenizer<'src, 'parent>,
+#[derive(Debug)]
+pub struct GroupTokenizer<'ctx, 'parent> {
+    parent: ParentTokenizer<'ctx, 'parent>,
     open: OpenDelimiter,
     peek: GroupPeek,
     last_span: Span,
 }
 
+#[derive(Debug)]
 enum GroupPeek {
     Token(PeekToken),
     Close(CloseDelimiter),
+    Unevaluated,
 }
 
-enum ParentTokenizer<'src, 'parent> {
-    Group(&'parent mut GroupTokenizer<'src, 'parent>),
-    Root(&'parent mut RootTokenizer<'src>),
+#[derive(Debug)]
+enum ParentTokenizer<'ctx, 'parent> {
+    Group(&'parent mut GroupTokenizer<'ctx, 'parent>),
+    Root(&'parent mut RootTokenizer<'ctx>),
 }
 
-impl<'src, 'parent> Tokenizer for GroupTokenizer<'src, 'parent> {
+impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
     fn next(&mut self) -> Option<LazyToken> {
-        match self.peek {
+        match replace(&mut self.peek, GroupPeek::Unevaluated) {
             GroupPeek::Close(_) => None,
             GroupPeek::Token(token) => Some(match token {
                 PeekToken::Ident(token) => {
@@ -215,14 +247,21 @@ impl<'src, 'parent> Tokenizer for GroupTokenizer<'src, 'parent> {
 
                     LazyToken::Group(group_tokenizer)
                 }
+                PeekToken::Error(token) => {
+                    self.update_peek();
+
+                    LazyToken::Error(token)
+                }
             }),
+            GroupPeek::Unevaluated => unreachable!(),
         }
     }
 
-    fn peek(&self) -> Option<PeekToken> {
-        match self.peek {
+    fn peek(&self) -> Option<&PeekToken> {
+        match &self.peek {
             GroupPeek::Close(_) => None,
             GroupPeek::Token(token) => Some(token),
+            GroupPeek::Unevaluated => unreachable!(),
         }
     }
     fn peek_span(&self) -> Span {
@@ -239,21 +278,18 @@ impl<'src, 'parent> Tokenizer for GroupTokenizer<'src, 'parent> {
         }
     }
 
-    fn context(&mut self) -> &mut ParseContext {
-        match &mut self.parent {
-            ParentTokenizer::Root(parent) => parent.context(),
-            ParentTokenizer::Group(parent) => parent.context(),
-        }
+    fn path(&self) -> &Path {
+        self.r
     }
 }
 
-impl<'src, 'parent> Drop for GroupTokenizer<'src, 'parent> {
+impl<'ctx, 'parent> Drop for GroupTokenizer<'ctx, 'parent> {
     fn drop(&mut self) {
         while let Some(_) = self.next() {}
     }
 }
 
-impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
+impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
     pub fn open(&self) -> OpenDelimiter {
         self.open
     }
@@ -345,11 +381,30 @@ impl<'src, 'parent> GroupTokenizer<'src, 'parent> {
     }
 }
 
-impl<'src, 'parent> ParentTokenizer<'src, 'parent> {
+impl<'ctx, 'parent> ParentTokenizer<'ctx, 'parent> {
     fn raw_next(&mut self) -> Option<RawToken> {
         match self {
             Self::Root(root) => root.raw.next(),
             Self::Group(group) => group.parent.raw_next(),
+        }
+    }
+
+    fn path(&self) -> &'ctx Path {
+        match self {
+            Self::Root(root) => root.raw.path(),
+            Self::Group(group) => group.parent.path(),
+        }
+    }
+    fn interner(&self) -> &'ctx Interner {
+        match self {
+            Self::Root(root) => root.raw.interner(),
+            Self::Group(group) => group.parent.interner(),
+        }
+    }
+    fn diagnostics(&self) -> &'ctx Diagnostics {
+        match self {
+            Self::Root(root) => root.raw.diagnostics(),
+            Self::Group(group) => group.parent.diagnostics(),
         }
     }
 }

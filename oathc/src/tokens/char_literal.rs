@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, new, Spanned)]
+#[derive(Debug, InternedDisplay, new, Spanned)]
 #[display("{char:?}")]
 pub struct CharLiteral {
     #[span]

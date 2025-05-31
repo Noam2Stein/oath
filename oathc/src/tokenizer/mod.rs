@@ -1,7 +1,8 @@
-use oath_diagnostics::*;
-use oath_parse_context::*;
-use oath_src::*;
-use oath_tokens::*;
+use super::diagnostics::*;
+use super::highlighting::*;
+use super::interner::*;
+use super::span::*;
+use super::tokens::*;
 
 mod tokenize_ext;
 mod tokenizer;

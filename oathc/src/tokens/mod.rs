@@ -3,6 +3,7 @@ use std::{fmt::Debug, hash::Hash};
 use derive_more::*;
 use derive_new::*;
 
+use super::diagnostics::*;
 use super::interner::*;
 use super::span::*;
 
@@ -60,4 +61,4 @@ pub(super) use str_literal::*;
 // Private
 
 #[allow(dead_code)]
-const fn verify_token_type<T: Debug + Copy + Eq + Ord + Hash + InternedDisplay + Spanned>() {}
+const fn verify_token_type<T: Debug + Spanned>() {}

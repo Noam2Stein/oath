@@ -14,6 +14,12 @@ impl<T: OptionSpanned> OptionSpanned for Option<T> {
     }
 }
 
+impl<T: OptionSpanned> OptionSpanned for &T {
+    fn option_span(&self) -> Option<Span> {
+        T::option_span(&self)
+    }
+}
+
 impl<T: OptionSpanned> OptionSpanned for Vec<T> {
     fn option_span(&self) -> Option<Span> {
         self.iter().fold(None, |a, b| a.connect(b.option_span()))

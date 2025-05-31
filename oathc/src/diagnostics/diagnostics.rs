@@ -11,11 +11,13 @@ use super::*;
 pub struct Diagnostics(Arc<InnerDiagnostics>);
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Debug, Spanned)]
 pub struct DiagnosticHandle {
     file: PathBuf,
     index: usize,
     weak: Weak<InnerDiagnostics>,
+    #[span]
+    span: Span,
 }
 
 // Private
@@ -44,6 +46,8 @@ impl Diagnostics {
         let file = file.into();
         let diagnostic = diagnostic.into();
 
+        let span = diagnostic.span();
+
         self.0.dirty_files.insert(file.clone());
 
         let index = {
@@ -65,7 +69,7 @@ impl Diagnostics {
 
         let weak = Arc::downgrade(&self.0);
 
-        DiagnosticHandle { file, index, weak }
+        DiagnosticHandle { file, index, weak, span }
     }
     pub fn push_error(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Error>) -> DiagnosticHandle {
         self.push_diagnostic(file, diagnostic.into())

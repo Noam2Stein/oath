@@ -42,6 +42,18 @@ pub fn fields_span(
     }
 }
 
+pub fn fields_option_span(
+    fields: &Fields,
+    fields_attrs: &[Attribute],
+    get_field_path: impl Fn(Option<&Ident>, usize) -> TokenStream,
+) -> TokenStream {
+    let span = fields_span(fields, fields_attrs, get_field_path);
+
+    quote! {
+        Option::<Span>::from({ #span })
+    }
+}
+
 fn get_span_fields<'f>(fields: &'f Fields, fields_attrs: &[Attribute]) -> (Vec<&'f Field>, TokenStream) {
     let mut span_fields = fields
         .iter()

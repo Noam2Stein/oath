@@ -1,8 +1,10 @@
+use std::path::Path;
+
 use logos::{Lexer, Logos};
 
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug)]
 pub enum RawToken {
     Ident(Ident),
     Keyword(Keyword),
@@ -10,19 +12,35 @@ pub enum RawToken {
     Literal(Literal),
     OpenDelimiter(OpenDelimiter),
     CloseDelimiter(CloseDelimiter),
+    Unknown(DiagnosticHandle),
 }
 
 #[derive(Debug)]
 pub struct RawTokenizer<'ctx> {
     lexer: Lexer<'ctx, LogosToken<'ctx>>,
-    context: &'ctx mut ParseContext,
+    path: &'ctx Path,
+    interner: &'ctx Interner,
+    diagnostics: &'ctx Diagnostics,
+    highlights: &'ctx mut Vec<HighlightInfo>,
 }
 
 impl<'ctx> RawTokenizer<'ctx> {
-    pub fn new(src: &'ctx str, context: &'ctx mut ParseContext) -> Self {
+    pub fn new(
+        src: &'ctx str,
+        path: &'ctx (impl AsRef<Path> + ?Sized),
+        interner: &'ctx Interner,
+        diagnostics: &'ctx Diagnostics,
+        highlights: &'ctx mut Vec<HighlightInfo>,
+    ) -> Self {
         let lexer = LogosToken::lexer(src);
 
-        Self { lexer, context }
+        Self {
+            lexer,
+            path: path.as_ref(),
+            interner,
+            diagnostics,
+            highlights,
+        }
     }
 
     pub fn next(&mut self) -> Option<RawToken> {
@@ -33,36 +51,28 @@ impl<'ctx> RawTokenizer<'ctx> {
                     index_to_pos(self.lexer.source(), self.lexer.span().end),
                 );
 
-                let next = match next {
-                    Ok(ok) => ok,
-                    Err(_) => {
-                        self.context.push_error(TokenError::UnknownToken(span));
-
-                        continue;
-                    }
-                };
-
                 Some(with_tokens_expr! {
                         match next {
-                            LogosToken::IdentOrKeyword(str) => {
-                                match Ident::new_or_keyword(str, span, &self.context.interner) {
+                            Ok(LogosToken::IdentOrKeyword(str)) => {
+                                match Ident::new_or_keyword(str, span, &self.interner) {
                                     Ok(ident) => RawToken::Ident(ident),
                                     Err(keyword) => RawToken::Keyword(keyword),
                                 }
                             },
                             $(
-                                LogosToken::$punct_type => {
+                                Ok(LogosToken::$punct_type) => {
                                     RawToken::Punct(Punct::new(span, PunctKind::$punct_variant))
                                 },
                             )*
-                            LogosToken::IntLiteral(str) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.context))),
-                            LogosToken::FloatLiteral(str) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.context))),
-                            LogosToken::StrLiteral(str) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.context))),
-                            LogosToken::CharLiteral(str) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.context))),
+                            Ok(LogosToken::IntLiteral(str)) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
+                            Ok(LogosToken::FloatLiteral(str)) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
+                            Ok(LogosToken::StrLiteral(str)) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
+                            Ok(LogosToken::CharLiteral(str)) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
                             $(
-                                LogosToken::$delim_open_type => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
-                                LogosToken::$delim_close_type => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
+                                Ok(LogosToken::$delim_open_type) => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
+                                Ok(LogosToken::$delim_close_type) => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
                             )*
+                            Err(_) => RawToken::Unknown(self.diagnostics.push_error(self.path.clone(), TokenError::UnknownToken(span)))
                         }
                 })
             } else {
@@ -71,8 +81,17 @@ impl<'ctx> RawTokenizer<'ctx> {
         }
     }
 
-    pub fn context(&mut self) -> &mut ParseContext {
-        self.context
+    pub fn path(&self) -> &'ctx Path {
+        self.path
+    }
+    pub fn interner(&self) -> &'ctx Interner {
+        self.interner
+    }
+    pub fn diagnostics(&self) -> &'ctx Diagnostics {
+        self.diagnostics
+    }
+    pub fn highlights(&mut self) -> &mut Vec<HighlightInfo> {
+        self.highlights
     }
 }
 
