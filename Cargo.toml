@@ -1,10 +1,17 @@
 [workspace]
 
 members = [
+    "compiler/oathc",
+    "compiler/oathc_ast",
+    "compiler/oathc_diagnostics",
+    "compiler/oathc_highlighting",
+    "compiler/oathc_interner",
+    "compiler/oathc_parser",
+    "compiler/oathc_query",
+    "compiler/oathc_span",
+    "compiler/oathc_tokenizer",
+    "compiler/oathc_tokens",
     "editor-server",
-    "oathc",
-    "oathc/proc_macros",
-    "oathc/token_definitions",
 ]
 
 panic = "unwind"

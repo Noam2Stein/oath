@@ -1,0 +1,17 @@
+[package]
+edition = "2024"
+name    = "oathc_tokens"
+version = "0.1.0"
+
+[dependencies]
+derive-new               = "0.7.0"
+derive_more              = { version = "2.0.1", features = [ "full" ] }
+oathc_diagnostics        = { path = "../oathc_diagnostics" }
+oathc_highlighting       = { path = "../oathc_highlighting" }
+oathc_interner           = { path = "../oathc_interner" }
+oathc_span               = { path = "../oathc_span" }
+oathc_token_definitions  = { path = "definitions" }
+oathc_tokens_proc_macros = { path = "proc_macros" }
+
+[build-dependencies]
+oathc_token_definitions = { path = "definitions" }
