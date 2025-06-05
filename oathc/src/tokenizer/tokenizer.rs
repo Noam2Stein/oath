@@ -92,7 +92,7 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
                 PeekToken::Group(open) => {
                     let mut group_tokenizer = GroupTokenizer {
                         parent: ParentTokenizer::Root(self),
-                        open,
+                        delims: Delimiters::new(open.span, open.span, open.kind, None),
                         peek: GroupPeek::Token(PeekToken::Punct(Punct::new(open.span, PunctKind::And))),
                         last_span: open.span,
                     };
@@ -192,7 +192,7 @@ impl<'ctx> RootTokenizer<'ctx> {
 #[derive(Debug)]
 pub struct GroupTokenizer<'ctx, 'parent> {
     parent: ParentTokenizer<'ctx, 'parent>,
-    open: OpenDelimiter,
+    delims: Delimiters,
     peek: GroupPeek,
     last_span: Span,
 }
@@ -238,7 +238,7 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
                 PeekToken::Group(open) => {
                     let mut group_tokenizer = GroupTokenizer {
                         parent: ParentTokenizer::Group(unsafe { transmute(self) }),
-                        open,
+                        delims: Delimiters::new(open.span, open.span, open.kind, None),
                         peek: GroupPeek::Token(PeekToken::Punct(Punct::new(open.span, PunctKind::And))),
                         last_span: open.span,
                     };
@@ -279,7 +279,16 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
     }
 
     fn path(&self) -> &Path {
-        self.r
+        self.parent.path()
+    }
+    fn interner(&self) -> &Interner {
+        self.parent.interner()
+    }
+    fn diagnostics(&self) -> &Diagnostics {
+        self.parent.diagnostics()
+    }
+    fn highlights(&mut self) -> &mut Vec<HighlightInfo> {
+        self.parent.highlights()
     }
 }
 
@@ -291,7 +300,7 @@ impl<'ctx, 'parent> Drop for GroupTokenizer<'ctx, 'parent> {
 
 impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
     pub fn open(&self) -> OpenDelimiter {
-        self.open
+        self.delims.open()
     }
     pub fn close(&mut self) -> CloseDelimiter {
         loop {
@@ -302,6 +311,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
                 GroupPeek::Close(close) => {
                     return close;
                 }
+                GroupPeek::Unevaluated => unreachable!(),
             }
         }
     }
@@ -405,6 +415,12 @@ impl<'ctx, 'parent> ParentTokenizer<'ctx, 'parent> {
         match self {
             Self::Root(root) => root.raw.diagnostics(),
             Self::Group(group) => group.parent.diagnostics(),
+        }
+    }
+    fn highlights(&mut self) -> &mut Vec<HighlightInfo> {
+        match self {
+            Self::Root(root) => root.raw.highlights(),
+            Self::Group(group) => group.parent.highlights(),
         }
     }
 }

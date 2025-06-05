@@ -26,10 +26,10 @@ pub enum Warning {
 pub enum TokenError {
     #[display("unknown token")]
     UnknownToken(#[span] Span),
-    #[display("unclosed {field_0}")]
-    Unclosed(OpenDelimiter),
-    #[display("unopened {field_0}")]
-    Unopened(CloseDelimiter),
+    #[display("unclosed {}", field_1.open_str())]
+    Unclosed(#[span] Span, DelimiterKind),
+    #[display("unopened {}", field_1.close_str())]
+    Unopened(#[span] Span, DelimiterKind),
     #[display("out of bounds literal")]
     OutOfBoundsLiteral(#[span] Span),
 }
@@ -50,10 +50,10 @@ pub enum SyntaxError {
     UninitVariable(#[span] Span),
 }
 
-#[derive(Debug, Clone, Copy, Hash, Spanned, InternedDisplay)]
+#[derive(Debug, Clone, Hash, Spanned, InternedDisplay)]
 pub enum SyntaxWarning {
     #[display("Syntax: unnesessary parens")]
-    UnnesessaryParens(#[span] Parens),
+    UnnesessaryParens(#[span] Span),
     #[display("Syntax: expected {}", field_1)]
     ExpectedCase(#[span] Ident, IdentCase),
 }

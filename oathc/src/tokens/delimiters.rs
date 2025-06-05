@@ -2,17 +2,18 @@ use std::{fmt::Debug, hash::Hash};
 
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
+#[derive(Debug, Display)]
 #[derive(Spanned)]
 #[display("`{} {}`", kind.open_str(), kind.close_str())]
 pub struct Delimiters {
+    #[span]
     pub open_span: Span,
-    pub close_span: Try<Span>,
-    #[not_spanned]
+    pub close_span: Span,
     pub kind: DelimiterKind,
+    pub error: Option<DiagnosticHandle>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
+#[derive(Debug, Display)]
 #[derive(Spanned)]
 #[display("`{}`", kind.open_str())]
 pub struct OpenDelimiter {
@@ -21,7 +22,7 @@ pub struct OpenDelimiter {
     pub kind: DelimiterKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
+#[derive(Debug, Display)]
 #[derive(Spanned)]
 #[display("`{}`", kind.close_str())]
 pub struct CloseDelimiter {
@@ -30,17 +31,14 @@ pub struct CloseDelimiter {
     pub kind: DelimiterKind,
 }
 
-pub trait DelimitersType: Debug + Copy + Spanned + TryFrom<Delimiters> {
-    type Open: Debug + Copy + Spanned + TryFrom<OpenDelimiter>;
-    type Close: Debug + Copy + Spanned + TryFrom<CloseDelimiter>;
-
+pub trait DelimitersType: Debug + Spanned + TryFrom<Delimiters> {
     #[allow(dead_code)]
     fn kind(&self) -> DelimiterKind;
 
     #[allow(dead_code)]
-    fn open(&self) -> Self::Open;
+    fn open_span(&self) -> Span;
     #[allow(dead_code)]
-    fn close(&self) -> Self::Close;
+    fn close_span(&self) -> Span;
 }
 
 with_tokens!(
@@ -50,12 +48,14 @@ with_tokens!(
     )*}
 
     $(
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
+        #[derive(Debug, Display)]
         #[derive(Spanned)]
         #[display("`{} {}`", $delim_open, $delim_close)]
         pub struct $delims_type {
+            #[span]
             pub open_span: Span,
             pub close_span: Span,
+            pub error: Option<DiagnosticHandle>,
         }
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
@@ -73,18 +73,19 @@ with_tokens!(
 with_tokens!(
     impl Delimiters {
         #[allow(dead_code)]
-        pub fn new(open_span: Span, close_span: Span, kind: DelimiterKind) -> Self {
+        pub fn new(open_span: Span, close_span: Span, kind: DelimiterKind, error: Option<DiagnosticHandle>) -> Self {
             Self {
                 open_span,
                 close_span,
                 kind,
+                error,
             }
         }
 
         $(
             #[allow(dead_code)]
-            pub fn $delims_fn(open_span: Span, close_span: Span) -> Self {
-                Self::new(open_span, close_span, DelimiterKind::$delims_type)
+            pub fn $delims_fn(open_span: Span, close_span: Span, error: Option<DiagnosticHandle>) -> Self {
+                Self::new(open_span, close_span, DelimiterKind::$delims_type, error)
             }
         )*
     }
@@ -126,8 +127,12 @@ with_tokens!(
     $(
         impl $delims_type {
             #[allow(dead_code)]
-            pub fn new(open_span: Span, close_span: Span) -> Self {
-                Self { open_span, close_span }
+            pub fn new(open_span: Span, close_span: Span, error: Option<DiagnosticHandle>) -> Self {
+                Self {
+                    open_span,
+                    close_span,
+                    error,
+                }
             }
         }
     )*
@@ -151,35 +156,29 @@ impl DelimiterKind {
 }
 
 impl DelimitersType for Delimiters {
-    type Open = OpenDelimiter;
-    type Close = CloseDelimiter;
-
     fn kind(&self) -> DelimiterKind {
         self.kind
     }
 
-    fn open(&self) -> Self::Open {
-        OpenDelimiter::new(self.open_span, self.kind)
+    fn open_span(&self) -> Span {
+        self.open_span
     }
-    fn close(&self) -> Self::Close {
-        CloseDelimiter::new(self.close_span, self.kind)
+    fn close_span(&self) -> Span {
+        self.close_span
     }
 }
 
 with_tokens!($(
     impl DelimitersType for $delims_type {
-        type Open = $delim_open_type;
-        type Close = $delim_close_type;
-    
         fn kind(&self) -> DelimiterKind {
             DelimiterKind::$delims_type
         }
     
-        fn open(&self) -> Self::Open {
-            $delim_open_type(self.open_span)
+        fn open_span(&self) -> Span {
+            self.open_span
         }
-        fn close(&self) -> Self::Close {
-            $delim_close_type(self.close_span)
+        fn close_span(&self) -> Span {
+            self.close_span
         }
     }
 
@@ -191,6 +190,7 @@ with_tokens!($(
                 Ok(Self {
                     open_span: value.open_span,
                     close_span: value.close_span,
+                    error: value.error,
                 })
             } else {
                 Err(())
