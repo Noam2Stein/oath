@@ -37,19 +37,21 @@ impl OathCompiler {
         }
     }
 
-    pub fn create_lib(&self, dir_path: PathBuf, dependencies: impl IntoIterator<Item = LibId>) -> LibId {
+    pub fn create_lib(&self, dir_path: PathBuf) -> LibId {
         let id = (0..)
             .map(|i| LibId(i))
             .filter(|id| !self.libs.contains_key(id))
             .next()
             .unwrap();
 
+        let root_mod_path = dir_path.join("mod.oh");
+
         let lib = Lib {
-            root_mod: RwLock::new(self.find_root_mod_path(&dir_path).map(|path| {
-                let mut file = File::open(&path).unwrap();
+            root_mod: RwLock::new(if root_mod_path.is_file() {
+                let mut file = File::open(&root_mod_path).unwrap();
 
                 let mut mod_ = Mod {
-                    path,
+                    path: root_mod_path,
                     time: file.metadata().unwrap().modified().unwrap(),
                     can_have_children: true,
                     ast: SyntaxTree::default(),
@@ -60,8 +62,10 @@ impl OathCompiler {
                 file.read_to_string(&mut text).unwrap();
                 self.update_mod(&mut mod_, &text);
 
-                mod_
-            })),
+                Ok(mod_)
+            } else {
+                Err(ModError::CantFind("mod.oh".to_string()))
+            }),
             dir_path,
         };
 
@@ -72,29 +76,27 @@ impl OathCompiler {
 
     pub fn check_libs(&self) {
         for lib in &self.libs {
-            let root_path = self.find_root_mod_path(&lib.dir_path);
+            let root_mod_path = lib.dir_path.join("mod.oh");
 
-            let changed_path = match (root_path, lib.root_mod.read().unwrap().as_ref()) {
-                (Ok(path), Ok(mod_)) => {
-                    if path != mod_.path {
-                        Some(path)
-                    } else {
-                        let file = File::open(&path).unwrap();
-                        let file_time = file.metadata().unwrap().modified().unwrap();
+            let changed = if root_mod_path.is_file() {
+                let root_mod = lib.root_mod.read().unwrap();
+                if let Ok(root_mod) = &*root_mod {
+                    let file = File::open(&root_mod_path).unwrap();
+                    let file_time = file.metadata().unwrap().modified().unwrap();
 
-                        if file_time > mod_.time { Some(path.clone()) } else { None }
-                    }
+                    file_time > root_mod.time
+                } else {
+                    true
                 }
-                (Ok(path), Err(_)) => Some(path),
-                (Err(_), Ok(_)) => None,
-                (Err(_), Err(_)) => None,
+            } else {
+                lib.root_mod.read().unwrap().is_ok()
             };
 
-            if let Some(changed_path) = changed_path {
-                let mut file = File::open(&changed_path).unwrap();
+            if changed {
+                let mut file = File::open(&root_mod_path).unwrap();
 
                 let mut mod_ = Mod {
-                    path: changed_path.clone(),
+                    path: root_mod_path.clone(),
                     time: file.metadata().unwrap().modified().unwrap(),
                     can_have_children: true,
                     ast: SyntaxTree::default(),
@@ -176,35 +178,13 @@ struct Mod {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
 enum ModError {
     CantFind(String),
-    FoundBoth(String),
 }
 
 impl OathCompiler {
-    fn find_root_mod_path(&self, dir_path: &Path) -> Result<PathBuf, ModError> {
-        let main_path = dir_path.join("main.oh");
-        let lib_path = dir_path.join("lib.oh");
+    fn find_mod_file(&self, dir_path: &Path) -> Option<PathBuf> {
+        let path = dir_path.join("mod.oh");
 
-        let main_path = if main_path.exists() { Some(main_path) } else { None };
-        let lib_path = if lib_path.exists() { Some(lib_path) } else { None };
-
-        let path = match (main_path, lib_path) {
-            (Some(main_file), None) => main_file,
-            (None, Some(lib_file)) => lib_file,
-            (Some(_), Some(_)) => {
-                return Err(ModError::FoundBoth(format!(
-                    "found both `main.oh` and `lib.oh` in {}",
-                    dir_path.display()
-                )));
-            }
-            (None, None) => {
-                return Err(ModError::CantFind(format!(
-                    "can't find `main.oh` or `lib.oh` in {}",
-                    dir_path.display()
-                )));
-            }
-        };
-
-        Ok(path)
+        path.is_file().then_some(path)
     }
 
     fn update_mod(&self, mod_: &mut Mod, text: &str) {

@@ -42,7 +42,7 @@ struct Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         *self.root.write().unwrap() = params.root_uri.unwrap().to_file_path().unwrap();
-        *self.lib.write().unwrap() = Some(self.oath.create_lib(self.root.read().unwrap().to_path_buf(), []));
+        *self.lib.write().unwrap() = Some(self.oath.create_lib(self.root.read().unwrap().to_path_buf()));
 
         let weak = Arc::downgrade(&self.oath);
         let client = self.client.clone();
