@@ -32,13 +32,16 @@ pub struct CloseDelimiter {
 }
 
 pub trait DelimitersType: Debug + Spanned + TryFrom<Delimiters> {
+    type Open: Debug + Spanned + TryFrom<OpenDelimiter>;
+    type Close: Debug + Spanned + TryFrom<CloseDelimiter>;
+
     #[allow(dead_code)]
     fn kind(&self) -> DelimiterKind;
 
     #[allow(dead_code)]
-    fn open_span(&self) -> Span;
+    fn open(&self) -> Self::Open;
     #[allow(dead_code)]
-    fn close_span(&self) -> Span;
+    fn close(&self) -> Self::Close;
 }
 
 with_tokens!(
@@ -156,29 +159,35 @@ impl DelimiterKind {
 }
 
 impl DelimitersType for Delimiters {
+    type Open = OpenDelimiter;
+    type Close = CloseDelimiter;
+
     fn kind(&self) -> DelimiterKind {
         self.kind
     }
 
-    fn open_span(&self) -> Span {
-        self.open_span
+    fn open(&self) -> Self::Open {
+        OpenDelimiter::new(self.open_span, self.kind)
     }
-    fn close_span(&self) -> Span {
-        self.close_span
+    fn close(&self) -> Self::Close {
+        CloseDelimiter::new(self.close_span, self.kind)
     }
 }
 
 with_tokens!($(
     impl DelimitersType for $delims_type {
+        type Open = $delim_open_type;
+        type Close = $delim_close_type;
+
         fn kind(&self) -> DelimiterKind {
             DelimiterKind::$delims_type
         }
     
-        fn open_span(&self) -> Span {
-            self.open_span
+        fn open(&self) -> Self::Open {
+            $delim_open_type(self.open_span)
         }
-        fn close_span(&self) -> Span {
-            self.close_span
+        fn close(&self) -> Self::Close {
+            $delim_close_type(self.close_span)
         }
     }
 

@@ -70,3 +70,16 @@ impl KeywordKind {
         }
     }
 }
+
+impl Highlightable for Keyword {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
+        self.span.highlight(color, h);
+    }
+}
+with_tokens! {$(
+    impl Highlightable for $keyword_type {
+        fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
+            self.0.highlight(color, h);
+        }
+    }
+)*}

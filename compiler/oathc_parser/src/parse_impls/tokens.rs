@@ -3,17 +3,18 @@ use super::*;
 // IDENT
 
 impl OptionParse for Ident {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Ident(token)) = parser.peek() {
-            parser.next();
-
-            *output = Some(token);
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Ident(_)) = parser.peek() {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Ident(token)) => token,
+                _ => unreachable!(),
+            });
         }
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Ident(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -30,12 +31,15 @@ impl ParseDesc for Ident {
 // LITERAL
 
 impl OptionParse for Literal {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Literal(token)) = parser.peek() {
-            parser.next();
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Literal(_)) = parser.peek() {
+            let token = match parser.next() {
+                Some(LazyToken::Literal(token)) => token,
+                _ => unreachable!(),
+            };
 
             match &token {
-                Self::Int(_) | Self::Float(_) => parser.context().highlight_span(token.span(), HighlightColor::Yellow),
+                Self::Int(_) | Self::Float(_) => token.span().highlight(HighlightColor::Yellow, parser.highlights()),
                 _ => {}
             }
 
@@ -45,7 +49,7 @@ impl OptionParse for Literal {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Literal(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -60,9 +64,14 @@ impl ParseDesc for Literal {
 }
 
 impl OptionParse for IntLiteral {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Literal(Literal::Int(token))) = parser.peek() {
-            parser.next();
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Literal(Literal::Int(_))) = parser.peek() {
+            let token = match parser.next() {
+                Some(LazyToken::Literal(Literal::Int(token))) => token,
+                _ => unreachable!(),
+            };
+
+            token.span().highlight(HighlightColor::Yellow, parser.highlights());
 
             *output = Some(token);
         }
@@ -70,7 +79,7 @@ impl OptionParse for IntLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Literal(Literal::Int(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -85,9 +94,14 @@ impl ParseDesc for IntLiteral {
 }
 
 impl OptionParse for FloatLiteral {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Literal(Literal::Float(token))) = parser.peek() {
-            parser.next();
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Literal(Literal::Float(_))) = parser.peek() {
+            let token = match parser.next() {
+                Some(LazyToken::Literal(Literal::Float(token))) => token,
+                _ => unreachable!(),
+            };
+
+            token.span().highlight(HighlightColor::Yellow, parser.highlights());
 
             *output = Some(token);
         }
@@ -95,7 +109,7 @@ impl OptionParse for FloatLiteral {
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Literal(Literal::Float(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -110,17 +124,18 @@ impl ParseDesc for FloatLiteral {
 }
 
 impl OptionParse for StrLiteral {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Literal(Literal::Str(token))) = parser.peek() {
-            parser.next();
-
-            *output = Some(token);
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Literal(Literal::Str(_))) = parser.peek() {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Literal(Literal::Str(token))) => token,
+                _ => unreachable!(),
+            });
         }
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Literal(Literal::Str(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -135,17 +150,18 @@ impl ParseDesc for StrLiteral {
 }
 
 impl OptionParse for CharLiteral {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Literal(Literal::Char(token))) = parser.peek() {
-            parser.next();
-
-            *output = Some(token);
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Literal(Literal::Char(_))) = parser.peek() {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Literal(Literal::Char(token))) => token,
+                _ => unreachable!(),
+            });
         }
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Literal(Literal::Char(_))) = parser.peek() {
             Detection::Detected
         } else {
@@ -162,17 +178,18 @@ impl ParseDesc for CharLiteral {
 // KEYWORD
 
 impl OptionParse for Keyword {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Keyword(token)) = parser.peek() {
-            parser.next();
-
-            *output = Some(token);
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Keyword(_)) = parser.peek() {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Keyword(token)) => token,
+                _ => unreachable!(),
+            });
         }
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Keyword(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -188,19 +205,18 @@ impl ParseDesc for Keyword {
 
 with_tokens!($(
     impl OptionParse for $keyword_type {
-        fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-            if let Some(PeekToken::Keyword(token)) = parser.peek() {
-                if token.kind == KeywordKind::$keyword_variant {
-                    parser.next();
-    
-                    *output = Some(Self(token.span));
-                }
+        fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+            if let Some(PeekToken::Keyword(Keyword { kind: KeywordKind::$keyword_variant, span: _ })) = parser.peek() {
+                *output = Some(Self(match parser.next() {
+                    Some(LazyToken::Keyword(token)) => token.span,
+                    _ => unreachable!(),
+                }));
             }
     
             ParseExit::Complete
         }
     
-        fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+        fn detect(parser: &impl Tokenizer) -> Detection {
             if let Some(PeekToken::Keyword(token)) = parser.peek() {
                 if token.kind == KeywordKind::$keyword_variant {
                     Detection::Detected
@@ -222,17 +238,18 @@ with_tokens!($(
 // PUNCT
 
 impl OptionParse for Punct {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-        if let Some(PeekToken::Punct(token)) = parser.peek() {
-            parser.next();
-
-            *output = Some(token);
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+        if let Some(PeekToken::Punct(_)) = parser.peek() {
+            *output = Some(match parser.next() {
+                Some(LazyToken::Punct(token)) => token,
+                _ => unreachable!(),
+            });
         }
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Punct(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -248,19 +265,18 @@ impl ParseDesc for Punct {
 
 with_tokens!($(
     impl OptionParse for $punct_type {
-        fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
-            if let Some(PeekToken::Punct(token)) = parser.peek() {
-                if token.kind == PunctKind::$punct_variant {
-                    parser.next();
-    
-                    *output = Some(Self(token.span));
-                }
+        fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
+            if let Some(PeekToken::Punct(Punct { kind: PunctKind::$punct_variant, span: _ })) = parser.peek() {
+                *output = Some(Self(match parser.next() {
+                    Some(LazyToken::Punct(token)) => token.span,
+                    _ => unreachable!(),
+                }));
             }
     
             ParseExit::Complete
         }
     
-        fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+        fn detect(parser: &impl Tokenizer) -> Detection {
             if let Some(PeekToken::Punct(token)) = parser.peek() {
                 if token.kind == PunctKind::$punct_variant {
                     Detection::Detected
@@ -282,29 +298,29 @@ with_tokens!($(
 )*);
 
 impl ParseFrame for Delimiters {
-    fn option_parse<P, T: Tokenizer>(
-        parser: &mut Parser<T>,
-        _parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
-        parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
-        output: &mut Option<(Self, P)>,
+    fn option_parse<Inner, T: Tokenizer>(
+        parser: &mut T,
+        output: &mut Option<(Self, Inner)>,
+        _parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
+        parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
     ) -> ParseExit {
         let mut parser = if Self::detect(parser) == Detection::Detected {
             match parser.next() {
-                Some(LazyToken::Group(group)) => Parser(group),
+                Some(LazyToken::Group(group)) => group,
                 _ => unreachable!(),
             }
         } else {
             return ParseExit::Complete;
         };
 
-        let (value, _) = parse_group(&mut parser);
+        let (value, _) = parse_inside(&mut parser);
 
-        *output = Some((parser.delims(), value));
+        *output = Some((parser.finish(), value));
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Group(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -315,29 +331,29 @@ impl ParseFrame for Delimiters {
 
 with_tokens!($(
     impl ParseFrame for $delims_type {
-        fn option_parse<P, T: Tokenizer>(
-            parser: &mut Parser<T>,
-            _parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
-            parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
-            output: &mut Option<(Self, P)>,
-        ) -> ParseExit {
+        fn option_parse<Inner, T: Tokenizer>(
+        parser: &mut T,
+        output: &mut Option<(Self, Inner)>,
+        _parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
+        parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
+    ) -> ParseExit {
             let mut parser = if Self::detect(parser) == Detection::Detected {
                 match parser.next() {
-                    Some(LazyToken::Group(group)) => Parser(group),
+                    Some(LazyToken::Group(group)) => group,
                     _ => unreachable!(),
                 }
             } else {
                 return ParseExit::Complete;
             };
 
-            let (value, _) = parse_group(&mut parser);
+            let (value, _) = parse_inside(&mut parser);
 
-            *output = Some((parser.delims().try_into().unwrap(), value));
+            *output = Some((parser.finish().try_into().unwrap(), value));
 
             ParseExit::Complete
         }
 
-        fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+        fn detect(parser: &impl Tokenizer) -> Detection {
             if let Some(PeekToken::Group(group)) = parser.peek() {
                 if group.kind == DelimiterKind::$delims_type {
                     Detection::Detected

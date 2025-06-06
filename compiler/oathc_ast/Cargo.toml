@@ -1,6 +1,14 @@
 [package]
-name = "oathc_ast"
-version = "0.1.0"
 edition = "2024"
+name    = "oathc_ast"
+version = "0.1.0"
 
 [dependencies]
+nonempty           = "0.11.0"
+oathc_diagnostics  = { path = "../oathc_diagnostics" }
+oathc_highlighting = { path = "../oathc_highlighting" }
+oathc_interner     = { path = "../oathc_interner" }
+oathc_parser       = { path = "../oathc_parser" }
+oathc_span         = { path = "../oathc_span" }
+oathc_tokenizer    = { path = "../oathc_tokenizer" }
+oathc_tokens       = { path = "../oathc_tokens" }

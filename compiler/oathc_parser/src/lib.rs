@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use oathc_diagnostics::*;
+use oathc_highlighting::*;
+use oathc_span::*;
+use oathc_tokenizer::*;
+use oathc_tokens::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod parse_impls;
+mod parse_traits;
+mod parse_types;
+pub use parse_traits::*;
+pub use parse_types::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use oathc_parser_proc_macros::{OptionParse, Parse};

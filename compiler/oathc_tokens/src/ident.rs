@@ -64,3 +64,9 @@ impl Ident {
         self.str_id
     }
 }
+
+impl Highlightable for Ident {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
+        self.span.highlight(color, h);
+    }
+}

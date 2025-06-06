@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name    = "oath_parser_proc_macros"
+name    = "oathc_parser_proc_macros"
 version = "0.1.0"
 
 [lib]

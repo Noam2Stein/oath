@@ -11,7 +11,7 @@ pub struct Seperated<T: ParseDesc, S: OptionParse> {
 }
 
 impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
         let mut first = None;
         let first_exit = T::option_parse(parser, &mut first);
 
@@ -50,7 +50,7 @@ impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
         }
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         T::detect(parser)
     }
 }
@@ -61,8 +61,8 @@ impl<T: ParseDesc, S: OptionParse> ParseDesc for Seperated<T, S> {
     }
 }
 
-impl<T: ParseDesc + Highlight, S: OptionParse> Highlight for Seperated<T, S> {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+impl<T: ParseDesc + Highlightable, S: OptionParse> Highlightable for Seperated<T, S> {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
         for value in &self.values {
             value.highlight(color, h);
         }

@@ -9,3 +9,9 @@ pub struct IntLiteral {
 }
 
 const _: () = verify_token_type::<IntLiteral>();
+
+impl Highlightable for IntLiteral {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
+        self.span.highlight(color, h);
+    }
+}

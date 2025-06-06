@@ -50,18 +50,18 @@ pub fn parse_fields(
 
             #(
                 match #parse_fields {
-                    ::oath_parser::ParseExit::Complete => {},
-                    ::oath_parser::ParseExit::Cut => {
+                    ParseExit::Complete => {},
+                    ParseExit::Cut => {
                         #set_output;
 
-                        break 'parse_fields ::oath_parser::ParseExit::Cut;
+                        break 'parse_fields ParseExit::Cut;
                     },
                 }
             )*
 
             #set_output;
 
-            ::oath_parser::ParseExit::Complete
+            ParseExit::Complete
         }}
     }
 }
@@ -121,49 +121,49 @@ pub fn option_parse_fields(
             {
                 let mut frame_output = None;
 
-                let parse_exit = <#frame_type as ::oath_parser::ParseFrame>::option_parse(
+                let parse_exit = <#frame_type as ParseFrame>::option_parse(
                     parser,
-                    |parser|  {
-                        #[allow(unused_parens)]
-                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
-
-                        #[allow(unused_labels)]
-                        let parse_exit = 'parse_fields: {
-                            #(
-                                match #parse_fields {
-                                    ::oath_parser::ParseExit::Complete => {},
-                                    ::oath_parser::ParseExit::Cut => {
-                                        break 'parse_fields ::oath_parser::ParseExit::Cut;
-                                    },
-                                }
-                            )*
-
-                            ::oath_parser::ParseExit::Complete
-                        };
-
-                        ((#(#field_let_idents), *), parse_exit)
-                    },
-                    |parser|  {
-                        #[allow(unused_parens)]
-                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
-
-                        #[allow(unused_labels)]
-                        let parse_exit = 'parse_fields: {
-                            #(
-                                match #parse_fields {
-                                    ::oath_parser::ParseExit::Complete => {},
-                                    ::oath_parser::ParseExit::Cut => {
-                                        break 'parse_fields ::oath_parser::ParseExit::Cut;
-                                    },
-                                }
-                            )*
-
-                            ::oath_parser::ParseExit::Complete
-                        };
-
-                        ((#(#field_let_idents), *), parse_exit)
-                    },
                     &mut frame_output,
+                    |parser|  {
+                        #[allow(unused_parens)]
+                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
+
+                        #[allow(unused_labels)]
+                        let parse_exit = 'parse_fields: {
+                            #(
+                                match #parse_fields {
+                                    ParseExit::Complete => {},
+                                    ParseExit::Cut => {
+                                        break 'parse_fields ParseExit::Cut;
+                                    },
+                                }
+                            )*
+
+                            ParseExit::Complete
+                        };
+
+                        ((#(#field_let_idents), *), parse_exit)
+                    },
+                    |parser|  {
+                        #[allow(unused_parens)]
+                        let (#(mut #field_let_idents), *) = (#(#field_parse_errors), *);
+
+                        #[allow(unused_labels)]
+                        let parse_exit = 'parse_fields: {
+                            #(
+                                match #parse_fields {
+                                    ParseExit::Complete => {},
+                                    ParseExit::Cut => {
+                                        break 'parse_fields ParseExit::Cut;
+                                    },
+                                }
+                            )*
+
+                            ParseExit::Complete
+                        };
+
+                        ((#(#field_let_idents), *), parse_exit)
+                    },
                 );
 
                 #[allow(unused_parens)]
@@ -188,7 +188,7 @@ pub fn option_parse_fields(
             {
                 *#output = Some(#fields_path {});
 
-                ::oath_parser::ParseExit::Complete
+                ParseExit::Complete
             }
         };
     }
@@ -229,8 +229,8 @@ pub fn option_parse_fields(
         fields_span =>
 
         { #[allow(unused_labels)] 'option_parse_fields: {
-            if #detect == ::oath_parser::Detection::NotDetected {
-                break 'option_parse_fields ::oath_parser::ParseExit::Complete;
+            if #detect == Detection::NotDetected {
+                break 'option_parse_fields ParseExit::Complete;
             }
 
             let mut primary_field = None;
@@ -241,26 +241,26 @@ pub fn option_parse_fields(
                 let mut #secondary_field_let_idents = #secondary_field_parse_errors;
             )*
 
-            if primary_field_exit == ::oath_parser::ParseExit::Cut {
+            if primary_field_exit == ParseExit::Cut {
                 #set_output;
 
-                break 'option_parse_fields ::oath_parser::ParseExit::Cut;
+                break 'option_parse_fields ParseExit::Cut;
             }
 
             #(
                 match #parse_secondary_fields {
-                    ::oath_parser::ParseExit::Complete => {},
-                    ::oath_parser::ParseExit::Cut => {
+                    ParseExit::Complete => {},
+                    ParseExit::Cut => {
                         #set_output;
 
-                        break 'option_parse_fields ::oath_parser::ParseExit::Cut;
+                        break 'option_parse_fields ParseExit::Cut;
                     },
                 }
             )*
 
             #set_output;
 
-            ::oath_parser::ParseExit::Complete
+            ParseExit::Complete
         }}
     }
 }
@@ -276,7 +276,7 @@ pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribu
         return quote_spanned! {
             field_type.span() =>
 
-            <#field_type as ::oath_parser::ParseFrame>::detect(parser)
+            <#field_type as ParseFrame>::detect(parser)
         };
     }
 
@@ -319,7 +319,7 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         quote_spanned! {
             field_type.span() =>
 
-            <#field_type as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut parser.context().highlighter);
+            <#field_type as Highlightable>::highlight(#output, #color, &mut parser.highlights());
         }
     });
 
@@ -327,7 +327,7 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         field.span() =>
 
         {
-            let exit = <#field_type as ::oath_parser::Parse>::parse(parser, #output);
+            let exit = <#field_type as Parse>::parse(parser, #output);
 
             #highlight
 
@@ -342,7 +342,7 @@ fn field_parse_error(field: &Field) -> TokenStream {
     quote_spanned! {
         field.span() =>
 
-        <#field_type as ::oath_parser::Parse>::parse_error()
+        <#field_type as Parse>::parse_error()
     }
 }
 
@@ -360,7 +360,7 @@ fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         quote_spanned! {
             field_type.span() =>
 
-            <Option<#field_type> as ::oath_highlighting::Highlight>::highlight(#output, #color, &mut parser.context().highlighter);
+            <Option<#field_type> as Highlightable>::highlight(#output, #color, &mut parser.highlights());
         }
     });
 
@@ -368,7 +368,7 @@ fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         field.span() =>
 
         {
-            let exit = <#field_type as ::oath_parser::OptionParse>::option_parse(parser, #output);
+            let exit = <#field_type as OptionParse>::option_parse(parser, #output);
 
             #highlight
 
@@ -383,6 +383,6 @@ fn detect_field(field: &Field) -> TokenStream {
     quote_spanned! {
         field.span() =>
 
-        <#field_type as ::oath_parser::OptionParse>::detect(parser)
+        <#field_type as OptionParse>::detect(parser)
     }
 }

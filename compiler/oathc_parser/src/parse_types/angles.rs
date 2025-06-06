@@ -7,11 +7,11 @@ pub struct Angles {
 }
 
 impl ParseFrame for Angles {
-    fn option_parse<P, T: Tokenizer>(
-        parser: &mut Parser<T>,
-        parse_t: impl FnOnce(&mut Parser<T>) -> (P, ParseExit),
-        _parse_group: impl FnOnce(&mut Parser<GroupTokenizer>) -> (P, ParseExit),
-        output: &mut Option<(Self, P)>,
+    fn option_parse<Inner, T: Tokenizer>(
+        parser: &mut T,
+        output: &mut Option<(Self, Inner)>,
+        parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
+        _parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
     ) -> ParseExit {
         let mut open = None;
         <punct!("<")>::option_parse(parser, &mut open);
@@ -21,7 +21,7 @@ impl ParseFrame for Angles {
             None => return ParseExit::Complete,
         };
 
-        let (value, parse_exit) = parse_t(parser);
+        let (value, parse_exit) = parse_outside(parser);
 
         match parse_exit {
             ParseExit::Complete => {
@@ -46,7 +46,7 @@ impl ParseFrame for Angles {
         }
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         <punct!("<")>::detect(parser)
     }
 }

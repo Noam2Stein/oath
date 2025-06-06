@@ -10,11 +10,11 @@ pub fn derive_option_parse(input: &DeriveInput) -> TokenStream {
         "OptionParse",
         [
             impl_trait_fn(
-                quote! { fn option_parse(parser: &mut ::oath_parser::Parser<impl ::oath_tokenizer::Tokenizer>, output: &mut Option<Self>) -> ParseExit },
+                quote! { fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit },
                 data_split(&input.data, &input.attrs, option_parse_struct, option_parse_enum),
             ),
             impl_trait_fn(
-                quote! { fn detect(parser: &::oath_parser::Parser<impl ::oath_tokenizer::Tokenizer>) -> Detection },
+                quote! { fn detect(parser: &impl Tokenizer) -> Detection },
                 data_split(&input.data, &input.attrs, detect_struct, detect_enum),
             ),
         ],
@@ -74,7 +74,7 @@ fn option_parse_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
     quote! {
         #(#variant_ifs)*
 
-        ::oath_parser::ParseExit::Complete
+        ParseExit::Complete
     }
 }
 
@@ -85,7 +85,7 @@ fn detect_enum(data: &DataEnum, _attrs: &[Attribute]) -> TokenStream {
         .map(|variant| detect_fields(&variant.fields, variant.span(), &variant.attrs));
 
     quote! {
-        'detect_enum: { ::oath_parser::Detection::NotDetected #(| #detect_variants)* }
+        'detect_enum: { Detection::NotDetected #(| #detect_variants)* }
     }
 }
 

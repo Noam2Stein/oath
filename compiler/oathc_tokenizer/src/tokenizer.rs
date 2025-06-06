@@ -24,13 +24,14 @@ pub trait Tokenizer {
 }
 
 #[derive(Debug)]
+#[derive(Spanned)]
 pub enum LazyToken<'ctx, 'tokenizer> {
     Ident(Ident),
     Keyword(Keyword),
     Punct(Punct),
     Literal(Literal),
     Group(GroupTokenizer<'ctx, 'tokenizer>),
-    Error(DiagnosticHandle),
+    Error(Span, DiagnosticHandle),
 }
 
 #[derive(Debug)]
@@ -41,7 +42,7 @@ pub enum PeekToken {
     Punct(Punct),
     Literal(Literal),
     Group(OpenDelimiter),
-    Error(DiagnosticHandle),
+    Error(Span, DiagnosticHandle),
 }
 
 #[derive(Debug)]
@@ -52,8 +53,10 @@ pub struct RootTokenizer<'ctx> {
 }
 
 #[derive(Debug)]
+#[derive(Spanned)]
 pub struct GroupTokenizer<'ctx, 'parent> {
     parent: ParentTokenizer<'ctx, 'parent>,
+    #[span]
     delims: Delimiters,
     peek: Peek,
     last_span: Span,
@@ -96,13 +99,21 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
 
                     LazyToken::Group(unsafe { transmute(group_tokenizer) })
                 }
-                PeekToken::Error(token) => {
+                PeekToken::Error(span, token) => {
                     self.update_peek();
 
-                    LazyToken::Error(token)
+                    LazyToken::Error(span, token)
                 }
             }),
-            Peek::Close(_) => unreachable!(),
+            Peek::Close(close) => {
+                self.update_peek();
+
+                Some(LazyToken::Error(
+                    close.span,
+                    self.diagnostics()
+                        .push_error(self.path(), TokenError::Unopened(close.span, close.kind.close_str())),
+                ))
+            }
             Peek::Unevaluated => unreachable!(),
         }
     }
@@ -163,9 +174,10 @@ impl<'ctx> RootTokenizer<'ctx> {
 
     fn update_peek(&mut self) {
         match &self.peek {
+            Peek::None => return,
             Peek::Token(token) => self.last_span = token.span(),
-            Peek::Close(_) | Peek::None => return,
             Peek::Unevaluated => {}
+            Peek::Close(_) => self.peek = Peek::None,
         };
 
         self.peek = match self.raw.next() {
@@ -176,11 +188,8 @@ impl<'ctx> RootTokenizer<'ctx> {
                 RawToken::Punct(raw_token) => Peek::Token(PeekToken::Punct(raw_token)),
                 RawToken::Literal(raw_token) => Peek::Token(PeekToken::Literal(raw_token)),
                 RawToken::OpenDelimiter(raw_token) => Peek::Token(PeekToken::Group(raw_token)),
-                RawToken::CloseDelimiter(close) => Peek::Token(PeekToken::Error(
-                    self.diagnostics()
-                        .push_error(self.path(), TokenError::Unopened(close.span, close.kind.close_str())),
-                )),
-                RawToken::Unknown(error) => Peek::Token(PeekToken::Error(error)),
+                RawToken::CloseDelimiter(close) => Peek::Close(close),
+                RawToken::Unknown(span, error) => Peek::Token(PeekToken::Error(span, error)),
             },
         };
     }
@@ -223,10 +232,10 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
 
                     LazyToken::Group(group_tokenizer)
                 }
-                PeekToken::Error(token) => {
+                PeekToken::Error(span, token) => {
                     self.update_peek();
 
-                    LazyToken::Error(token)
+                    LazyToken::Error(span, token)
                 }
             }),
             Peek::Unevaluated => unreachable!(),
@@ -269,8 +278,9 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
 }
 impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
     pub fn open(&self) -> OpenDelimiter {
-        OpenDelimiter::new(self.delims.open_span, self.delims.kind)
+        self.delims.open()
     }
+
     pub fn finish(&mut self) -> Delimiters {
         while let Some(_) = self.next() {}
 
@@ -305,7 +315,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
                 RawToken::Literal(raw_token) => Peek::Token(PeekToken::Literal(raw_token)),
                 RawToken::OpenDelimiter(raw_token) => Peek::Token(PeekToken::Group(raw_token)),
                 RawToken::CloseDelimiter(close) => self.handle_close(close),
-                RawToken::Unknown(error) => Peek::Token(PeekToken::Error(error)),
+                RawToken::Unknown(span, error) => Peek::Token(PeekToken::Error(span, error)),
             },
         };
     }
@@ -327,16 +337,15 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
 
             close
         } else {
-            let open = self.open();
-            self.diagnostics()
-                .push_error(self.path(), TokenError::Unclosed(open.span, open.kind.open_str()));
+            self.delims.error = Some(self.diagnostics().push_error(
+                self.path(),
+                TokenError::Unclosed(self.open().span, self.open().kind.open_str()),
+            ));
 
             match &mut self.parent {
                 ParentTokenizer::Group(parent) => parent.peek = parent.handle_close(close),
                 ParentTokenizer::Root(parent) => {
-                    parent
-                        .diagnostics()
-                        .push_error(parent.path(), TokenError::Unopened(close.span, close.kind.close_str()));
+                    parent.peek = Peek::Close(close);
 
                     parent.update_peek();
                 }

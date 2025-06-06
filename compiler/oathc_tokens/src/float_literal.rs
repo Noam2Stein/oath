@@ -11,3 +11,9 @@ pub struct FloatLiteral {
 }
 
 const _: () = verify_token_type::<FloatLiteral>();
+
+impl Highlightable for FloatLiteral {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
+        self.span.highlight(color, h);
+    }
+}

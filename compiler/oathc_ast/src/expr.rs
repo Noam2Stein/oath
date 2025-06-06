@@ -65,7 +65,7 @@ pub enum ExprPostfix {
     Generics(Angles, List<AngleExpr>),
 }
 
-#[derive(Debug, PartialEq, Eq, Spanned, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "a `.` expression"]
 pub enum Member {
     Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),

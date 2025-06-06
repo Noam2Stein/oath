@@ -9,7 +9,7 @@ pub struct Trailing<T: OptionParse, S: OptionParse> {
 }
 
 impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
         let mut some = Self::parse_error();
         let exit = Self::parse(parser, &mut some);
 
@@ -18,7 +18,7 @@ impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
         exit
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         match T::detect(parser) {
             Detection::Detected => Detection::Detected,
             Detection::NotDetected => Detection::EmptyDetected,
@@ -27,7 +27,7 @@ impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
     }
 }
 impl<T: OptionParse, S: OptionParse> Parse for Trailing<T, S> {
-    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut impl Tokenizer, output: &mut Self) -> ParseExit {
         loop {
             if T::detect(parser) != Detection::Detected {
                 break ParseExit::Complete;
@@ -63,8 +63,8 @@ impl<T: OptionParse, S: OptionParse> Parse for Trailing<T, S> {
     }
 }
 
-impl<T: OptionParse + Highlight, S: OptionParse> Highlight for Trailing<T, S> {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+impl<T: OptionParse + Highlightable, S: OptionParse> Highlightable for Trailing<T, S> {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
         for value in &self.values {
             value.highlight(color, h);
         }

@@ -1,7 +1,7 @@
 use super::*;
 
 impl<T: ParseDesc> OptionParse for Try<T> {
-    fn option_parse(parser: &mut Parser<impl Tokenizer>, output: &mut Option<Self>) -> ParseExit {
+    fn option_parse(parser: &mut impl Tokenizer, output: &mut Option<Self>) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);
 
@@ -10,12 +10,12 @@ impl<T: ParseDesc> OptionParse for Try<T> {
         exit
     }
 
-    fn detect(parser: &Parser<impl Tokenizer>) -> Detection {
+    fn detect(parser: &impl Tokenizer) -> Detection {
         T::detect(parser)
     }
 }
 impl<T: ParseDesc> Parse for Try<T> {
-    fn parse(parser: &mut Parser<impl Tokenizer>, output: &mut Self) -> ParseExit {
+    fn parse(parser: &mut impl Tokenizer, output: &mut Self) -> ParseExit {
         let mut option = None;
         let exit = T::option_parse(parser, &mut option);
 
@@ -26,7 +26,11 @@ impl<T: ParseDesc> Parse for Try<T> {
         } else {
             let span = parser.peek_span();
 
-            *output = Try::Failure(Some(parser.context().push_error(SyntaxError::Expected(span, T::desc()))));
+            *output = Try::Failure(Some(
+                parser
+                    .diagnostics()
+                    .push_error(parser.path(), SyntaxError::Expected(span, T::desc())),
+            ));
 
             ParseExit::Cut
         }

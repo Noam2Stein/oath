@@ -74,7 +74,7 @@ pub enum UsePath {
     Parent(#[span] keyword!("parent"), Option<UseDot>),
     All(punct!("*")),
     #[framed]
-    List(#[span] delims!("{ }"), List<UsePath>),
+    List(delims!("{ }"), List<UsePath>),
 }
 
 #[derive(Debug, OptionParse)]
@@ -254,8 +254,8 @@ pub struct Bounds {
     pub expr: Try<Expr>,
 }
 
-impl Highlight for Param {
-    fn highlight(&self, color: HighlightColor, h: &mut Highlighter) {
+impl Highlightable for Param {
+    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
         self.name.highlight(color, h);
     }
 }

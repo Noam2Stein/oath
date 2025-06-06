@@ -12,7 +12,7 @@ pub enum RawToken {
     Literal(Literal),
     OpenDelimiter(OpenDelimiter),
     CloseDelimiter(CloseDelimiter),
-    Unknown(DiagnosticHandle),
+    Unknown(Span, DiagnosticHandle),
 }
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl<'ctx> RawTokenizer<'ctx> {
                                 Ok(LogosToken::$delim_open_type) => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
                                 Ok(LogosToken::$delim_close_type) => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
                             )*
-                            Err(_) => RawToken::Unknown(self.diagnostics.push_error(self.path.clone(), TokenError::UnknownToken(span)))
+                            Err(_) => RawToken::Unknown(span, self.diagnostics.push_error(self.path.clone(), TokenError::UnknownToken(span)))
                         }
                 })
             } else {

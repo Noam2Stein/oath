@@ -14,14 +14,14 @@ pub fn impl_trait(input: &DeriveInput, trait_ident: &'static str, items: impl In
         return quote! {
             compile_error!(#error);
 
-            impl #impl_generics ::oath_parser::#trait_ident for #type_ident #ty_generics #where_clause {}
+            impl #impl_generics #trait_ident for #type_ident #ty_generics #where_clause {}
         };
     }
 
     let items = items.into_iter();
 
     quote! {
-        impl #impl_generics ::oath_parser::#trait_ident for #type_ident #ty_generics #where_clause {
+        impl #impl_generics #trait_ident for #type_ident #ty_generics #where_clause {
             #(#items)*
         }
     }

@@ -1,14 +1,38 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use std::fmt::Debug;
+
+use oathc_diagnostics::*;
+use oathc_highlighting::*;
+use oathc_parser::*;
+use oathc_span::*;
+use oathc_tokenizer::*;
+use oathc_tokens::*;
+
+mod attr;
+mod block;
+mod expr;
+mod item;
+pub use attr::*;
+pub use block::*;
+pub use expr::*;
+pub use item::*;
+
+pub type SyntaxTree = Repeated<Item>;
+
+#[allow(private_bounds)]
+pub trait ParseAstExt: Seal {
+    fn parse_ast(self) -> SyntaxTree;
 }
+trait Seal {}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl<T: Tokenizer> Seal for T {}
+impl<T: Tokenizer> ParseAstExt for T {
+    fn parse_ast(self) -> SyntaxTree {
+        let mut parser = self;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        let mut output = SyntaxTree::parse_error();
+
+        SyntaxTree::parse(&mut parser, &mut output);
+
+        output
     }
 }

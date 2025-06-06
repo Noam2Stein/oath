@@ -17,7 +17,7 @@ pub fn keyword(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let keyword_type = Ident::new(keyword_to_type(keyword.value().as_str()).as_str(), keyword.span());
 
     quote! {
-        ::oath_tokens::#keyword_type #init
+        #keyword_type #init
     }
     .into()
 }
@@ -43,7 +43,7 @@ pub fn punct(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        ::oath_tokens::#punct_type #init
+        #punct_type #init
     }
     .into()
 }
@@ -68,7 +68,7 @@ pub fn delims(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        ::oath_tokens::#delims_type
+        #delims_type
     }
     .into()
 }
@@ -94,7 +94,7 @@ pub fn open(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        ::oath_tokens::#open_type #init
+        #open_type #init
     }
     .into()
 }
@@ -120,7 +120,7 @@ pub fn close(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     );
 
     quote! {
-        ::oath_tokens::#close_type #init
+        #close_type #init
     }
     .into()
 }

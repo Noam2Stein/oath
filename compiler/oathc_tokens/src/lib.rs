@@ -3,6 +3,7 @@ use std::{fmt::Debug, hash::Hash};
 use derive_more::*;
 use derive_new::*;
 use oathc_diagnostics::*;
+use oathc_highlighting::*;
 use oathc_interner::*;
 use oathc_span::*;
 
