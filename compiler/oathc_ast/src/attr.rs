@@ -21,12 +21,13 @@ pub struct AttrBody {
     pub delims: delims!("[ ]"),
     pub ident: Try<Ident>,
     pub value: Option<AttrInput>,
+    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]
 #[desc = "a meta value"]
 pub enum AttrInput {
     #[framed]
-    Parens(delims!("( )"), List<Expr>),
+    Parens(delims!("( )"), List<Expr>, Leftovers),
     Eq(punct!("="), Try<Expr>),
 }

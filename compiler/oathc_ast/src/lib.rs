@@ -16,7 +16,11 @@ pub use block::*;
 pub use expr::*;
 pub use item::*;
 
-pub type SyntaxTree = Repeated<Item>;
+#[derive(Debug, Default, Parse)]
+pub struct SyntaxTree {
+    pub items: Repeated<Item>,
+    pub leftovers: Leftovers,
+}
 
 #[allow(private_bounds)]
 pub trait ParseAstExt: Seal {

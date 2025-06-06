@@ -2,7 +2,7 @@ use std::sync::RwLock;
 use std::thread;
 use std::{path::PathBuf, sync::Arc};
 
-use oath::*;
+use oathc::*;
 use tower_lsp::lsp_types::{
     CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DiagnosticSeverity, DidChangeTextDocumentParams,
     DidOpenTextDocumentParams, Hover, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, MessageType,
@@ -156,11 +156,11 @@ impl Backend {
     }
 }
 
-fn highlights_to_semantic_tokens(highlights: impl Iterator<Item = HighlightInfo>) -> Vec<SemanticToken> {
+fn highlights_to_semantic_tokens(highlights: impl Iterator<Item = Highlight>) -> Vec<SemanticToken> {
     let mut highlights = highlights.collect::<Vec<_>>();
     highlights.sort_by(
-        |HighlightInfo { span, color: _ },
-         HighlightInfo {
+        |Highlight { span, color: _ },
+         Highlight {
              span: other_span,
              color: _,
          }| span.cmp(other_span),
@@ -171,7 +171,7 @@ fn highlights_to_semantic_tokens(highlights: impl Iterator<Item = HighlightInfo>
     let mut prev_line = 0;
     let mut prev_start = 0;
 
-    for HighlightInfo { span, color } in highlights {
+    for Highlight { span, color } in highlights {
         let delta_line = span.line().unwrap_or(0) - prev_line;
         let delta_start = if delta_line == 0 {
             span.start().char - prev_start

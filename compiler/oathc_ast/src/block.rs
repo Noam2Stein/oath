@@ -6,6 +6,7 @@ use super::*;
 pub struct Block {
     pub delims: delims!("{ }"),
     pub stmts: Repeated<Stmt>,
+    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]

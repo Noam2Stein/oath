@@ -10,9 +10,9 @@ pub enum ExprCore {
     Literal(Literal),
     Block(Block),
     #[framed]
-    Tuple(delims!("( )"), List<Expr>),
+    Tuple(delims!("( )"), List<Expr>, Leftovers),
     #[framed]
-    Array(delims!("[ ]"), List<Expr>),
+    Array(delims!("[ ]"), List<Expr>, Leftovers),
     If {
         keyword: keyword!("if"),
         condition: Try<Box<BraceExpr>>,
@@ -58,11 +58,11 @@ pub enum ReferenceBounds {
 pub enum ExprPostfix {
     Member(punct!("."), Try<Member>),
     #[framed]
-    Call(delims!("( )"), List<Expr>),
+    Call(delims!("( )"), List<Expr>, Leftovers),
     #[framed]
-    Index(delims!("[ ]"), Try<Box<Expr>>),
+    Index(delims!("[ ]"), Try<Box<Expr>>, Leftovers),
     #[framed]
-    Generics(Angles, List<AngleExpr>),
+    Generics(Angles, List<AngleExpr>, Leftovers),
 }
 
 #[derive(Debug, Spanned, OptionParse)]
@@ -155,9 +155,9 @@ pub enum BraceExprCore {
     Keyword(ExprKeyword),
     Literal(Literal),
     #[framed]
-    Tuple(delims!("( )"), List<Expr>),
+    Tuple(delims!("( )"), List<Expr>, Leftovers),
     #[framed]
-    Array(delims!("[ ]"), List<Expr>),
+    Array(delims!("[ ]"), List<Expr>, Leftovers),
     If {
         keyword: keyword!("if"),
         condition: Try<Box<BraceExpr>>,
@@ -170,11 +170,11 @@ pub enum BraceExprCore {
 pub enum BraceExprPostfix {
     Member(punct!("."), Try<Member>),
     #[framed]
-    Call(delims!("( )"), List<Expr>),
+    Call(delims!("( )"), List<Expr>, Leftovers),
     #[framed]
-    Index(delims!("[ ]"), Try<Box<Expr>>),
+    Index(delims!("[ ]"), Try<Box<Expr>>, Leftovers),
     #[framed]
-    Generics(Angles, List<AngleExpr>),
+    Generics(Angles, List<AngleExpr>, Leftovers),
 }
 
 #[derive(Debug, OptionParse)]
@@ -248,7 +248,7 @@ pub enum ListSep {
 #[desc = "a variable name"]
 pub enum VarName {
     #[framed]
-    Tuple(delims!("( )"), Trailing<VarName, punct!(",")>),
+    Tuple(delims!("( )"), Trailing<VarName, punct!(",")>, Leftovers),
     Ident(
         Option<keyword!("mut")>,
         #[highlight(HighlightColor::Cyan)] Try<Ident>,

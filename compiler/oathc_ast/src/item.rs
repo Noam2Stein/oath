@@ -47,7 +47,7 @@ pub struct Mod {
 #[desc = "either `{ } or `;`"]
 pub enum ModBody {
     #[framed]
-    Block(delims!("{ }"), Repeated<Item>),
+    Block(delims!("{ }"), Repeated<Item>, Leftovers),
     Semi(punct!(";")),
 }
 
@@ -74,7 +74,7 @@ pub enum UsePath {
     Parent(#[span] keyword!("parent"), Option<UseDot>),
     All(punct!("*")),
     #[framed]
-    List(delims!("{ }"), List<UsePath>),
+    List(delims!("{ }"), List<UsePath>, Leftovers),
 }
 
 #[derive(Debug, OptionParse)]
@@ -106,6 +106,7 @@ pub struct FnInput {
     pub delims: delims!("( )"),
     #[highlight(HighlightColor::Cyan)]
     pub params: List<Param>,
+    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]
@@ -141,9 +142,14 @@ pub struct Struct {
 #[desc = "`{ }` / `()`"]
 pub enum Fields {
     #[framed]
-    Named(delims!("{ }"), #[highlight(HighlightColor::Cyan)] List<Param>, Contract),
+    Named(
+        delims!("{ }"),
+        #[highlight(HighlightColor::Cyan)] List<Param>,
+        Contract,
+        Leftovers,
+    ),
     #[framed]
-    Unnamed(delims!("( )"), List<UnnamedParam>, Contract),
+    Unnamed(delims!("( )"), List<UnnamedParam>, Contract, Leftovers),
 }
 
 // ENUM
@@ -166,6 +172,7 @@ pub struct Variants {
     pub delims: delims!("{ }"),
     pub variants: List<Variant>,
     pub contract: Contract,
+    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]
@@ -227,6 +234,7 @@ pub struct Trait {
 pub struct TraitTarget {
     pub frame: delims!("( )"),
     pub target: Try<Expr>,
+    pub leftovers: Leftovers,
 }
 
 // PARAM
@@ -269,6 +277,7 @@ pub struct GenericParams {
     pub frame: Angles,
     #[highlight(HighlightColor::Green)]
     pub values: List<Param>,
+    pub leftovers: Leftovers,
 }
 
 // API
@@ -277,7 +286,7 @@ pub struct GenericParams {
 #[desc = "either `{ } or `;`"]
 pub enum ApiBody {
     #[framed]
-    Block(delims!("{ }"), Repeated<Item>),
+    Block(delims!("{ }"), Repeated<Item>, Leftovers),
     Semi(punct!(";")),
 }
 
@@ -301,4 +310,5 @@ pub enum ContractSegment {
 pub struct ContractBody {
     pub delims: delims!("[ ]"),
     pub items: List<Expr>,
+    pub leftovers: Leftovers,
 }

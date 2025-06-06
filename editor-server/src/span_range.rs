@@ -1,4 +1,4 @@
-use oath::{Position, Span};
+use oathc::{Position, Span};
 use tower_lsp::lsp_types::{self, Range};
 
 #[inline(always)]
