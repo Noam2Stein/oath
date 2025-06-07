@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "oathc_query"
+version = "0.1.0"
+
+[dependencies]
+oathc_ast    = { path = "../oathc_ast" }
+oathc_span   = { path = "../oathc_span" }
+oathc_tokens = { path = "../oathc_tokens" }
