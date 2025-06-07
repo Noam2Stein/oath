@@ -54,5 +54,48 @@ struct Range {
 
 With constraints, Oath catches not just memory bugs, but logic errors, panics, and invalid assumptions, before you run your program.
 
+### Generics
+
+Generics in Oath are defined by parameterizing items over values — including types, since types themselves are values of type `type`.
+
+Each unique value of a parameter produces a distinct, compile-time-specialized definition.
+
+```oath
+// `T` is a value of type `type`.
+// Each unique `T` produces a unique `Three<T>` type.
+struct Three<T> {
+  one T,
+  two T,
+  three T,
+}
+```
+
+```oath
+// `N` is a value of type `u32`.
+// Each unique `N` produces a unique `Polygon<N>` type.
+struct Polygon<N u32> {
+  points [Point; N],
+}
+```
+
+This makes generics in Oath fully value-based and statically resolved, enabling flexible, zero-cost abstractions.
+
+# Performance
+
+`Oath` enables you to resolve constraints at compile time, eliminating the need for many runtime checks — making your code faster and more predictable.
+
+Take `null` as an example:
+In many languages, because the compiler can’t guarantee that a reference isn’t `null`, you end up writing lots of runtime checks.
+In languages that can track nullability at compile time, those checks go away — and performance improves.
+
+`Oath` takes this concept further.
+It removes unnecessary checks not just for `null`, but for any condition you can express.
+Bounds checks, state invariants, function preconditions — if you can constrain it, the compiler can optimize it away.
+
+
+
+
+
+
 
 
