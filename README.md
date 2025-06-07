@@ -1,9 +1,7 @@
 `Oath` is a new general-purpose programming language focused on semantic safety through compile-time value constraints.
 It helps you catch more bugs (not just memory errors) before your code runs, while improving performance, flexibility, and productivity.
 
-# Features
-
-### Constraints
+# Constraints
 In most languages, the only information you can express about a value is its type.
 In `Oath`, you can go further by adding compile-time constraints to function inputs, outputs, and variables.
 
@@ -54,7 +52,7 @@ struct Range {
 
 With constraints, Oath catches not just memory bugs, but logic errors, panics, and invalid assumptions, before you run your program.
 
-### Generics
+# Generics
 
 Generics in Oath are defined by parameterizing items over values — including types, since types themselves are values of type `type`.
 
