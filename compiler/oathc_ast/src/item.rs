@@ -162,25 +162,7 @@ pub struct Enum {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
-    pub variants: Try<Variants>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "`{ }`"]
-#[framed]
-pub struct Variants {
-    pub delims: delims!("{ }"),
-    pub variants: List<Variant>,
-    pub contract: Contract,
-    pub leftovers: Leftovers,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "a variant"]
-pub struct Variant {
-    #[highlight(HighlightColor::Green)]
-    pub ident: Ident,
-    pub fields: Option<Fields>,
+    pub variants: Try<Fields>,
 }
 
 // SYS
