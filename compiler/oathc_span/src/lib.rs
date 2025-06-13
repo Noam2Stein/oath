@@ -1,3 +1,5 @@
+use oathc_interner::*;
+
 mod connect_span;
 mod option_spanned;
 mod position;

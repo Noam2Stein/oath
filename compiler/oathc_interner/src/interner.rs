@@ -9,7 +9,7 @@ use string_interner::{
     backend::{Backend, BucketBackend},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StrId(<BucketBackend as Backend>::Symbol);
 
 #[derive(Debug, new)]

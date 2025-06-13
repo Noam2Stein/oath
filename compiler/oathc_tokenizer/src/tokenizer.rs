@@ -1,7 +1,4 @@
-use std::{
-    mem::{replace, transmute},
-    path::Path,
-};
+use std::mem::{replace, transmute};
 
 use super::*;
 
@@ -17,7 +14,7 @@ pub trait Tokenizer {
     fn peek(&self) -> Option<&PeekToken>;
     fn peek_span(&self) -> Span;
 
-    fn path(&self) -> &Path;
+    fn path(&self) -> StrId;
     fn interner(&self) -> &Interner;
     fn diagnostics(&self) -> &Diagnostics;
     fn highlights(&mut self) -> &mut Vec<Highlight>;
@@ -72,21 +69,25 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
             }
             Peek::Token(token) => Some(match token {
                 PeekToken::Ident(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Ident(token)
                 }
                 PeekToken::Keyword(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Keyword(token)
                 }
                 PeekToken::Punct(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Punct(token)
                 }
                 PeekToken::Literal(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Literal(token)
@@ -104,15 +105,17 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
                     LazyToken::Group(unsafe { transmute(group_tokenizer) })
                 }
                 PeekToken::Error(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Error(token)
                 }
             }),
-            Peek::Close(error_token) => {
+            Peek::Close(token) => {
+                self.last_span = token.span();
                 self.update_peek();
 
-                Some(LazyToken::Error(match error_token {
+                Some(LazyToken::Error(match token {
                     PeekToken::Error(error) => error,
                     _ => unreachable!(),
                 }))
@@ -136,15 +139,15 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
             if span.start().line == self.last_span.end().line {
                 span
             } else {
-                Span::from_start_len(self.last_span.end(), 1)
+                Span::from_start(self.last_span.end(), 1)
             }
         } else {
-            Span::from_start_len(self.last_span.end(), 1)
+            Span::from_start(self.last_span.end(), 1)
         }
     }
 
-    fn path(&self) -> &Path {
-        self.raw.path()
+    fn path(&self) -> StrId {
+        self.raw.file()
     }
     fn interner(&self) -> &Interner {
         self.raw.interner()
@@ -159,15 +162,15 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
 impl<'ctx> RootTokenizer<'ctx> {
     pub fn new(
         src: &'ctx str,
-        path: &'ctx Path,
+        file: StrId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,
     ) -> Self {
         let mut output = Self {
-            raw: RawTokenizer::new(src, path, interner, diagnostics, highlights),
+            raw: RawTokenizer::new(src, file, interner, diagnostics, highlights),
             peek: Peek::Unevaluated,
-            last_span: Span::ZERO,
+            last_span: Span::from_start(Position::new(file, 0, 0), 0),
         };
 
         output.update_peek();
@@ -182,7 +185,7 @@ impl<'ctx> RootTokenizer<'ctx> {
                 self.peek = Peek::None;
                 return;
             }
-            Peek::Token(token) => self.last_span = token.span(),
+            Peek::Token(_) => {}
             Peek::Unevaluated => {}
         };
 
@@ -196,7 +199,7 @@ impl<'ctx> RootTokenizer<'ctx> {
                 RawToken::OpenDelimiter(raw_token) => Peek::Token(PeekToken::Group(raw_token)),
                 RawToken::CloseDelimiter(close) => Peek::Close(PeekToken::Error(
                     self.diagnostics()
-                        .push_error(self.path(), TokenError::Unopened(close.span, close.kind.close_str())),
+                        .push_error(TokenError::Unopened(close.span, close.kind.close_str())),
                 )),
                 RawToken::Unknown(error) => Peek::Token(PeekToken::Error(error)),
             },
@@ -269,14 +272,14 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
             if span.start().line == self.last_span.end().line {
                 span
             } else {
-                Span::from_start_len(self.last_span.end(), 1)
+                Span::from_start(self.last_span.end(), 1)
             }
         } else {
-            Span::from_start_len(self.last_span.end(), 1)
+            Span::from_start(self.last_span.end(), 1)
         }
     }
 
-    fn path(&self) -> &Path {
+    fn path(&self) -> StrId {
         self.parent.path()
     }
     fn interner(&self) -> &Interner {
@@ -297,7 +300,8 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
     pub fn finish(&mut self) -> Delimiters {
         while let Some(_) = self.next() {}
 
-        replace(&mut self.delims, Delimiters::parens(Span::ZERO, Span::ZERO, None))
+        let errorless_delims = Delimiters::parens(self.delims.open_span, self.delims.close_span, None);
+        replace(&mut self.delims, errorless_delims)
     }
 
     fn update_peek(&mut self) {
@@ -309,10 +313,10 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
 
         self.peek = match self.parent.raw_next() {
             None => {
-                self.delims.error = Some(self.diagnostics().push_error(
-                    self.path(),
-                    TokenError::Unclosed(self.delims.open_span, self.delims.kind.open_str()),
-                ));
+                self.delims.error = Some(
+                    self.diagnostics()
+                        .push_error(TokenError::Unclosed(self.delims.open_span, self.delims.kind.open_str())),
+                );
 
                 match &mut self.parent {
                     ParentTokenizer::Group(parent) => parent.update_peek(),
@@ -351,10 +355,10 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
 
             close
         } else {
-            self.delims.error = Some(self.diagnostics().push_error(
-                self.path(),
-                TokenError::Unclosed(self.open().span, self.open().kind.open_str()),
-            ));
+            self.delims.error = Some(
+                self.diagnostics()
+                    .push_error(TokenError::Unclosed(self.open().span, self.open().kind.open_str())),
+            );
 
             match &mut self.parent {
                 ParentTokenizer::Group(parent) => parent.peek = parent.handle_close(close),
@@ -362,7 +366,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
                     parent.peek = Peek::Close(PeekToken::Error(
                         parent
                             .diagnostics()
-                            .push_error(parent.path(), TokenError::Unopened(close.span, close.kind.close_str())),
+                            .push_error(TokenError::Unopened(close.span, close.kind.close_str())),
                     ));
                 }
             }
@@ -399,9 +403,9 @@ impl<'ctx, 'parent> ParentTokenizer<'ctx, 'parent> {
         }
     }
 
-    fn path(&self) -> &'ctx Path {
+    fn path(&self) -> StrId {
         match self {
-            Self::Root(root) => root.raw.path(),
+            Self::Root(root) => root.raw.file(),
             Self::Group(group) => group.parent.path(),
         }
     }

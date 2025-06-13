@@ -10,7 +10,8 @@ impl ConnectSpan<Span> for Span {
     type Output = Span;
 
     fn connect(self, rhs: Span) -> Self::Output {
-        Span::from_start_end(self.start().min(rhs.start()), self.end().max(rhs.end()))
+        Span::from_positions(self.start().min(rhs.start()), self.end().max(rhs.end()))
+            .expect("tried to connect spans from different files")
     }
 }
 

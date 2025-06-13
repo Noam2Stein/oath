@@ -113,10 +113,12 @@ impl OathCompiler {
     }
 
     pub fn diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
-        self.diagnostics.diagnostics()
+        self.diagnostics
+            .diagnostics()
+            .map(|(file, diagnostics)| (PathBuf::from(self.interner.unintern(file)), diagnostics))
     }
     pub fn file_diagnostics(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
-        self.diagnostics.file_diagnostics(file)
+        self.diagnostics.file_diagnostics(self.interner.intern(file.as_ref().ass))
     }
     pub fn dirty_diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
         self.diagnostics.dirty_files()

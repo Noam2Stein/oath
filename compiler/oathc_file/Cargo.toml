@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "oathc_file"
+version = "0.1.0"
+
+[dependencies]
+derive-new      = "0.7.0"
+derive_more     = { version = "2.0.1", features = [ "full" ] }
+string-interner = "0.18.0"

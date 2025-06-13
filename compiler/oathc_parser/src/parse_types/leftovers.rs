@@ -7,11 +7,10 @@ pub struct Leftovers {
 
 impl Parse for Leftovers {
     fn parse(parser: &mut impl Tokenizer, output: &mut Self) -> ParseExit {
-        output.error = parser.next().map(|next| next.span()).map(|span| {
-            parser
-                .diagnostics()
-                .push_error(parser.path(), SyntaxError::UnexpectedTokens(span))
-        });
+        output.error = parser
+            .next()
+            .map(|next| next.span())
+            .map(|span| parser.diagnostics().push_error(SyntaxError::UnexpectedTokens(span)));
 
         ParseExit::Complete
     }

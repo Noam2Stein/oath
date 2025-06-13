@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use logos::{Lexer, Logos};
 
 use super::*;
@@ -18,7 +16,7 @@ pub enum RawToken {
 #[derive(Debug)]
 pub struct RawTokenizer<'ctx> {
     lexer: Lexer<'ctx, LogosToken<'ctx>>,
-    path: &'ctx Path,
+    file: StrId,
     interner: &'ctx Interner,
     diagnostics: &'ctx Diagnostics,
     highlights: &'ctx mut Vec<Highlight>,
@@ -27,7 +25,7 @@ pub struct RawTokenizer<'ctx> {
 impl<'ctx> RawTokenizer<'ctx> {
     pub fn new(
         src: &'ctx str,
-        path: &'ctx (impl AsRef<Path> + ?Sized),
+        file: StrId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,
@@ -36,7 +34,7 @@ impl<'ctx> RawTokenizer<'ctx> {
 
         Self {
             lexer,
-            path: path.as_ref(),
+            file,
             interner,
             diagnostics,
             highlights,
@@ -46,10 +44,7 @@ impl<'ctx> RawTokenizer<'ctx> {
     pub fn next(&mut self) -> Option<RawToken> {
         loop {
             break if let Some(next) = self.lexer.next() {
-                let span = Span::from_start_end(
-                    index_to_pos(self.lexer.source(), self.lexer.span().start),
-                    index_to_pos(self.lexer.source(), self.lexer.span().end),
-                );
+                let span = self.convert_span(self.lexer.span());
 
                 Some(with_tokens_expr! {
                         match next {
@@ -64,15 +59,15 @@ impl<'ctx> RawTokenizer<'ctx> {
                                     RawToken::Punct(Punct::new(span, PunctKind::$punct_variant))
                                 },
                             )*
-                            Ok(LogosToken::IntLiteral(str)) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
-                            Ok(LogosToken::FloatLiteral(str)) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
-                            Ok(LogosToken::StrLiteral(str)) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
-                            Ok(LogosToken::CharLiteral(str)) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.path, self.interner, self.diagnostics))),
+                            Ok(LogosToken::IntLiteral(str)) => RawToken::Literal(Literal::Int(IntLiteral::from_regex_str(span, str, self.interner, self.diagnostics))),
+                            Ok(LogosToken::FloatLiteral(str)) => RawToken::Literal(Literal::Float(FloatLiteral::from_regex_str(span, str, self.interner, self.diagnostics))),
+                            Ok(LogosToken::StrLiteral(str)) => RawToken::Literal(Literal::Str(StrLiteral::from_regex_str(span, str, self.interner, self.diagnostics))),
+                            Ok(LogosToken::CharLiteral(str)) => RawToken::Literal(Literal::Char(CharLiteral::from_regex_str(span, str, self.interner, self.diagnostics))),
                             $(
                                 Ok(LogosToken::$delim_open_type) => RawToken::OpenDelimiter(OpenDelimiter::$delim_fn(span)),
                                 Ok(LogosToken::$delim_close_type) => RawToken::CloseDelimiter(CloseDelimiter::$delim_fn(span)),
                             )*
-                            Err(_) => RawToken::Unknown(self.diagnostics.push_error(self.path.clone(), TokenError::UnknownToken(span)))
+                            Err(_) => RawToken::Unknown(self.diagnostics.push_error(TokenError::UnknownToken(span)))
                         }
                 })
             } else {
@@ -81,8 +76,8 @@ impl<'ctx> RawTokenizer<'ctx> {
         }
     }
 
-    pub fn path(&self) -> &'ctx Path {
-        self.path
+    pub fn file(&self) -> StrId {
+        self.file
     }
     pub fn interner(&self) -> &'ctx Interner {
         self.interner
@@ -92,6 +87,28 @@ impl<'ctx> RawTokenizer<'ctx> {
     }
     pub fn highlights(&mut self) -> &mut Vec<Highlight> {
         self.highlights
+    }
+
+    fn convert_position(&self, position: usize) -> Position {
+        let mut line = 0;
+        let mut last_line_start = 0;
+
+        for newline in self.lexer.source()[0..position]
+            .char_indices()
+            .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
+        {
+            line += 1;
+            last_line_start = newline + 1;
+        }
+
+        Position {
+            line,
+            char: (position - last_line_start) as u32,
+            file: self.file,
+        }
+    }
+    fn convert_span(&self, span: logos::Span) -> Span {
+        Span::from_positions(self.convert_position(span.start), self.convert_position(span.end)).unwrap()
     }
 }
 
@@ -121,21 +138,3 @@ with_tokens!(
         )*
     }
 );
-
-fn index_to_pos(str: &str, index: usize) -> Position {
-    let mut line = 0;
-    let mut last_line_start = 0;
-
-    for newline in str[0..index]
-        .char_indices()
-        .filter_map(|(index, char)| if char == '\n' { Some(index) } else { None })
-    {
-        line += 1;
-        last_line_start = newline + 1;
-    }
-
-    Position {
-        line,
-        char: (index - last_line_start) as u32,
-    }
-}

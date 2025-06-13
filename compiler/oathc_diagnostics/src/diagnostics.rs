@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
 use dashmap::{DashMap, DashSet};
 
@@ -13,7 +10,6 @@ pub struct Diagnostics(Arc<InnerDiagnostics>);
 #[must_use]
 #[derive(Debug, Spanned)]
 pub struct DiagnosticHandle {
-    file: PathBuf,
     index: usize,
     weak: Weak<InnerDiagnostics>,
     #[span]
@@ -24,8 +20,8 @@ pub struct DiagnosticHandle {
 
 #[derive(Debug)]
 struct InnerDiagnostics {
-    files: DashMap<PathBuf, FileDiagnostics>,
-    dirty_files: DashSet<PathBuf>,
+    files: DashMap<StrId, FileDiagnostics>,
+    dirty_files: DashSet<StrId>,
 }
 
 type FileDiagnostics = Vec<Option<Diagnostic>>;
@@ -42,16 +38,15 @@ impl Diagnostics {
         Self(self.0.clone())
     }
 
-    pub fn push_diagnostic(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Diagnostic>) -> DiagnosticHandle {
-        let file = file.into();
+    pub fn push_diagnostic(&self, diagnostic: impl Into<Diagnostic>) -> DiagnosticHandle {
         let diagnostic = diagnostic.into();
 
         let span = diagnostic.span();
 
-        self.0.dirty_files.insert(file.clone());
+        self.0.dirty_files.insert(span.file());
 
         let index = {
-            let mut file_diagnostics_handle = self.0.files.entry(file.clone()).or_default();
+            let mut file_diagnostics_handle = self.0.files.entry(span.file()).or_default();
             let file_diagnostics = file_diagnostics_handle.value_mut();
 
             if let Some((index, slot)) = file_diagnostics.iter_mut().enumerate().find(|(_, slot)| slot.is_none()) {
@@ -69,38 +64,36 @@ impl Diagnostics {
 
         let weak = Arc::downgrade(&self.0);
 
-        DiagnosticHandle { file, index, weak, span }
+        DiagnosticHandle { index, weak, span }
     }
-    pub fn push_error(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Error>) -> DiagnosticHandle {
-        self.push_diagnostic(file, diagnostic.into())
+    pub fn push_error(&self, diagnostic: impl Into<Error>) -> DiagnosticHandle {
+        self.push_diagnostic(diagnostic.into())
     }
-    pub fn push_warning(&self, file: impl Into<PathBuf>, diagnostic: impl Into<Warning>) -> DiagnosticHandle {
-        self.push_diagnostic(file, diagnostic.into())
+    pub fn push_warning(&self, diagnostic: impl Into<Warning>) -> DiagnosticHandle {
+        self.push_diagnostic(diagnostic.into())
     }
 
-    pub fn diagnostics(&self) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+    pub fn diagnostics(&self) -> impl Iterator<Item = (StrId, impl Iterator<Item = Diagnostic>)> {
         self.0.files.iter().map(|pair| {
             (
                 pair.key().clone(),
-                self.file_diagnostics(pair.key()).collect::<Vec<_>>().into_iter(),
+                self.file_diagnostics(*pair.key()).collect::<Vec<_>>().into_iter(),
             )
         })
     }
-    pub fn file_diagnostics(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
-        let file = file.as_ref();
-
-        self.0.dirty_files.remove(file);
+    pub fn file_diagnostics(&self, file: StrId) -> impl Iterator<Item = Diagnostic> {
+        self.0.dirty_files.remove(&file);
 
         self.0
             .files
-            .get(file)
+            .get(&file)
             .map(|file| file.iter().cloned().collect::<Vec<_>>())
             .into_iter()
             .flatten()
             .flatten()
     }
 
-    pub fn dirty_files(&self) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+    pub fn dirty_files(&self) -> impl Iterator<Item = (StrId, impl Iterator<Item = Diagnostic>)> {
         let mut files = Vec::with_capacity(self.0.dirty_files.len());
 
         self.0.dirty_files.retain(|file| {
@@ -110,7 +103,7 @@ impl Diagnostics {
         });
 
         files.into_iter().map(|file| {
-            let diagnostics = self.file_diagnostics(&file).collect::<Vec<_>>().into_iter();
+            let diagnostics = self.file_diagnostics(file).collect::<Vec<_>>().into_iter();
             (file, diagnostics)
         })
     }
@@ -119,9 +112,9 @@ impl Diagnostics {
 impl Drop for DiagnosticHandle {
     fn drop(&mut self) {
         if let Some(ctx) = self.weak.upgrade() {
-            ctx.dirty_files.insert(self.file.clone());
+            ctx.dirty_files.insert(self.span.file());
 
-            let mut file_diagnostics_handle = ctx.files.get_mut(&self.file).unwrap();
+            let mut file_diagnostics_handle = ctx.files.get_mut(&self.span.file()).unwrap();
             let file_diagnostics = file_diagnostics_handle.value_mut();
 
             file_diagnostics[self.index] = None;
