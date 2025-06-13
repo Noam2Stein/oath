@@ -1,6 +1,6 @@
 use super::*;
 
-// UNARY EXPR
+// Unary Expr
 
 #[derive(Debug, OptionParse)]
 #[desc = "an expression"]
@@ -9,15 +9,13 @@ pub enum ExprCore {
     Keyword(ExprKeyword),
     Literal(Literal),
     Block(Block),
-    #[framed]
-    Tuple(delims!("( )"), List<Expr>, Leftovers),
-    #[framed]
-    Array(delims!("[ ]"), List<Expr>, Leftovers),
-    If {
-        keyword: keyword!("if"),
-        condition: Try<Box<BraceExpr>>,
-        body: IfBody,
-    },
+    Tuple(Tuple),
+    Array(Array),
+    If(If),
+    Loop(Loop),
+    While(While),
+    Until(Until),
+    For(For),
 }
 
 #[derive(Debug, Clone, OptionParse)]
@@ -81,7 +79,7 @@ pub struct UnaryExpr {
     pub postfix: Repeated<ExprPostfix>,
 }
 
-// BINARY EXPR
+// Binary Expr
 
 #[derive(Debug, OptionParse)]
 #[desc = "a binary expr extension"]
@@ -154,15 +152,13 @@ pub enum BraceExprCore {
     Ident(Ident),
     Keyword(ExprKeyword),
     Literal(Literal),
-    #[framed]
-    Tuple(delims!("( )"), List<Expr>, Leftovers),
-    #[framed]
-    Array(delims!("[ ]"), List<Expr>, Leftovers),
-    If {
-        keyword: keyword!("if"),
-        condition: Try<Box<BraceExpr>>,
-        body: IfBody,
-    },
+    Array(Array),
+    Tuple(Tuple),
+    If(If),
+    Loop(Loop),
+    While(While),
+    Until(Until),
+    For(For),
 }
 
 #[derive(Debug, OptionParse)]
@@ -193,7 +189,35 @@ pub struct BraceExpr {
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
-// IF ELSE
+// Anonymous Types
+
+#[derive(Debug, OptionParse)]
+#[desc = "an array"]
+#[framed]
+pub struct Array {
+    pub delims: delims!("[ ]"),
+    pub items: List<Expr>,
+    pub leftovers: Leftovers,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "a tuple"]
+#[framed]
+pub struct Tuple {
+    pub delims: delims!("( )"),
+    pub items: List<Expr>,
+    pub leftovers: Leftovers,
+}
+
+// If Else
+
+#[derive(Debug, OptionParse)]
+#[desc = "`if`"]
+pub struct If {
+    pub keyword: keyword!("if"),
+    pub condition: Try<Box<BraceExpr>>,
+    pub body: IfBody,
+}
 
 #[derive(Debug, Parse)]
 pub enum IfBody {
@@ -229,6 +253,41 @@ pub enum ElseBody {
 pub struct ThenElse {
     pub keyword: keyword!("else"),
     pub expr: Try<Box<Expr>>,
+}
+
+// Loops
+
+#[derive(Debug, OptionParse)]
+#[desc = "a loop"]
+pub struct Loop {
+    pub keyword: keyword!("loop"),
+    pub block: Try<Block>,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "a while loop"]
+pub struct While {
+    pub keyword: keyword!("while"),
+    pub condition: Try<Box<BraceExpr>>,
+    pub block: Try<Block>,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "an until loop"]
+pub struct Until {
+    pub keyword: keyword!("until"),
+    pub condition: Try<Box<BraceExpr>>,
+    pub block: Try<Block>,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "a for loop"]
+pub struct For {
+    pub keyword: keyword!("for"),
+    pub item: Try<Box<VarName>>,
+    pub in_: Try<keyword!("in")>,
+    pub iter: Try<Box<BraceExpr>>,
+    pub block: Try<Block>,
 }
 
 // LIST

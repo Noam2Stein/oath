@@ -20,8 +20,15 @@ pub enum Stmt {
         semi: Try<punct!(";")>,
     },
     Eval(keyword!("eval"), Try<Expr>, Try<punct!(";")>),
-    Return(keyword!("eval"), Try<Expr>, Try<punct!(";")>),
-    Break(keyword!("break"), Try<Expr>, Try<punct!(";")>),
-    Continue(keyword!("continue"), Try<Expr>, Try<punct!(";")>),
-    Expr(Expr, Try<punct!(";")>),
+    Return(keyword!("return"), Option<Expr>, Try<punct!(";")>),
+    Break(keyword!("break"), Option<Expr>, Try<punct!(";")>),
+    Continue(keyword!("continue"), Option<Expr>, Try<punct!(";")>),
+    Expr(Expr, Option<SetStmt>, Try<punct!(";")>),
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "`= ...`"]
+pub struct SetStmt {
+    pub eq: punct!("="),
+    pub value: Try<Expr>,
 }
