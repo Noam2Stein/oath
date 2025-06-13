@@ -16,7 +16,7 @@ pub enum RawToken {
 #[derive(Debug)]
 pub struct RawTokenizer<'ctx> {
     lexer: Lexer<'ctx, LogosToken<'ctx>>,
-    file: StrId,
+    file: FileId,
     interner: &'ctx Interner,
     diagnostics: &'ctx Diagnostics,
     highlights: &'ctx mut Vec<Highlight>,
@@ -25,7 +25,7 @@ pub struct RawTokenizer<'ctx> {
 impl<'ctx> RawTokenizer<'ctx> {
     pub fn new(
         src: &'ctx str,
-        file: StrId,
+        file: FileId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,
@@ -76,7 +76,7 @@ impl<'ctx> RawTokenizer<'ctx> {
         }
     }
 
-    pub fn file(&self) -> StrId {
+    pub fn file(&self) -> FileId {
         self.file
     }
     pub fn interner(&self) -> &'ctx Interner {

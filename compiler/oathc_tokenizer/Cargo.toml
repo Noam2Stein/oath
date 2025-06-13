@@ -1,12 +1,13 @@
 [package]
 edition = "2024"
-name    = "oathc_tokenizer"
+name = "oathc_tokenizer"
 version = "0.1.0"
 
 [dependencies]
-logos              = "0.15.0"
-oathc_diagnostics  = { path = "../oathc_diagnostics" }
+logos = "0.15.0"
+oathc_diagnostics = { path = "../oathc_diagnostics" }
 oathc_highlighting = { path = "../oathc_highlighting" }
-oathc_interner     = { path = "../oathc_interner" }
-oathc_span         = { path = "../oathc_span" }
-oathc_tokens       = { path = "../oathc_tokens" }
+oathc_interner = { path = "../oathc_interner" }
+oathc_span = { path = "../oathc_span" }
+oathc_tokens = { path = "../oathc_tokens" }
+oathc_file = { path = "../oathc_file" }

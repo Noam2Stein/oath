@@ -14,7 +14,7 @@ pub trait Tokenizer {
     fn peek(&self) -> Option<&PeekToken>;
     fn peek_span(&self) -> Span;
 
-    fn path(&self) -> StrId;
+    fn file(&self) -> FileId;
     fn interner(&self) -> &Interner;
     fn diagnostics(&self) -> &Diagnostics;
     fn highlights(&mut self) -> &mut Vec<Highlight>;
@@ -146,7 +146,7 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
         }
     }
 
-    fn path(&self) -> StrId {
+    fn file(&self) -> FileId {
         self.raw.file()
     }
     fn interner(&self) -> &Interner {
@@ -162,7 +162,7 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
 impl<'ctx> RootTokenizer<'ctx> {
     pub fn new(
         src: &'ctx str,
-        file: StrId,
+        file: FileId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,
@@ -217,21 +217,25 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
             }
             Peek::Token(token) => Some(match token {
                 PeekToken::Ident(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Ident(token)
                 }
                 PeekToken::Keyword(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Keyword(token)
                 }
                 PeekToken::Punct(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Punct(token)
                 }
                 PeekToken::Literal(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Literal(token)
@@ -249,6 +253,7 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
                     LazyToken::Group(group_tokenizer)
                 }
                 PeekToken::Error(token) => {
+                    self.last_span = token.span();
                     self.update_peek();
 
                     LazyToken::Error(token)
@@ -279,8 +284,8 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
         }
     }
 
-    fn path(&self) -> StrId {
-        self.parent.path()
+    fn file(&self) -> FileId {
+        self.parent.file()
     }
     fn interner(&self) -> &Interner {
         self.parent.interner()
@@ -403,10 +408,10 @@ impl<'ctx, 'parent> ParentTokenizer<'ctx, 'parent> {
         }
     }
 
-    fn path(&self) -> StrId {
+    fn file(&self) -> FileId {
         match self {
             Self::Root(root) => root.raw.file(),
-            Self::Group(group) => group.parent.path(),
+            Self::Group(group) => group.parent.file(),
         }
     }
     fn interner(&self) -> &'ctx Interner {

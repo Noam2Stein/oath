@@ -1,4 +1,4 @@
-use oathc_interner::*;
+use oathc_file::*;
 
 mod connect_span;
 mod option_spanned;

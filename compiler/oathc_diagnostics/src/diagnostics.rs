@@ -20,8 +20,8 @@ pub struct DiagnosticHandle {
 
 #[derive(Debug)]
 struct InnerDiagnostics {
-    files: DashMap<StrId, FileDiagnostics>,
-    dirty_files: DashSet<StrId>,
+    files: DashMap<FileId, FileDiagnostics>,
+    dirty_files: DashSet<FileId>,
 }
 
 type FileDiagnostics = Vec<Option<Diagnostic>>;
@@ -73,15 +73,15 @@ impl Diagnostics {
         self.push_diagnostic(diagnostic.into())
     }
 
-    pub fn diagnostics(&self) -> impl Iterator<Item = (StrId, impl Iterator<Item = Diagnostic>)> {
+    pub fn diagnostics(&self) -> impl Iterator<Item = (FileId, impl Iterator<Item = Diagnostic>)> {
         self.0.files.iter().map(|pair| {
             (
-                pair.key().clone(),
+                *pair.key(),
                 self.file_diagnostics(*pair.key()).collect::<Vec<_>>().into_iter(),
             )
         })
     }
-    pub fn file_diagnostics(&self, file: StrId) -> impl Iterator<Item = Diagnostic> {
+    pub fn file_diagnostics(&self, file: FileId) -> impl Iterator<Item = Diagnostic> {
         self.0.dirty_files.remove(&file);
 
         self.0
@@ -93,7 +93,7 @@ impl Diagnostics {
             .flatten()
     }
 
-    pub fn dirty_files(&self) -> impl Iterator<Item = (StrId, impl Iterator<Item = Diagnostic>)> {
+    pub fn dirty_files(&self) -> impl Iterator<Item = (FileId, impl Iterator<Item = Diagnostic>)> {
         let mut files = Vec::with_capacity(self.0.dirty_files.len());
 
         self.0.dirty_files.retain(|file| {

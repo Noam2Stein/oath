@@ -1,4 +1,5 @@
 use oathc_diagnostics::*;
+use oathc_file::*;
 use oathc_highlighting::*;
 use oathc_interner::*;
 use oathc_span::*;

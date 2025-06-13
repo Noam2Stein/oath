@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, new, Spanned, InternedDisplay)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, new, Spanned, InternedDisplay)]
 #[display("\"{str_id}\"")]
 pub struct StrLiteral {
     #[span]

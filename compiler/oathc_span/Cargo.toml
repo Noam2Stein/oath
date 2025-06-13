@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "oathc_span"
+name = "oathc_span"
 version = "0.1.0"
 
 [dependencies]
-derive-new             = "0.7.0"
-derive_more            = { version = "2.0.1", features = [ "full" ] }
-nonempty               = "0.11.0"
-oathc_interner         = { path = "../oathc_interner" }
+derive-new = "0.7.0"
+derive_more = { version = "2.0.1", features = ["full"] }
+nonempty = "0.11.0"
 oathc_span_proc_macros = { path = "proc_macros" }
+oathc_file = { path = "../oathc_file" }

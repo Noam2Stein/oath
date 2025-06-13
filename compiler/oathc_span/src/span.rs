@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
+
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
-    file: StrId,
+    file: FileId,
     start_line: u32,
     start_char: u32,
     end_line: u32,
@@ -10,7 +12,7 @@ pub struct Span {
 }
 
 impl Span {
-    pub fn from_range(file: StrId, start_line: u32, start_char: u32, end_line: u32, end_char: u32) -> Self {
+    pub fn from_range(file: FileId, start_line: u32, start_char: u32, end_line: u32, end_char: u32) -> Self {
         Self {
             file,
             start_line,
@@ -52,7 +54,7 @@ impl Span {
         }
     }
 
-    pub fn file(self) -> StrId {
+    pub fn file(self) -> FileId {
         self.file
     }
     pub fn start(self) -> Position {
@@ -75,5 +77,16 @@ impl Span {
         } else {
             None
         }
+    }
+}
+
+impl PartialOrd for Span {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.start().partial_cmp(&other.start())
+    }
+}
+impl Ord for Span {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.start().cmp(&other.start())
     }
 }

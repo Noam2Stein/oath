@@ -1,18 +1,19 @@
 [package]
 edition = "2024"
-name    = "oathc"
+name = "oathc"
 version = "0.1.0"
 
 [dependencies]
-dashmap            = "6.1.0"
-derive-new         = "0.7.0"
-derive_more        = { version = "2.0.1", features = [ "full" ] }
-nonempty           = "0.11.0"
-oathc_ast          = { path = "../oathc_ast" }
-oathc_diagnostics  = { path = "../oathc_diagnostics" }
+dashmap = "6.1.0"
+derive-new = "0.7.0"
+derive_more = { version = "2.0.1", features = ["full"] }
+nonempty = "0.11.0"
+oathc_ast = { path = "../oathc_ast" }
+oathc_diagnostics = { path = "../oathc_diagnostics" }
 oathc_highlighting = { path = "../oathc_highlighting" }
-oathc_interner     = { path = "../oathc_interner" }
-oathc_parser       = { path = "../oathc_parser" }
-oathc_span         = { path = "../oathc_span" }
-oathc_tokenizer    = { path = "../oathc_tokenizer" }
-oathc_tokens       = { path = "../oathc_tokens" }
+oathc_interner = { path = "../oathc_interner" }
+oathc_parser = { path = "../oathc_parser" }
+oathc_span = { path = "../oathc_span" }
+oathc_tokenizer = { path = "../oathc_tokenizer" }
+oathc_tokens = { path = "../oathc_tokens" }
+oathc_file = { path = "../oathc_file" }

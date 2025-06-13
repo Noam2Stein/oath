@@ -4,7 +4,7 @@ use super::*;
 pub trait TokenizeExt: Seal {
     fn tokenize<'ctx>(
         &'ctx self,
-        path: StrId,
+        path: FileId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,
@@ -16,7 +16,7 @@ impl Seal for str {}
 impl TokenizeExt for str {
     fn tokenize<'ctx>(
         &'ctx self,
-        file: StrId,
+        file: FileId,
         interner: &'ctx Interner,
         diagnostics: &'ctx Diagnostics,
         highlights: &'ctx mut Vec<Highlight>,

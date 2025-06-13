@@ -10,6 +10,7 @@ use dashmap::*;
 use derive_more::Display;
 use oathc_ast::*;
 use oathc_diagnostics::*;
+use oathc_file::*;
 use oathc_interner::*;
 use oathc_tokenizer::*;
 
@@ -21,6 +22,7 @@ pub use oathc_tokens::KEYWORDS;
 #[derive(Debug)]
 pub struct OathCompiler {
     interner: Arc<Interner>,
+    file_interner: Arc<FileInterner>,
     diagnostics: Diagnostics,
     libs: DashMap<LibId, Lib>,
 }
@@ -32,6 +34,7 @@ impl OathCompiler {
     pub fn new() -> Self {
         Self {
             interner: Arc::new(Interner::new()),
+            file_interner: Arc::new(FileInterner::new()),
             diagnostics: Diagnostics::new(),
             libs: DashMap::new(),
         }
@@ -115,13 +118,15 @@ impl OathCompiler {
     pub fn diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
         self.diagnostics
             .diagnostics()
-            .map(|(file, diagnostics)| (PathBuf::from(self.interner.unintern(file)), diagnostics))
+            .map(|(file, diagnostics)| (PathBuf::from(self.file_interner.unintern(file)), diagnostics))
     }
     pub fn file_diagnostics(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Diagnostic> {
-        self.diagnostics.file_diagnostics(self.interner.intern(file.as_ref().ass))
+        self.diagnostics.file_diagnostics(self.file_interner.intern(file))
     }
-    pub fn dirty_diagnostics(&self) -> impl IntoIterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
-        self.diagnostics.dirty_files()
+    pub fn dirty_diagnostics(&self) -> impl Iterator<Item = (PathBuf, impl Iterator<Item = Diagnostic>)> {
+        self.diagnostics
+            .dirty_files()
+            .map(|(file_id, diagnostics)| (self.file_interner.unintern(file_id), diagnostics))
     }
 
     pub fn file_highligts(&self, file: impl AsRef<Path>) -> impl Iterator<Item = Highlight> {
@@ -143,14 +148,14 @@ impl OathCompiler {
     }
 
     pub fn parse_text(&self, text: &str) -> Vec<Diagnostic> {
-        let fake_path = PathBuf::new();
+        let fake_path = self.file_interner.intern("");
         let fake_diagnostics = Diagnostics::new();
 
         let ast = text
-            .tokenize(&fake_path, &self.interner, &fake_diagnostics, &mut Vec::new())
+            .tokenize(fake_path, &self.interner, &fake_diagnostics, &mut Vec::new())
             .parse_ast();
 
-        let output = fake_diagnostics.file_diagnostics(&fake_path).collect();
+        let output = fake_diagnostics.file_diagnostics(fake_path).collect();
 
         drop(ast);
 
@@ -192,7 +197,12 @@ impl OathCompiler {
     fn update_mod(&self, mod_: &mut Mod, text: &str) {
         mod_.highlights.clear();
         mod_.ast = text
-            .tokenize(&mod_.path, &self.interner, &self.diagnostics, &mut mod_.highlights)
+            .tokenize(
+                self.file_interner.intern(&mod_.path),
+                &self.interner,
+                &self.diagnostics,
+                &mut mod_.highlights,
+            )
             .parse_ast();
     }
 }
