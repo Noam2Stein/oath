@@ -6,10 +6,10 @@ pub struct Angles {
     pub close: Try<MorePunct>,
 }
 
-impl ParseFrame for Angles {
-    fn option_parse<Inner, T: Tokenizer>(
+impl FrameDelimiters for Angles {
+    fn option_parse_frame<Inner, T: Tokenizer>(
         parser: &mut T,
-        output: &mut Option<(Self, Inner)>,
+        output: &mut Option<(Frame<Self>, Inner)>,
         parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
         _parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
     ) -> ParseExit {
@@ -28,15 +28,24 @@ impl ParseFrame for Angles {
                 let mut close = Try::parse_error();
                 let exit = Try::<punct!(">")>::parse(parser, &mut close);
 
-                *output = Some((Self { open, close }, value));
+                *output = Some((
+                    Frame {
+                        delims: Self { open, close },
+                        leftovers: Leftovers::parse_error(),
+                    },
+                    value,
+                ));
 
                 exit
             }
             ParseExit::Cut => {
                 *output = Some((
-                    Self {
-                        open,
-                        close: Try::parse_error(),
+                    Frame {
+                        delims: Self {
+                            open,
+                            close: Try::parse_error(),
+                        },
+                        leftovers: Leftovers::parse_error(),
                     },
                     value,
                 ));
@@ -46,7 +55,7 @@ impl ParseFrame for Angles {
         }
     }
 
-    fn detect(parser: &impl Tokenizer) -> Detection {
+    fn detect_frame(parser: &impl Tokenizer) -> Detection {
         <punct!("<")>::detect(parser)
     }
 }

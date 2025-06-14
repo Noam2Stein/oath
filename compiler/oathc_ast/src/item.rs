@@ -26,7 +26,9 @@ pub enum ItemCore {
     Mod(Mod),
     Use(Use),
     Fn(Fn),
-    Type(TypeItem),
+    Type(Type),
+    Struct(Struct),
+    Enum(Enum),
     Sys(Sys),
     Static(Static),
     Trait(Trait),
@@ -116,16 +118,17 @@ pub enum FnBody {
     Semi(punct!(";")),
 }
 
-// TYPE
+// Type
 
 #[derive(Debug, OptionParse)]
 #[desc = "a type declaration"]
-pub enum TypeItem {
-    Struct(Struct),
-    Enum(Enum),
+pub struct Type {
+    pub keyword: keyword!("type"),
+    pub ident: Try<Ident>,
+    pub generics: Option<GenericParams>,
+    pub contract: Contract,
+    pub semi: Try<punct!(";")>,
 }
-
-// STRUCT
 
 #[derive(Debug, OptionParse)]
 #[desc = "a struct declaration"]
@@ -135,24 +138,8 @@ pub struct Struct {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
-    pub fields: Try<Fields>,
+    pub fields: Try<TypeMembers>,
 }
-
-#[derive(Debug, OptionParse)]
-#[desc = "`{ }` / `()`"]
-pub enum Fields {
-    #[framed]
-    Named(
-        delims!("{ }"),
-        #[highlight(HighlightColor::Cyan)] List<Param>,
-        Contract,
-        Leftovers,
-    ),
-    #[framed]
-    Unnamed(delims!("( )"), List<UnnamedParam>, Contract, Leftovers),
-}
-
-// ENUM
 
 #[derive(Debug, OptionParse)]
 #[desc = "an enum declaration"]
@@ -162,7 +149,21 @@ pub struct Enum {
     pub ident: Try<Ident>,
     pub generics: Option<GenericParams>,
     pub contract: Contract,
-    pub variants: Try<Fields>,
+    pub variants: Try<TypeMembers>,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "`{ }` / `()`"]
+pub enum TypeMembers {
+    #[framed]
+    Named(
+        delims!("{ }"),
+        #[highlight(HighlightColor::Cyan)] List<Param>,
+        Contract,
+        Leftovers,
+    ),
+    #[framed]
+    Unnamed(delims!("( )"), List<UnnamedParam>, Contract, Leftovers),
 }
 
 // SYS

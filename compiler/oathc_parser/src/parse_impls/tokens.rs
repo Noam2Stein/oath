@@ -297,14 +297,14 @@ with_tokens!($(
     }
 )*);
 
-impl ParseFrame for Delimiters {
-    fn option_parse<Inner, T: Tokenizer>(
+impl FrameDelimiters for Delimiters {
+    fn option_parse_frame<Inner, T: Tokenizer>(
         parser: &mut T,
-        output: &mut Option<(Self, Inner)>,
+        output: &mut Option<(Frame<Self>, Inner)>,
         _parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
         parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
     ) -> ParseExit {
-        let mut parser = if Self::detect(parser) == Detection::Detected {
+        let mut parser = if Self::detect_frame(parser) == Detection::Detected {
             match parser.next() {
                 Some(LazyToken::Group(group)) => group,
                 _ => unreachable!(),
@@ -313,14 +313,27 @@ impl ParseFrame for Delimiters {
             return ParseExit::Complete;
         };
 
-        let (value, _) = parse_inside(&mut parser);
+        let mut leftovers = Leftovers::parse_error();
 
-        *output = Some((parser.finish(), value));
+        let (value, exit) = parse_inside(&mut parser);
+        match exit {
+            ParseExit::Complete => {
+                Leftovers::parse(&mut parser, &mut leftovers);
+            }
+            ParseExit::Cut => {}
+        };
+
+        let frame = Frame {
+            delims: parser.finish().try_into().unwrap(),
+            leftovers,
+        };
+
+        *output = Some((frame, value));
 
         ParseExit::Complete
     }
 
-    fn detect(parser: &impl Tokenizer) -> Detection {
+    fn detect_frame(parser: &impl Tokenizer) -> Detection {
         if let Some(PeekToken::Group(_)) = parser.peek() {
             Detection::Detected
         } else {
@@ -330,14 +343,14 @@ impl ParseFrame for Delimiters {
 }
 
 with_tokens!($(
-    impl ParseFrame for $delims_type {
-        fn option_parse<Inner, T: Tokenizer>(
-        parser: &mut T,
-        output: &mut Option<(Self, Inner)>,
-        _parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
-        parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
-    ) -> ParseExit {
-            let mut parser = if Self::detect(parser) == Detection::Detected {
+    impl FrameDelimiters for $delims_type {
+        fn option_parse_frame<Inner, T: Tokenizer>(
+            parser: &mut T,
+            output: &mut Option<(Frame<Self>, Inner)>,
+            _parse_outside: impl FnOnce(&mut T) -> (Inner, ParseExit),
+            parse_inside: impl FnOnce(&mut GroupTokenizer) -> (Inner, ParseExit),
+        ) -> ParseExit {
+            let mut parser = if Self::detect_frame(parser) == Detection::Detected {
                 match parser.next() {
                     Some(LazyToken::Group(group)) => group,
                     _ => unreachable!(),
@@ -346,14 +359,27 @@ with_tokens!($(
                 return ParseExit::Complete;
             };
 
-            let (value, _) = parse_inside(&mut parser);
+            let mut leftovers = Leftovers::parse_error();            
 
-            *output = Some((parser.finish().try_into().unwrap(), value));
+            let (value, exit) = parse_inside(&mut parser);
+            match exit {
+                ParseExit::Complete => {
+                    Leftovers::parse(&mut parser, &mut leftovers);
+                },
+                ParseExit::Cut => {}
+            };
+
+            let frame = Frame {
+                delims: parser.finish().try_into().unwrap(),
+                leftovers,
+            };
+
+            *output = Some((frame, value));
 
             ParseExit::Complete
         }
 
-        fn detect(parser: &impl Tokenizer) -> Detection {
+        fn detect_frame(parser: &impl Tokenizer) -> Detection {
             if let Some(PeekToken::Group(group)) = parser.peek() {
                 if group.kind == DelimiterKind::$delims_type {
                     Detection::Detected

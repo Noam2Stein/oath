@@ -18,10 +18,9 @@ pub struct InnerAttr {
 #[desc = "`[ ]`"]
 #[framed]
 pub struct AttrBody {
-    pub delims: delims!("[ ]"),
+    pub frame: Frame<delims!("[ ]")>,
     pub ident: Try<Ident>,
     pub value: Option<AttrInput>,
-    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]

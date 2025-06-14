@@ -4,9 +4,8 @@ use super::*;
 #[desc = "`{ }`"]
 #[framed]
 pub struct Block {
-    pub delims: delims!("{ }"),
+    pub frame: delims!("{ }"),
     pub stmts: Repeated<Stmt>,
-    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]

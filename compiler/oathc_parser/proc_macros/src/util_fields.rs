@@ -97,8 +97,6 @@ pub fn option_parse_fields(
         let frame_type = &fields.iter().next().unwrap().ty;
         let frame_field_ident = fields.members().next().unwrap();
 
-        let leftovers_field_type = &fields.iter().last().unwrap().ty;
-
         let field_idents = fields.members().skip(1).collect::<Vec<_>>();
 
         let field_let_idents = fields
@@ -121,13 +119,9 @@ pub fn option_parse_fields(
             fields_span =>
 
             {
-                fn _verify_leftovers_(a: #leftovers_field_type) {
-                    let _: Leftovers = a;
-                }
-
                 let mut frame_output = None;
 
-                let parse_exit = <#frame_type as ParseFrame>::option_parse(
+                let parse_exit = <#frame_type as FrameDelimiters>::option_parse_frame(
                     parser,
                     &mut frame_output,
                     |parser|  {
@@ -282,7 +276,7 @@ pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribu
         return quote_spanned! {
             field_type.span() =>
 
-            <#field_type as ParseFrame>::detect(parser)
+            <#field_type as FrameDelimiters>::detect_frame(parser)
         };
     }
 
