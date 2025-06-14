@@ -31,7 +31,7 @@ impl FrameDelimiters for Angles {
                 *output = Some((
                     Frame {
                         delims: Self { open, close },
-                        leftovers: Leftovers::parse_error(),
+                        leftovers: Leftovers::default(),
                     },
                     value,
                 ));
@@ -45,7 +45,7 @@ impl FrameDelimiters for Angles {
                             open,
                             close: Try::parse_error(),
                         },
-                        leftovers: Leftovers::parse_error(),
+                        leftovers: Leftovers::default(),
                     },
                     value,
                 ));

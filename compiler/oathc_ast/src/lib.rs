@@ -9,12 +9,20 @@ use oathc_tokens::*;
 
 mod attr;
 mod block;
+mod contract;
 mod expr;
 mod item;
+mod list;
+mod param;
+mod type_;
 pub use attr::*;
 pub use block::*;
+pub use contract::*;
 pub use expr::*;
 pub use item::*;
+pub use list::*;
+pub use param::*;
+pub use type_::*;
 
 #[derive(Debug, Default, Parse)]
 pub struct SyntaxTree {

@@ -23,6 +23,7 @@ pub enum ExprCore {
 pub enum ExprKeyword {
     Fn(keyword!("fn")),
     Out(keyword!("out")),
+    Type(keyword!("type")),
 }
 
 #[derive(Debug, OptionParse)]
@@ -55,12 +56,9 @@ pub enum ReferenceBounds {
 #[desc = "an expression postfix"]
 pub enum ExprPostfix {
     Member(punct!("."), Try<Member>),
-    #[framed]
-    Call(delims!("( )"), List<Expr>, Leftovers),
-    #[framed]
-    Index(delims!("[ ]"), Try<Box<Expr>>, Leftovers),
-    #[framed]
-    Generics(Angles, List<AngleExpr>, Leftovers),
+    Call(Tuple),
+    Index(Array),
+    Generics(GenericArgs),
 }
 
 #[derive(Debug, Spanned, OptionParse)]
@@ -111,7 +109,7 @@ pub struct Expr {
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
-// ANGLE EXPR
+// Angle Expr
 
 #[derive(Debug, OptionParse)]
 #[desc = "an expression prefix"]
@@ -144,7 +142,7 @@ pub struct AngleExpr {
     pub bin_ops: Repeated<ExprBinaryPostfix>,
 }
 
-// BRACE EXPR
+// Brace Expr
 
 #[derive(Debug, OptionParse)]
 #[desc = "an expression"]
@@ -165,12 +163,9 @@ pub enum BraceExprCore {
 #[desc = "an expression postfix"]
 pub enum BraceExprPostfix {
     Member(punct!("."), Try<Member>),
-    #[framed]
-    Call(delims!("( )"), List<Expr>, Leftovers),
-    #[framed]
-    Index(delims!("[ ]"), Try<Box<Expr>>, Leftovers),
-    #[framed]
-    Generics(Angles, List<AngleExpr>, Leftovers),
+    Call(Tuple),
+    Index(Array),
+    Generics(GenericArgs),
 }
 
 #[derive(Debug, OptionParse)]
@@ -195,18 +190,16 @@ pub struct BraceExpr {
 #[desc = "an array"]
 #[framed]
 pub struct Array {
-    pub delims: delims!("[ ]"),
+    pub delims: Frame<delims!("[ ]")>,
     pub items: List<Expr>,
-    pub leftovers: Leftovers,
 }
 
 #[derive(Debug, OptionParse)]
 #[desc = "a tuple"]
 #[framed]
 pub struct Tuple {
-    pub delims: delims!("( )"),
+    pub delims: Frame<delims!("( )")>,
     pub items: List<Expr>,
-    pub leftovers: Leftovers,
 }
 
 // If Else
@@ -284,47 +277,36 @@ pub struct Until {
 #[desc = "a for loop"]
 pub struct For {
     pub keyword: keyword!("for"),
-    pub item: Try<Box<VarName>>,
+    pub item: Try<Box<Param>>,
     pub in_: Try<keyword!("in")>,
     pub iter: Try<Box<BraceExpr>>,
     pub block: Try<Block>,
 }
 
-// LIST
-
-pub type List<T> = Trailing<T, ListSep>;
-
-#[derive(Debug, Clone, Copy, OptionParse)]
-#[desc = "`,` / `;`"]
-pub enum ListSep {
-    Comma(punct!(",")),
-    Semi(punct!(";")),
-}
-
-// VAR
-
-#[derive(Debug, OptionParse)]
-#[desc = "a variable name"]
-pub enum VarName {
-    #[framed]
-    Tuple(delims!("( )"), Trailing<VarName, punct!(",")>, Leftovers),
-    Ident(
-        Option<keyword!("mut")>,
-        #[highlight(HighlightColor::Cyan)] Try<Ident>,
-        Option<AngleExpr>,
-    ),
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "`= ...`"]
-pub struct VarInit {
-    pub eq: punct!("="),
-    pub init: Try<Expr>,
-}
+// Var
 
 #[derive(Debug, OptionParse)]
 #[desc = "`'`"]
 pub struct Lifetime {
     pub punct: punct!("'"),
     pub ident: Try<Ident>,
+}
+
+// Generic Args
+
+#[derive(Debug, OptionParse)]
+#[desc = "`< >`"]
+#[framed]
+pub struct GenericArgs {
+    pub frame: Frame<Angles>,
+    pub args: List<Expr>,
+}
+
+// Set
+
+#[derive(Debug, OptionParse)]
+#[desc = "`= ...`"]
+pub struct Set {
+    pub eq: punct!("="),
+    pub value: Try<Expr>,
 }

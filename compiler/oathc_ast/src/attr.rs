@@ -26,7 +26,6 @@ pub struct AttrBody {
 #[derive(Debug, OptionParse)]
 #[desc = "a meta value"]
 pub enum AttrInput {
-    #[framed]
-    Parens(delims!("( )"), List<Expr>, Leftovers),
-    Eq(punct!("="), Try<Expr>),
+    Fn(Tuple),
+    Set(Set),
 }

@@ -121,7 +121,7 @@ pub fn option_parse_fields(
             {
                 let mut frame_output = None;
 
-                let parse_exit = <#frame_type as FrameDelimiters>::option_parse_frame(
+                let parse_exit = <#frame_type>::option_parse_frame(
                     parser,
                     &mut frame_output,
                     |parser|  {
@@ -276,7 +276,7 @@ pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribu
         return quote_spanned! {
             field_type.span() =>
 
-            <#field_type as FrameDelimiters>::detect_frame(parser)
+            <#field_type>::detect_frame(parser)
         };
     }
 
