@@ -26,6 +26,7 @@ pub enum Stmt {
 #[desc = "a statement"]
 pub struct LetStmt {
     pub keyword: keyword!("let"),
+    #[highlight(HighlightColor::Cyan)]
     pub name: Try<Param>,
     pub value: Option<Set>,
     pub semi: Try<punct!(";")>,

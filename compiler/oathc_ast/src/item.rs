@@ -141,6 +141,7 @@ pub struct Sys {
 #[desc = "a static"]
 pub struct Static {
     pub keyword: keyword!("static"),
+    #[highlight(HighlightColor::Blue)]
     pub param: Try<Param>,
     pub value: Option<Set>,
     pub semi: Try<punct!(";")>,

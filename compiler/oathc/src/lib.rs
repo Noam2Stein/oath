@@ -133,11 +133,9 @@ impl OathCompiler {
         let path = file.as_ref();
 
         for lib in self.libs.iter() {
-            if path.parent().unwrap() == lib.dir_path
-                && (path.file_name().unwrap() == "main.oh" || path.file_name().unwrap() == "lib.oh")
-            {
+            if path.parent().unwrap() == lib.dir_path && (path.file_name().unwrap() == "mod.oh") {
                 return match &lib.root_mod.read().unwrap().as_ref() {
-                    Ok(root_mod) => root_mod.highlights.iter().cloned().collect(),
+                    Ok(root_mod) => root_mod.highlights.iter().copied().collect(),
                     Err(_) => Vec::new(),
                 }
                 .into_iter();

@@ -3,10 +3,11 @@ use std::thread;
 use std::{path::PathBuf, sync::Arc};
 
 use oathc::*;
+use tower_lsp::lsp_types::request::SemanticTokensRefresh;
 use tower_lsp::lsp_types::{
     CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, Hover, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, MessageType,
-    SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    DidOpenTextDocumentParams, Hover, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, SemanticToken,
+    SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, Url,
 };
@@ -63,6 +64,7 @@ impl LanguageServer for Backend {
                 }
 
                 thread::sleep(std::time::Duration::from_millis(100));
+                pollster::block_on(client.send_request::<SemanticTokensRefresh>(())).unwrap();
             }
         });
 
@@ -135,10 +137,6 @@ impl Backend {
     async fn validate_file(&self, uri: Url, text: &str, version: i32) {
         let parser_diagnostics = self.oath.parse_text(text);
 
-        self.client
-            .log_message(MessageType::LOG, format!("GHEGHEOUIGHIUOG {}", parser_diagnostics.len()))
-            .await;
-
         let diagnostics = self
             .oath
             .file_diagnostics(uri.to_file_path().unwrap())
@@ -151,6 +149,8 @@ impl Backend {
                 ..Default::default()
             })
             .collect();
+
+        self.client.send_request::<SemanticTokensRefresh>(()).await.unwrap();
 
         self.client.publish_diagnostics(uri, diagnostics, Some(version)).await;
     }

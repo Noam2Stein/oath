@@ -59,6 +59,7 @@ pub enum ExprPostfix {
     Call(Tuple),
     Index(Array),
     Generics(GenericArgs),
+    Construct(Construct),
 }
 
 #[derive(Debug, Spanned, OptionParse)]
@@ -202,6 +203,22 @@ pub struct Tuple {
     pub items: List<Expr>,
 }
 
+#[derive(Debug, OptionParse)]
+#[desc = "`{ }`"]
+#[framed]
+pub struct Construct {
+    pub delims: Frame<delims!("{ }")>,
+    pub items: List<ConstructField>,
+}
+
+#[derive(Debug, OptionParse)]
+#[desc = "an identifier"]
+pub struct ConstructField {
+    #[highlight(HighlightColor::Cyan)]
+    pub ident: Ident,
+    pub set: Try<Set>,
+}
+
 // If Else
 
 #[derive(Debug, OptionParse)]
@@ -277,6 +294,7 @@ pub struct Until {
 #[desc = "a for loop"]
 pub struct For {
     pub keyword: keyword!("for"),
+    #[highlight(HighlightColor::Cyan)]
     pub item: Try<Box<Param>>,
     pub in_: Try<keyword!("in")>,
     pub iter: Try<Box<BraceExpr>>,
@@ -290,16 +308,6 @@ pub struct For {
 pub struct Lifetime {
     pub punct: punct!("'"),
     pub ident: Try<Ident>,
-}
-
-// Generic Args
-
-#[derive(Debug, OptionParse)]
-#[desc = "`< >`"]
-#[framed]
-pub struct GenericArgs {
-    pub frame: Frame<Angles>,
-    pub args: List<Expr>,
 }
 
 // Set

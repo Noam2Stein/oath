@@ -4,4 +4,5 @@ name    = "oathc_highlighting"
 version = "0.1.0"
 
 [dependencies]
-oathc_span = { path = "../oathc_span" }
+oathc_highlighting_proc_macros = { path = "proc_macros" }
+oathc_span                     = { path = "../oathc_span" }
