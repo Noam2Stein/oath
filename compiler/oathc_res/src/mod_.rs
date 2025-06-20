@@ -6,20 +6,27 @@ use oathc_tokenizer::TokenizeExt;
 use super::*;
 
 #[derive(Debug)]
-pub struct Mod {
+pub struct ModFile {
     path_as_file: PathBuf,
     path_as_dir: PathBuf,
     name: Ident,
     path: Try<PathBuf>,
     time: SystemTime,
+    content: Mod,
+    invalid_file_error: Option<DiagnosticHandle>,
+    highlights: Vec<Highlight>,
+}
+
+#[derive(Debug, Default)]
+pub struct Mod {
+    submod_dir: Option<PathBuf>,
     #[allow(dead_code)]
     items: Vec<Item>,
     #[allow(dead_code)]
     leftovers: Leftovers,
-    highlights: Vec<Highlight>,
 }
 
-impl Mod {
+impl ModFile {
     pub fn new(
         dir_path: impl Into<PathBuf>,
         name: Ident,
@@ -37,15 +44,21 @@ impl Mod {
         let dir_file = File::open(&path_as_dir);
         let check_time = SystemTime::now();
 
-        let (path, file) = match (file_file, dir_file) {
+        let (path, submod_dir, file) = match (file_file, dir_file) {
             (Ok(_), Ok(_)) => (
                 Try::Failure(Some(diagnostics.push_error(Error::DoubleMod(name.span(), name.str_id())))),
+                None,
                 Err(()),
             ),
-            (Ok(file), Err(_)) => (Try::Success(path_as_file.clone()), Ok(file)),
-            (Err(_), Ok(file)) => (Try::Success(path_as_dir.clone()), Ok(file)),
+            (Ok(file), Err(_)) => (Try::Success(path_as_file.clone()), None, Ok(file)),
+            (Err(_), Ok(file)) => (
+                Try::Success(path_as_dir.clone()),
+                Some(path_as_dir.parent().unwrap().to_path_buf()),
+                Ok(file),
+            ),
             (Err(_), Err(_)) => (
                 Try::Failure(Some(diagnostics.push_error(Error::NoMod(name.span(), name.str_id())))),
+                None,
                 Err(()),
             ),
         };
@@ -59,27 +72,25 @@ impl Mod {
             Err(_) => check_time,
         };
 
-        let (items, leftovers, highlights) = if let Ok(mut file) = file {
+        let (content, highlights) = if let Ok(mut file) = file {
             let mut text = String::new();
             match file.read_to_string(&mut text) {
                 Ok(_) => {}
                 Err(_) => {
                     return Self {
-                        leftovers: Leftovers {
-                            error: Some(diagnostics.push_error(Error::InvalidFile(Span::from_range(
-                                file_interner.intern(path.unwrap_ref()),
-                                0,
-                                0,
-                                0,
-                                0,
-                            )))),
-                        },
+                        invalid_file_error: Some(diagnostics.push_error(Error::InvalidFile(Span::from_range(
+                            file_interner.intern(path.unwrap_ref()),
+                            0,
+                            0,
+                            0,
+                            0,
+                        )))),
                         path_as_file,
                         path_as_dir,
                         name,
                         path,
                         time,
-                        items: vec![],
+                        content: Mod::default(),
                         highlights: vec![],
                     };
                 }
@@ -101,9 +112,15 @@ impl Mod {
                 .map(|item| Item::new(item, diagnostics))
                 .collect();
 
-            (items, leftovers, highlights)
+            let content = Mod {
+                submod_dir,
+                items,
+                leftovers,
+            };
+
+            (content, highlights)
         } else {
-            (vec![], Leftovers::default(), vec![])
+            (Mod::default(), vec![])
         };
 
         Self {
@@ -112,9 +129,9 @@ impl Mod {
             name,
             path,
             time,
-            items,
-            leftovers,
+            content,
             highlights,
+            invalid_file_error: None,
         }
     }
 
@@ -123,19 +140,25 @@ impl Mod {
         let dir_file = File::open(&self.path_as_dir);
         let check_time = SystemTime::now();
 
-        let (path, file) = match (file_file, dir_file) {
+        let (path, submod_dir, file) = match (file_file, dir_file) {
             (Ok(_), Ok(_)) => (
                 Try::Failure(Some(
                     diagnostics.push_error(Error::DoubleMod(self.name.span(), self.name.str_id())),
                 )),
+                None,
                 Err(()),
             ),
-            (Ok(file), Err(_)) => (Try::Success(self.path_as_file.clone()), Ok(file)),
-            (Err(_), Ok(file)) => (Try::Success(self.path_as_dir.clone()), Ok(file)),
+            (Ok(file), Err(_)) => (Try::Success(self.path_as_file.clone()), None, Ok(file)),
+            (Err(_), Ok(file)) => (
+                Try::Success(self.path_as_dir.clone()),
+                Some(self.path_as_dir.parent().unwrap().to_path_buf()),
+                Ok(file),
+            ),
             (Err(_), Err(_)) => (
                 Try::Failure(Some(
                     diagnostics.push_error(Error::NoMod(self.name.span(), self.name.str_id())),
                 )),
+                None,
                 Err(()),
             ),
         };
@@ -153,27 +176,25 @@ impl Mod {
             return;
         }
 
-        let (items, leftovers, highlights) = if let Ok(mut file) = file {
+        let (content, highlights) = if let Ok(mut file) = file {
             let mut text = String::new();
             match file.read_to_string(&mut text) {
                 Ok(_) => {}
                 Err(_) => {
                     *self = Self {
-                        leftovers: Leftovers {
-                            error: Some(diagnostics.push_error(Error::InvalidFile(Span::from_range(
-                                file_interner.intern(path.unwrap_ref()),
-                                0,
-                                0,
-                                0,
-                                0,
-                            )))),
-                        },
+                        invalid_file_error: Some(diagnostics.push_error(Error::InvalidFile(Span::from_range(
+                            file_interner.intern(path.unwrap_ref()),
+                            0,
+                            0,
+                            0,
+                            0,
+                        )))),
                         path_as_file: take(&mut self.path_as_file),
                         path_as_dir: take(&mut self.path_as_dir),
                         name: self.name,
                         path,
                         time,
-                        items: vec![],
+                        content: Mod::default(),
                         highlights: vec![],
                     };
 
@@ -197,31 +218,51 @@ impl Mod {
                 .map(|item| Item::new(item, diagnostics))
                 .collect();
 
-            (items, leftovers, highlights)
+            let content = Mod {
+                submod_dir,
+                items,
+                leftovers,
+            };
+
+            (content, highlights)
         } else {
-            (vec![], Leftovers::default(), vec![])
+            (Mod::default(), vec![])
         };
 
-        *self = Self {
-            path_as_file: take(&mut self.path_as_file),
-            path_as_dir: take(&mut self.path_as_dir),
-            name: self.name,
-            path,
-            time,
-            items,
-            leftovers,
-            highlights,
-        };
+        self.content = content;
+        self.path = path;
+        self.time = time;
+        self.invalid_file_error = None;
+        self.highlights = highlights;
     }
 
     pub fn get_highlights(&self) -> &[Highlight] {
         &self.highlights
     }
 
-    pub fn find(&self, path: impl AsRef<Path>) -> Option<&Mod> {
+    pub fn find(&self, path: impl AsRef<Path>) -> Option<&Self> {
         let path = path.as_ref();
 
         let is_this = self.path.success_ref().map(|p| p.as_path());
         if Some(path) == is_this { Some(self) } else { None }
+    }
+}
+
+impl Mod {
+    pub fn new(submod_dir: Option<PathBuf>, ast: SyntaxTree, diagnostics: &Diagnostics) -> Self {
+        let items = ast
+            .items
+            .values
+            .into_iter()
+            .map(|item| Item::new(item, diagnostics))
+            .collect();
+
+        let leftovers = ast.leftovers;
+
+        Self {
+            submod_dir,
+            items,
+            leftovers,
+        }
     }
 }

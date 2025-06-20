@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use oathc_ast::SyntaxTree;
 use oathc_diagnostics::*;
 use oathc_file::*;
 use oathc_highlighting::*;

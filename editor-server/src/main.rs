@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::path::Path;
 use std::sync::RwLock;
 use std::thread;
 use std::{path::PathBuf, sync::Arc};
@@ -5,27 +8,29 @@ use std::{path::PathBuf, sync::Arc};
 use oathc::*;
 use tower_lsp::lsp_types::request::SemanticTokensRefresh;
 use tower_lsp::lsp_types::{
-    CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, Hover, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, SemanticToken,
-    SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Url,
+    CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DiagnosticSeverity, Hover, HoverParams,
+    HoverProviderCapability, InitializeParams, InitializeResult, SemanticToken, SemanticTokenType, SemanticTokens,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensParams, SemanticTokensResult,
+    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
 };
-use tower_lsp::{jsonrpc::Result, lsp_types::Diagnostic as LspDiagnostic, Client, LanguageServer, LspService, Server};
+use tower_lsp::{lsp_types::Diagnostic as LspDiagnostic, Client, LanguageServer, LspService, Server};
 
 mod span_range;
 use span_range::*;
+use walkdir::WalkDir;
 
 #[tokio::main]
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(|client| Backend {
-        client: Arc::new(client),
-        oath: Arc::new(OathCompiler::new()),
-        lib: RwLock::new(None),
-        root: RwLock::new(PathBuf::new()),
+    let (service, socket) = LspService::new(|client| {
+        BackendArc(Arc::new(Backend {
+            client,
+            oathc: OathCompiler::new(),
+            libs: RwLock::new(HashMap::new()),
+            root: RwLock::new(PathBuf::new()),
+        }))
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
@@ -33,38 +38,52 @@ async fn main() {
 
 #[derive(Debug)]
 struct Backend {
-    client: Arc<Client>,
-    oath: Arc<OathCompiler>,
-    lib: RwLock<Option<LibId>>,
+    client: Client,
+    oathc: OathCompiler,
+    libs: RwLock<HashMap<PathBuf, LibId>>,
     root: RwLock<PathBuf>,
 }
 
-#[tower_lsp::async_trait]
-impl LanguageServer for Backend {
-    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        *self.root.write().unwrap() = params.root_uri.unwrap().to_file_path().unwrap();
-        *self.lib.write().unwrap() = Some(self.oath.create_lib(self.root.read().unwrap().to_path_buf()));
+struct BackendArc(Arc<Backend>);
 
-        let weak = Arc::downgrade(&self.oath);
-        let client = self.client.clone();
+impl Deref for BackendArc {
+    type Target = Backend;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[tower_lsp::async_trait]
+impl LanguageServer for BackendArc {
+    async fn initialize(&self, params: InitializeParams) -> tower_lsp::jsonrpc::Result<InitializeResult> {
+        *self.root.write().unwrap() = params.root_uri.unwrap().to_file_path().unwrap();
+        self.check_libs().await;
+
+        let weak_self = Arc::downgrade(&self.0);
         thread::spawn(move || {
-            while let Some(oath) = weak.upgrade() {
-                oath.check_libs();
-                for (path, diagnostics) in oath.dirty_diagnostics() {
+            while let Some(self_) = weak_self.upgrade() {
+                pollster::block_on(self_.check_libs());
+
+                for (path, diagnostics) in self_.oathc.dirty_diagnostics() {
                     let diagnostics = diagnostics
                         .map(|diagnostic| LspDiagnostic {
                             range: span_to_range(diagnostic.span()),
                             severity: Some(DiagnosticSeverity::ERROR),
-                            message: oath.format_diagnostic(&diagnostic),
+                            message: self_.oathc.format_diagnostic(&diagnostic),
                             ..Default::default()
                         })
                         .collect();
 
-                    pollster::block_on(client.publish_diagnostics(Url::from_file_path(path).unwrap(), diagnostics, None));
+                    pollster::block_on(
+                        self_
+                            .client
+                            .publish_diagnostics(Url::from_file_path(path).unwrap(), diagnostics, None),
+                    );
                 }
 
                 thread::sleep(std::time::Duration::from_millis(100));
-                pollster::block_on(client.send_request::<SemanticTokensRefresh>(())).unwrap();
+                pollster::block_on(self_.client.send_request::<SemanticTokensRefresh>(())).unwrap();
             }
         });
 
@@ -90,15 +109,15 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
         Ok(())
     }
 
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
+    async fn hover(&self, _: HoverParams) -> tower_lsp::jsonrpc::Result<Option<Hover>> {
         Ok(None)
     }
 
-    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, _: CompletionParams) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(
             KEYWORDS
                 .into_iter()
@@ -107,52 +126,36 @@ impl LanguageServer for Backend {
         )))
     }
 
-    async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.validate_file(
-            params.text_document.uri,
-            params.text_document.text.as_str(),
-            params.text_document.version,
-        )
-        .await
-    }
-
-    async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.validate_file(
-            params.text_document.uri,
-            params.content_changes[0].text.as_str(),
-            params.text_document.version,
-        )
-        .await
-    }
-
-    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> tower_lsp::jsonrpc::Result<Option<SemanticTokensResult>> {
         Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
-            data: highlights_to_semantic_tokens(self.oath.file_highligts(params.text_document.uri.to_file_path().unwrap())),
+            data: highlights_to_semantic_tokens(self.oathc.file_highligts(params.text_document.uri.to_file_path().unwrap())),
             result_id: None,
         })))
     }
 }
 
 impl Backend {
-    async fn validate_file(&self, uri: Url, text: &str, version: i32) {
-        let parser_diagnostics = self.oath.parse_text(text);
+    async fn check_libs(&self) {
+        let wanted_dirs = find_lib_dirs(self.root.read().unwrap().as_path());
+        let mut mut_dirs = self.libs.write().unwrap();
 
-        let diagnostics = self
-            .oath
-            .file_diagnostics(uri.to_file_path().unwrap())
-            .filter(|diagnostic| !diagnostic.is_live())
-            .chain(parser_diagnostics)
-            .map(|diagnostic| LspDiagnostic {
-                range: span_to_range(diagnostic.span()),
-                severity: Some(DiagnosticSeverity::ERROR),
-                message: self.oath.format_diagnostic(&diagnostic),
-                ..Default::default()
-            })
-            .collect();
+        for added_dir in wanted_dirs
+            .iter()
+            .filter(|dir| !mut_dirs.contains_key(*dir))
+            .collect::<Vec<_>>()
+        {
+            mut_dirs.insert(
+                added_dir.to_path_buf(),
+                self.oathc.create_lib(added_dir.to_path_buf(), added_dir.join("oath.oh")),
+            );
+        }
 
-        self.client.send_request::<SemanticTokensRefresh>(()).await.unwrap();
+        mut_dirs.retain(|dir, _| wanted_dirs.contains(dir));
 
-        self.client.publish_diagnostics(uri, diagnostics, Some(version)).await;
+        self.oathc.check_lib_changes();
     }
 }
 
@@ -208,4 +211,14 @@ fn convert_highlight_color(color: HighlightColor) -> u32 {
         HighlightColor::Yellow => 2,
         HighlightColor::Blue => 3,
     }
+}
+
+fn find_lib_dirs(root: &Path) -> Vec<PathBuf> {
+    WalkDir::new(root)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file() && entry.file_name() == "oath.oh")
+        .filter_map(|entry| entry.path().parent().map(|p| p.to_path_buf()))
+        .collect()
 }
