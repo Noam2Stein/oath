@@ -13,8 +13,8 @@ pub enum Error {
     Token(TokenError),
     Syntax(SyntaxError),
     Name(NameError),
-    #[display("unfinished")]
-    Unfinished(Span),
+    #[display("todo")]
+    ToDo(Span),
 }
 
 #[derive(Debug, Clone, From, TryInto, Spanned, InternedDisplay)]
@@ -80,7 +80,7 @@ impl Diagnostic {
             Self::Error(Error::Name(_)) => false,
             Self::Error(Error::Syntax(_)) => true,
             Self::Error(Error::Token(_)) => true,
-            Self::Error(Error::Unfinished(_)) => false,
+            Self::Error(Error::ToDo(_)) => false,
             Self::Warning(Warning::Syntax(_)) => true,
         }
     }
