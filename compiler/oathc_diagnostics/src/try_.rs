@@ -25,71 +25,30 @@ impl<T: Highlightable> Highlightable for Try<T> {
     }
 }
 
-/*impl<T> Try<T> {
-    pub fn success(self) -> Option<T> {
+impl<T> Try<T> {
+    pub fn success_ref(&self) -> Option<&T> {
         match self {
-            Self::Success(value) => Some(value),
-            Self::Failure => None,
+            Self::Success(success) => Some(success),
+            Self::Failure(_) => None,
+        }
+    }
+    pub fn success_mut(&mut self) -> Option<&mut T> {
+        match self {
+            Self::Success(success) => Some(success),
+            Self::Failure(_) => None,
         }
     }
 
-    pub fn is_success(&self) -> bool {
-        match self {
-            Self::Success(_) => true,
-            Self::Failure => false,
-        }
-    }
-    pub fn is_failure(&self) -> bool {
-        match self {
-            Self::Success(_) => false,
-            Self::Failure => true,
-        }
-    }
-
-    pub fn unwrap(self) -> T {
-        match self {
-            Self::Success(succes) => succes,
-            Self::Failure => panic!("unwrapped a `failure` value"),
-        }
-    }
     pub fn unwrap_ref(&self) -> &T {
         match self {
             Self::Success(succes) => succes,
-            Self::Failure => panic!("unwrapped a `failure` value"),
+            Self::Failure(_) => panic!("unwrapped a `failure` value"),
         }
     }
     pub fn unwrap_mut(&mut self) -> &mut T {
         match self {
             Self::Success(succes) => succes,
-            Self::Failure => panic!("unwrapped a `failure` value"),
-        }
-    }
-
-    pub fn as_ref(&self) -> Try<&T> {
-        match self {
-            Self::Success(success) => Try::Success(success),
-            Self::Failure => Try::Failure,
-        }
-    }
-    pub fn as_mut(&mut self) -> Try<&mut T> {
-        match self {
-            Self::Success(success) => Try::Success(success),
-            Self::Failure => Try::Failure,
-        }
-    }
-
-    pub fn map<I>(self, f: impl FnOnce(T) -> I) -> Try<I> {
-        match self {
-            Self::Success(success) => Try::Success(f(success)),
-            Self::Failure => Try::Failure,
-        }
-    }
-
-    pub fn map_box(self) -> Try<Box<T>> {
-        match self {
-            Self::Success(success) => Try::Success(Box::new(success)),
-            Self::Failure => Try::Failure,
+            Self::Failure(_) => panic!("unwrapped a `failure` value"),
         }
     }
 }
-*/

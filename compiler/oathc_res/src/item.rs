@@ -1,25 +1,12 @@
 use super::*;
 
+#[derive(Debug)]
 pub enum Item {
-    Struct(Struct),
     Error(Option<DiagnosticHandle>),
 }
 
-pub struct Mod {
-    pub items: Vec<Item>,
-    pub leftovers: Leftovers,
-}
-
-pub struct Struct {}
-
-pub struct Field {
-    pub ident: Ident,
-    pub type_: oathc_ast::Expr,
-    pub bounds: oathc_ast::Expr,
-}
-
 impl Item {
-    pub fn from_ast(ast: oathc_ast::Item, diagnostics: &Diagnostics) -> Self {
+    pub fn new(ast: oathc_ast::Item, diagnostics: &Diagnostics) -> Self {
         let core = match ast.core {
             Try::Failure(error) => return Self::Error(error),
             Try::Success(core) => core,

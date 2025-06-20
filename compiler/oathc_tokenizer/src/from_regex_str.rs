@@ -11,7 +11,7 @@ impl FromRegexStr for LiteralSuffix {
                 ident: Try::Success(ident),
             },
             None => Self {
-                ident: Try::Failure(Some(diagnostics.push_error(SyntaxError::Expected(span, "an ident")))),
+                ident: Try::Failure(Some(diagnostics.push_error(Error::Expected(span, "an ident")))),
             },
         }
     }
@@ -28,7 +28,7 @@ impl FromRegexStr for IntLiteral {
         let suffix_str = suffix_start.map(|suffix_start| &str[suffix_start..]);
 
         let value = u128::from_str_radix(value_str, 10).map_or_else(
-            |_| Try::Failure(Some(diagnostics.push_error(TokenError::OutOfBoundsLiteral(span)))),
+            |_| Try::Failure(Some(diagnostics.push_error(Error::OutOfBoundsLiteral(span)))),
             |value| Try::Success(value),
         );
 
@@ -45,7 +45,7 @@ impl FromRegexStr for FloatLiteral {
             Some(dot_position) if str.len() > dot_position + 1 => dot_position,
             _ => {
                 let integral = Try::Failure(None);
-                let fractional = Try::Failure(Some(diagnostics.push_error(SyntaxError::Expected(span, "`_._`"))));
+                let fractional = Try::Failure(Some(diagnostics.push_error(Error::Expected(span, "`_._`"))));
 
                 return Self {
                     value_integral: integral,
@@ -64,14 +64,14 @@ impl FromRegexStr for FloatLiteral {
         let suffix_str = suffix_start.map(|suffix_start| &str[suffix_start..]);
 
         let value_integral = u128::from_str_radix(value_intergal_str, 10).map_or_else(
-            |_| Try::Failure(Some(diagnostics.push_error(TokenError::OutOfBoundsLiteral(span)))),
+            |_| Try::Failure(Some(diagnostics.push_error(Error::OutOfBoundsLiteral(span)))),
             |value| Try::Success(value),
         );
 
         let value_leading_zeros = value_fraction_str.chars().position(|char| char != '0').unwrap_or(0) as u128;
 
         let value_fraction = u128::from_str_radix(value_fraction_str, 10).map_or_else(
-            |_| Try::Failure(Some(diagnostics.push_error(TokenError::OutOfBoundsLiteral(span)))),
+            |_| Try::Failure(Some(diagnostics.push_error(Error::OutOfBoundsLiteral(span)))),
             |value| Try::Success(value),
         );
 

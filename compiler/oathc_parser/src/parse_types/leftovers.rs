@@ -10,7 +10,7 @@ impl Parse for Leftovers {
         output.error = parser
             .next()
             .map(|next| next.span())
-            .map(|span| parser.diagnostics().push_error(SyntaxError::UnexpectedTokens(span)));
+            .map(|span| parser.diagnostics().push_error(Error::UnexpectedTokens(span)));
 
         ParseExit::Complete
     }

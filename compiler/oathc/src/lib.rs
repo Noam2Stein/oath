@@ -1,20 +1,18 @@
 use std::{
-    fs::File,
-    io::Read,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
-    time::SystemTime,
+    sync::Arc,
 };
 
 use dashmap::*;
-use derive_more::Display;
-use oathc_ast::*;
+use oathc_ast::ParseAstExt;
 use oathc_diagnostics::*;
 use oathc_file::*;
 use oathc_interner::*;
+use oathc_res::*;
 use oathc_tokenizer::*;
+use oathc_tokens::*;
 
-pub use oathc_diagnostics::{Diagnostic, Error, IdentCase, NameError, SyntaxError, SyntaxWarning, TokenError, Warning};
+pub use oathc_diagnostics::{Diagnostic, Error, IdentCase, Warning};
 pub use oathc_highlighting::{Highlight, HighlightColor};
 pub use oathc_span::{ConnectSpan, OptionSpanned, Position, Span, Spanned};
 pub use oathc_tokens::KEYWORDS;
@@ -24,7 +22,7 @@ pub struct OathCompiler {
     interner: Arc<Interner>,
     file_interner: Arc<FileInterner>,
     diagnostics: Diagnostics,
-    libs: DashMap<LibId, Lib>,
+    libs: DashMap<LibId, Mod>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -40,78 +38,30 @@ impl OathCompiler {
         }
     }
 
-    pub fn create_lib(&self, dir_path: PathBuf) -> LibId {
+    pub fn create_lib(&self, dir_path: PathBuf, responsible_file: impl AsRef<Path>) -> LibId {
         let id = (0..)
             .map(|i| LibId(i))
             .filter(|id| !self.libs.contains_key(id))
             .next()
             .unwrap();
 
-        let root_mod_path = dir_path.join("mod.oh");
+        let name = Ident::new(
+            "src",
+            Span::from_range(self.file_interner.intern(responsible_file), 0, 0, 0, 0),
+            &self.interner,
+        )
+        .unwrap();
 
-        let lib = Lib {
-            root_mod: RwLock::new(if root_mod_path.is_file() {
-                let mut file = File::open(&root_mod_path).unwrap();
+        let mod_ = Mod::new(dir_path, name, &self.interner, &self.file_interner, &self.diagnostics);
 
-                let mut mod_ = Mod {
-                    path: root_mod_path,
-                    time: file.metadata().unwrap().modified().unwrap(),
-                    can_have_children: true,
-                    ast: SyntaxTree::default(),
-                    highlights: Vec::new(),
-                };
-
-                let mut text = String::new();
-                file.read_to_string(&mut text).unwrap();
-                self.update_mod(&mut mod_, &text);
-
-                Ok(mod_)
-            } else {
-                Err(ModError::CantFind("mod.oh".to_string()))
-            }),
-            dir_path,
-        };
-
-        self.libs.insert(id, lib);
+        self.libs.insert(id, mod_);
 
         id
     }
 
     pub fn check_libs(&self) {
-        for lib in &self.libs {
-            let root_mod_path = lib.dir_path.join("mod.oh");
-
-            let changed = if root_mod_path.is_file() {
-                let root_mod = lib.root_mod.read().unwrap();
-                if let Ok(root_mod) = &*root_mod {
-                    let file = File::open(&root_mod_path).unwrap();
-                    let file_time = file.metadata().unwrap().modified().unwrap();
-
-                    file_time > root_mod.time
-                } else {
-                    true
-                }
-            } else {
-                lib.root_mod.read().unwrap().is_ok()
-            };
-
-            if changed {
-                let mut file = File::open(&root_mod_path).unwrap();
-
-                let mut mod_ = Mod {
-                    path: root_mod_path.clone(),
-                    time: file.metadata().unwrap().modified().unwrap(),
-                    can_have_children: true,
-                    ast: SyntaxTree::default(),
-                    highlights: Vec::new(),
-                };
-
-                let mut text = String::new();
-                file.read_to_string(&mut text).unwrap();
-                self.update_mod(&mut mod_, &text);
-
-                *lib.root_mod.write().unwrap() = Ok(mod_);
-            }
+        for mut lib in self.libs.iter_mut() {
+            lib.check(&self.interner, &self.file_interner, &self.diagnostics);
         }
     }
 
@@ -133,12 +83,8 @@ impl OathCompiler {
         let path = file.as_ref();
 
         for lib in self.libs.iter() {
-            if path.parent().unwrap() == lib.dir_path && (path.file_name().unwrap() == "mod.oh") {
-                return match &lib.root_mod.read().unwrap().as_ref() {
-                    Ok(root_mod) => root_mod.highlights.iter().copied().collect(),
-                    Err(_) => Vec::new(),
-                }
-                .into_iter();
+            if let Some(mod_) = lib.find(path) {
+                return mod_.get_highlights().iter().copied().collect::<Vec<_>>().into_iter();
             }
         }
 
@@ -162,46 +108,6 @@ impl OathCompiler {
 
     pub fn format_diagnostic(&self, diagnostic: &Diagnostic) -> String {
         diagnostic.to_string_interned(&self.interner)
-    }
-}
-
-#[derive(Debug)]
-struct Lib {
-    pub dir_path: PathBuf,
-    pub root_mod: RwLock<Result<Mod, ModError>>,
-}
-
-#[derive(Debug)]
-struct Mod {
-    pub time: SystemTime,
-    pub path: PathBuf,
-    pub can_have_children: bool,
-    pub ast: SyntaxTree,
-    pub highlights: Vec<Highlight>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
-enum ModError {
-    CantFind(String),
-}
-
-impl OathCompiler {
-    fn find_mod_file(&self, dir_path: &Path) -> Option<PathBuf> {
-        let path = dir_path.join("mod.oh");
-
-        path.is_file().then_some(path)
-    }
-
-    fn update_mod(&self, mod_: &mut Mod, text: &str) {
-        mod_.highlights.clear();
-        mod_.ast = text
-            .tokenize(
-                self.file_interner.intern(&mod_.path),
-                &self.interner,
-                &self.diagnostics,
-                &mut mod_.highlights,
-            )
-            .parse_ast();
     }
 }
 

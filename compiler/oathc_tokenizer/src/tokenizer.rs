@@ -199,7 +199,7 @@ impl<'ctx> RootTokenizer<'ctx> {
                 RawToken::OpenDelimiter(raw_token) => Peek::Token(PeekToken::Group(raw_token)),
                 RawToken::CloseDelimiter(close) => Peek::Close(PeekToken::Error(
                     self.diagnostics()
-                        .push_error(TokenError::Unopened(close.span, close.kind.close_str())),
+                        .push_error(Error::UnopenedDelimiter(close.span, close.kind.close_str())),
                 )),
                 RawToken::Unknown(error) => Peek::Token(PeekToken::Error(error)),
             },
@@ -320,7 +320,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
             None => {
                 self.delims.error = Some(
                     self.diagnostics()
-                        .push_error(TokenError::Unclosed(self.delims.open_span, self.delims.kind.open_str())),
+                        .push_error(Error::UnclosedDelimiter(self.delims.open_span, self.delims.kind.open_str())),
                 );
 
                 match &mut self.parent {
@@ -362,7 +362,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
         } else {
             self.delims.error = Some(
                 self.diagnostics()
-                    .push_error(TokenError::Unclosed(self.open().span, self.open().kind.open_str())),
+                    .push_error(Error::UnclosedDelimiter(self.open().span, self.open().kind.open_str())),
             );
 
             match &mut self.parent {
@@ -371,7 +371,7 @@ impl<'ctx, 'parent> GroupTokenizer<'ctx, 'parent> {
                     parent.peek = Peek::Close(PeekToken::Error(
                         parent
                             .diagnostics()
-                            .push_error(TokenError::Unopened(close.span, close.kind.close_str())),
+                            .push_error(Error::UnopenedDelimiter(close.span, close.kind.close_str())),
                     ));
                 }
             }

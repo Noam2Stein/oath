@@ -26,7 +26,7 @@ impl<T: ParseDesc> Parse for Try<T> {
         } else {
             let span = parser.peek_span();
 
-            *output = Try::Failure(Some(parser.diagnostics().push_error(SyntaxError::Expected(span, T::desc()))));
+            *output = Try::Failure(Some(parser.diagnostics().push_error(Error::Expected(span, T::desc()))));
 
             ParseExit::Cut
         }

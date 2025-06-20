@@ -1,11 +1,15 @@
 [package]
 edition = "2024"
-name = "oathc_query"
+name    = "oathc_res"
 version = "0.1.0"
 
 [dependencies]
-oathc_ast = { path = "../oathc_ast" }
-oathc_span = { path = "../oathc_span" }
-oathc_tokens = { path = "../oathc_tokens" }
-oathc_parser = { path = "../oathc_parser" }
-oathc_diagnostics = { path = "../oathc_diagnostics" }
+oathc_ast          = { path = "../oathc_ast" }
+oathc_diagnostics  = { path = "../oathc_diagnostics" }
+oathc_file         = { path = "../oathc_file" }
+oathc_highlighting = { path = "../oathc_highlighting" }
+oathc_interner     = { path = "../oathc_interner" }
+oathc_parser       = { path = "../oathc_parser" }
+oathc_span         = { path = "../oathc_span" }
+oathc_tokenizer    = { path = "../oathc_tokenizer" }
+oathc_tokens       = { path = "../oathc_tokens" }

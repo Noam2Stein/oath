@@ -1,26 +1,15 @@
-use oathc_ast::SyntaxTree;
+use std::path::PathBuf;
+
 use oathc_diagnostics::*;
+use oathc_file::*;
+use oathc_highlighting::*;
+use oathc_interner::*;
 use oathc_parser::Leftovers;
+
 use oathc_span::*;
 use oathc_tokens::*;
 
 mod item;
-//mod namespace;
+mod mod_;
 pub use item::*;
-
-pub trait ResolveExt {
-    fn resolve(self, diagnostics: &Diagnostics) -> Mod;
-}
-impl ResolveExt for SyntaxTree {
-    fn resolve(self, diagnostics: &Diagnostics) -> Mod {
-        Mod {
-            items: self
-                .items
-                .values
-                .into_iter()
-                .map(|item| Item::from_ast(item, diagnostics))
-                .collect(),
-            leftovers: self.leftovers,
-        }
-    }
-}
+pub use mod_::*;
