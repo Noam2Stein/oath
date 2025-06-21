@@ -51,4 +51,11 @@ impl<T> Try<T> {
             Self::Failure(_) => panic!("unwrapped a `failure` value"),
         }
     }
+
+    pub fn map<O>(self, f: impl FnOnce(T) -> O) -> Try<O> {
+        match self {
+            Self::Success(t) => Try::Success(f(t)),
+            Self::Failure(handle) => Try::Failure(handle),
+        }
+    }
 }

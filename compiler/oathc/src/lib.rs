@@ -22,7 +22,7 @@ pub struct OathCompiler {
     interner: Arc<Interner>,
     file_interner: Arc<FileInterner>,
     diagnostics: Diagnostics,
-    libs: DashMap<LibId, ModFile>,
+    libs: DashMap<LibId, DiskMod>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -52,7 +52,7 @@ impl OathCompiler {
         )
         .unwrap();
 
-        let mod_ = ModFile::new(dir_path, name, &self.interner, &self.file_interner, &self.diagnostics);
+        let mod_ = DiskMod::new(dir_path, name, &self.interner, &self.file_interner, &self.diagnostics);
 
         self.libs.insert(id, mod_);
 
