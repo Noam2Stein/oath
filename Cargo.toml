@@ -4,7 +4,7 @@ members = [
     "compiler/oathc",
     "compiler/oathc_ast",
     "compiler/oathc_diagnostics",
-    "compiler/oathc_file",
+    "compiler/oathc_file", "compiler/oathc_fmt",
     "compiler/oathc_highlighting",
     "compiler/oathc_interner",
     "compiler/oathc_parser",

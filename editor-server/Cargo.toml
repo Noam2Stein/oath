@@ -4,8 +4,10 @@ name    = "editor-server"
 version = "0.1.0"
 
 [dependencies]
-oathc     = { path = "../compiler/oathc" }
-pollster  = "0.4.0"
-tokio     = { version = "1.42.0", features = [ "full" ] }
-tower-lsp = "0.20.0"
-walkdir   = "2.5.0"
+dashmap     = "6.1.0"
+derive_more = { version = "2.0.1", features = [ "full" ] }
+oathc       = { path = "../compiler/oathc" }
+pollster    = "0.4.0"
+tokio       = { version = "1.42.0", features = [ "full" ] }
+tower-lsp   = "0.20.0"
+walkdir     = "2.5.0"
