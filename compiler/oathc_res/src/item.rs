@@ -1,12 +1,21 @@
+use std::path::Path;
+
 use super::*;
 
 #[derive(Debug)]
 pub enum Item {
+    Mod(ItemMod),
     Error(Option<DiagnosticHandle>),
 }
 
 impl Item {
-    pub fn new(ast: oathc_ast::Item, diagnostics: &Diagnostics) -> Self {
+    pub fn new(
+        ast: oathc_ast::Item,
+        submod_dir: Option<&Path>,
+        interner: &Interner,
+        file_interner: &FileInterner,
+        diagnostics: &Diagnostics,
+    ) -> Self {
         let core = match ast.core {
             Try::Failure(error) => return Self::Error(error),
             Try::Success(core) => core,
@@ -26,6 +35,7 @@ impl Item {
         };
 
         match core {
+            oathc_ast::ItemCore::Mod(core) => Self::Mod(ItemMod::new(core, submod_dir, interner, file_interner, diagnostics)),
             _ => Self::Error(Some(diagnostics.push_error(Error::ToDo(core_span)))),
         }
     }

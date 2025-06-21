@@ -28,6 +28,8 @@ pub enum Error {
     DoubleMod(#[span] Span, StrId),
     #[display("cannot find module `{field_1}`")]
     NoMod(#[span] Span, StrId),
+    #[display("cannot have child modules")]
+    FileMod(#[span] Span),
     #[display("invalid file")]
     InvalidFile(#[span] Span),
 

@@ -17,9 +17,22 @@ pub struct ModFile {
     highlights: Vec<Highlight>,
 }
 
+#[derive(Debug)]
+pub enum ItemMod {
+    File(ModFile),
+    Block(ItemModBlock),
+    Failure(Option<DiagnosticHandle>),
+}
+
+#[derive(Debug)]
+pub struct ItemModBlock {
+    _delims: delims!("{ }"),
+    _mod_: Mod,
+}
+
 #[derive(Debug, Default)]
 pub struct Mod {
-    submod_dir: Option<PathBuf>,
+    _submod_dir: Option<PathBuf>,
     #[allow(dead_code)]
     items: Vec<Item>,
     #[allow(dead_code)]
@@ -109,11 +122,19 @@ impl ModFile {
                 .items
                 .values
                 .into_iter()
-                .map(|item| Item::new(item, diagnostics))
+                .map(|item| {
+                    Item::new(
+                        item,
+                        submod_dir.as_ref().map(|p| p.as_path()),
+                        interner,
+                        file_interner,
+                        diagnostics,
+                    )
+                })
                 .collect();
 
             let content = Mod {
-                submod_dir,
+                _submod_dir: submod_dir,
                 items,
                 leftovers,
             };
@@ -173,6 +194,13 @@ impl ModFile {
         };
 
         if path.success_ref() == self.path.success_ref() && time <= self.time {
+            for submod_file in self.content.items.iter_mut().filter_map(|item| match item {
+                Item::Mod(ItemMod::File(mod_)) => Some(mod_),
+                _ => None,
+            }) {
+                submod_file.check(interner, file_interner, diagnostics);
+            }
+
             return;
         }
 
@@ -215,11 +243,19 @@ impl ModFile {
                 .items
                 .values
                 .into_iter()
-                .map(|item| Item::new(item, diagnostics))
+                .map(|item| {
+                    Item::new(
+                        item,
+                        submod_dir.as_ref().map(|p| p.as_path()),
+                        interner,
+                        file_interner,
+                        diagnostics,
+                    )
+                })
                 .collect();
 
             let content = Mod {
-                submod_dir,
+                _submod_dir: submod_dir,
                 items,
                 leftovers,
             };
@@ -248,19 +284,77 @@ impl ModFile {
     }
 }
 
+impl ItemMod {
+    pub fn new(
+        ast: oathc_ast::Mod,
+        submod_dir: Option<&Path>,
+        interner: &Interner,
+        file_interner: &FileInterner,
+        diagnostics: &Diagnostics,
+    ) -> Self {
+        match ast.body {
+            Try::Success(oathc_ast::ModBody::Block(body_ast)) => Self::Block(ItemModBlock {
+                _delims: body_ast.frame.delims,
+                _mod_: Mod::new(
+                    None,
+                    SyntaxTree {
+                        items: body_ast.items,
+                        leftovers: body_ast.frame.leftovers,
+                    },
+                    interner,
+                    file_interner,
+                    diagnostics,
+                ),
+            }),
+
+            Try::Success(oathc_ast::ModBody::Semi(_)) => {
+                if let Some(submod_dir) = &submod_dir {
+                    Self::File(ModFile::new(
+                        submod_dir,
+                        *ast.ident.unwrap_ref(),
+                        interner,
+                        file_interner,
+                        diagnostics,
+                    ))
+                } else {
+                    Self::Failure(Some(
+                        diagnostics.push_error(Error::FileMod(ast.ident.success_ref().unwrap().span())),
+                    ))
+                }
+            }
+
+            Try::Failure(error) => Self::Failure(error),
+        }
+    }
+}
+
 impl Mod {
-    pub fn new(submod_dir: Option<PathBuf>, ast: SyntaxTree, diagnostics: &Diagnostics) -> Self {
+    pub fn new(
+        submod_dir: Option<PathBuf>,
+        ast: SyntaxTree,
+        interner: &Interner,
+        file_interner: &FileInterner,
+        diagnostics: &Diagnostics,
+    ) -> Self {
         let items = ast
             .items
             .values
             .into_iter()
-            .map(|item| Item::new(item, diagnostics))
+            .map(|item| {
+                Item::new(
+                    item,
+                    submod_dir.as_ref().map(|p| p.as_path()),
+                    interner,
+                    file_interner,
+                    diagnostics,
+                )
+            })
             .collect();
 
         let leftovers = ast.leftovers;
 
         Self {
-            submod_dir,
+            _submod_dir: submod_dir,
             items,
             leftovers,
         }
