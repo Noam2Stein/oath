@@ -1,9 +1,9 @@
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, Weak},
+    thread::sleep,
 };
 
-use tokio::time::sleep;
 use tower_lsp::lsp_types::{request::SemanticTokensRefresh, Diagnostic as LspDiagnostic, DiagnosticSeverity, Url};
 use walkdir::WalkDir;
 
@@ -37,7 +37,7 @@ async fn watch(backend: Weak<Backend>) {
                 .await;
         }
 
-        sleep(std::time::Duration::from_millis(100)).await;
+        sleep(std::time::Duration::from_millis(100));
         backend.client.send_request::<SemanticTokensRefresh>(()).await.unwrap();
     }
 }
