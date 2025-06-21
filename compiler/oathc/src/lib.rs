@@ -7,12 +7,13 @@ use dashmap::*;
 
 use oathc_diagnostics::*;
 use oathc_file::*;
+use oathc_fmt::*;
 use oathc_interner::*;
 use oathc_res::*;
 use oathc_tokens::*;
 
 pub use oathc_diagnostics::{Diagnostic, Error, IdentCase, Warning};
-pub use oathc_fmt::*;
+pub use oathc_fmt::FormatConfig;
 pub use oathc_highlighting::{Highlight, HighlightColor};
 pub use oathc_span::{ConnectSpan, OptionSpanned, Position, Span, Spanned};
 pub use oathc_tokens::KEYWORDS;
@@ -93,5 +94,9 @@ impl OathCompiler {
 
     pub fn format_diagnostic(&self, diagnostic: &Diagnostic) -> String {
         diagnostic.to_string_interned(&self.interner)
+    }
+
+    pub fn format(&self, text: impl AsRef<str>, config: &FormatConfig) -> String {
+        text.format(config, &self.interner, &self.file_interner)
     }
 }

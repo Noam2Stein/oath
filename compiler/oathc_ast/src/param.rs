@@ -13,6 +13,7 @@ pub struct FramedParams<D: FrameDelimiters> {
 #[derive(Debug, OptionParse, Highlightable)]
 #[desc = "a parameter"]
 pub struct Param {
+    pub pub_: Option<keyword!("pub")>,
     pub mut_: Option<keyword!("mut")>,
     #[highlightable]
     pub body: Try<ParamBody>,
