@@ -2,7 +2,8 @@ use super::*;
 
 #[derive(Debug, Parse)]
 pub struct Contract {
-    pub segments: Repeated<ContractSegment>,
+    #[parse_as(Repeated<ContractSegment>)]
+    pub segments: Vec<ContractSegment>,
 }
 
 #[derive(Debug, OptionParse)]

@@ -3,8 +3,10 @@ use super::*;
 #[derive(Debug, OptionParse)]
 #[desc = "an item"]
 pub struct Item {
-    pub attrs: Repeated<Attr>,
-    pub modifiers: Repeated<ItemModifier>,
+    #[parse_as(Repeated<Attr>)]
+    pub attrs: Vec<Attr>,
+    #[parse_as(Repeated<ItemModifier>)]
+    pub modifiers: Vec<ItemModifier>,
     pub core: Try<ItemCore>,
 }
 
@@ -57,7 +59,8 @@ pub enum ModBody {
 #[framed]
 pub struct ModBlock {
     pub frame: Frame<delims!("{ }")>,
-    pub items: Repeated<Item>,
+    #[parse_as(Repeated<_>)]
+    pub items: Vec<Item>,
 }
 
 // Use
@@ -97,7 +100,8 @@ pub struct UseExt {
 #[framed]
 pub struct UseList {
     pub frame: Frame<delims!("{ }")>,
-    pub paths: List<UsePath>,
+    #[parse_as(Trailing<_, punct!(",")>)]
+    pub paths: Vec<UsePath>,
 }
 
 // Fn
@@ -110,7 +114,8 @@ pub struct Fn {
     pub ident: Try<Ident>,
     pub generics: Option<FramedParams<Angles>>,
     pub input: Try<FramedParams<delims!("( )")>>,
-    pub output: Option<BraceExpr>,
+    #[parse_as(Option<BraceExpr>)]
+    pub output: Option<Expr>,
     pub contract: Contract,
     pub body: Try<FnBody>,
 }
@@ -143,7 +148,7 @@ pub struct Static {
     pub keyword: keyword!("static"),
     #[highlight(HighlightColor::Blue)]
     pub param: Try<Param>,
-    pub value: Option<Set>,
+    pub value: Option<Assign>,
     pub semi: Try<punct!(";")>,
 }
 

@@ -1,8 +1,90 @@
 use super::*;
 
+pub type Expr = GenericExpr<UnaryExprPrefix, ExprCore, UnaryExprExt>;
+
+#[derive(Debug, OptionSpanned, OptionParse)]
+#[desc = "an expression"]
+pub struct GenericExpr<P: OptionParse + Into<UnaryExprPrefix>, C: ParseDesc + Into<ExprCore>, E: OptionParse + Into<UnaryExprExt>>
+{
+    #[option_spanned]
+    #[parse_as(Repeated<Attr>)]
+    pub attrs: Vec<Attr>,
+    #[option_spanned]
+    pub first_unary: Try<GenericUnaryExpr<P, C, E>>,
+    #[option_spanned]
+    #[parse_as(Repeated<GenericExprBinOpExt<P, C, E>>)]
+    pub bin_op_exts: Vec<GenericExprBinOpExt<P, C, E>>,
+}
+
+pub type ExprBinOpExt = GenericExprBinOpExt<UnaryExprPrefix, ExprCore, UnaryExprExt>;
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "a binary expr extension"]
+pub struct GenericExprBinOpExt<
+    P: OptionParse + Into<UnaryExprPrefix>,
+    C: ParseDesc + Into<ExprCore>,
+    E: OptionParse + Into<UnaryExprExt>,
+> {
+    pub op: BinOp,
+    #[option_spanned]
+    pub rhs: Try<GenericUnaryExpr<P, C, E>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
+#[desc = "a binary operator"]
+pub enum BinOp {
+    Add(punct!("+")),
+    Sub(punct!("-")),
+    Mul(punct!("*")),
+    Div(punct!("/")),
+    Rem(punct!("%")),
+
+    And(punct!("&")),
+    Or(punct!("|")),
+    Xor(punct!("^")),
+
+    Bound(punct!(":")),
+}
+
 // Unary Expr
 
-#[derive(Debug, OptionParse)]
+pub type UnaryExpr = GenericUnaryExpr<UnaryExprPrefix, ExprCore, UnaryExprExt>;
+
+#[derive(Debug, OptionSpanned, OptionParse)]
+#[desc = "an expression"]
+pub struct GenericUnaryExpr<
+    P: OptionParse + Into<UnaryExprPrefix>,
+    C: ParseDesc + Into<ExprCore>,
+    E: OptionParse + Into<UnaryExprExt>,
+> {
+    #[option_spanned]
+    #[parse_as(Repeated<P>)]
+    pub prefixes: Vec<P>,
+    #[option_spanned]
+    pub core: Try<C>,
+    #[option_spanned]
+    #[parse_as(Repeated<E>)]
+    pub exts: Vec<E>,
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "an expression prefix"]
+pub enum UnaryExprPrefix {
+    Neg(punct!("-")),
+    Not(punct!("!")),
+    Deref(punct!("*")),
+    Ref(Ref),
+    Eq(punct!("==")),
+    NotEq(punct!("!=")),
+    More(punct!(">")),
+    Less(punct!("<")),
+    MoreEq(punct!(">=")),
+    LessEq(punct!("<=")),
+    Question(punct!("?")),
+    Lifetime(Lifetime),
+}
+
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an expression"]
 pub enum ExprCore {
     Ident(Ident),
@@ -18,7 +100,19 @@ pub enum ExprCore {
     For(For),
 }
 
-#[derive(Debug, Clone, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "an expression postfix"]
+pub enum UnaryExprExt {
+    Member(UnaryExprMemberExt),
+    Call(Tuple),
+    Index(Array),
+    Generics(GenericArgs),
+    Construct(Construct),
+}
+
+// Keyword
+
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an expression"]
 pub enum ExprKeyword {
     Fn(keyword!("fn")),
@@ -26,16 +120,112 @@ pub enum ExprKeyword {
     Type(keyword!("type")),
 }
 
+// Ref
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "a reference"]
+pub struct Ref {
+    pub punct: punct!("&"),
+    #[option_spanned]
+    pub bounds: Option<RefModifier>,
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "reference modifier"]
+pub enum RefModifier {
+    Mut(keyword!("mut")),
+    Sole(keyword!("sole")),
+    SoleMut(keyword!("smut")),
+    Lifetime(Lifetime),
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "`'`"]
+pub struct Lifetime {
+    pub punct: punct!("'"),
+    #[option_spanned]
+    pub ident: Try<Ident>,
+}
+
+// Member
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "a member"]
+pub enum Member {
+    Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
+    Named(Ident),
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "`.`"]
+pub struct UnaryExprMemberExt {
+    pub punct: punct!("."),
+    #[option_spanned]
+    pub member: Try<Member>,
+}
+
+// Types
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "an array"]
+#[framed]
+pub struct Array {
+    pub delims: Frame<delims!("[ ]")>,
+    #[parse_as(Trailing<Expr, punct!(",")>)]
+    pub items: Vec<Expr>,
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "a tuple"]
+#[framed]
+pub struct Tuple {
+    pub delims: Frame<delims!("( )")>,
+    #[parse_as(Trailing<Expr, punct!(",")>)]
+    pub items: Vec<Expr>,
+}
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "`{ }`"]
+#[framed]
+pub struct Construct {
+    pub delims: Frame<delims!("{ }")>,
+    #[parse_as(Trailing<ConstructField, punct!(",")>)]
+    pub items: Vec<ConstructField>,
+}
+
 #[derive(Debug, OptionParse)]
+#[desc = "an identifier"]
+pub struct ConstructField {
+    #[highlight(HighlightColor::Cyan)]
+    pub ident: Ident,
+    pub set: Try<Assign>,
+}
+
+// Assign
+
+#[derive(Debug, Spanned, OptionParse)]
+#[desc = "`=`"]
+pub struct Assign {
+    pub eq: punct!("="),
+    #[option_spanned]
+    pub value: Try<Expr>,
+}
+
+// Angle Expr
+
+pub type AngleExpr = GenericExpr<AngleUnaryExprPrefix, ExprCore, UnaryExprExt>;
+pub type AngleUnaryExpr = GenericUnaryExpr<AngleUnaryExprPrefix, ExprCore, UnaryExprExt>;
+pub type AngleExprBinOpExt = GenericExprBinOpExt<AngleUnaryExprPrefix, ExprCore, UnaryExprExt>;
+
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an expression prefix"]
-pub enum ExprPrefix {
+pub enum AngleUnaryExprPrefix {
     Neg(punct!("-")),
     Not(punct!("!")),
     Deref(punct!("*")),
-    Ref(punct!("&"), ReferenceBounds),
+    Ref(Ref),
     Eq(punct!("==")),
     NotEq(punct!("!=")),
-    More(punct!(">")),
     Less(punct!("<")),
     MoreEq(punct!(">=")),
     LessEq(punct!("<=")),
@@ -43,109 +233,58 @@ pub enum ExprPrefix {
     Lifetime(Lifetime),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, OptionSpanned, Parse)]
-pub enum ReferenceBounds {
-    #[fallback]
-    Default,
-    Mut(keyword!("mut")),
-    Sole(keyword!("sole")),
-    SoleMut(keyword!("smut")),
+impl From<AngleUnaryExprPrefix> for UnaryExprPrefix {
+    fn from(value: AngleUnaryExprPrefix) -> Self {
+        match value {
+            AngleUnaryExprPrefix::Neg(value) => Self::Neg(value.into()),
+            AngleUnaryExprPrefix::Not(value) => Self::Not(value.into()),
+            AngleUnaryExprPrefix::Deref(value) => Self::Deref(value.into()),
+            AngleUnaryExprPrefix::Ref(value) => Self::Ref(value.into()),
+            AngleUnaryExprPrefix::Eq(value) => Self::Eq(value.into()),
+            AngleUnaryExprPrefix::NotEq(value) => Self::NotEq(value.into()),
+            AngleUnaryExprPrefix::Less(value) => Self::Less(value.into()),
+            AngleUnaryExprPrefix::MoreEq(value) => Self::MoreEq(value.into()),
+            AngleUnaryExprPrefix::LessEq(value) => Self::LessEq(value.into()),
+            AngleUnaryExprPrefix::Question(value) => Self::Question(value.into()),
+            AngleUnaryExprPrefix::Lifetime(value) => Self::Lifetime(value.into()),
+        }
+    }
 }
 
-#[derive(Debug, OptionParse)]
-#[desc = "an expression postfix"]
-pub enum ExprPostfix {
-    Member(punct!("."), Try<Member>),
-    Call(Tuple),
-    Index(Array),
-    Generics(GenericArgs),
-    Construct(Construct),
+impl From<AngleExpr> for Expr {
+    fn from(value: AngleExpr) -> Self {
+        Self {
+            attrs: value.attrs.into(),
+            first_unary: value.first_unary.map(Into::into),
+            bin_op_exts: value.bin_op_exts.into_iter().map(Into::into).collect(),
+        }
+    }
 }
-
-#[derive(Debug, Spanned, OptionParse)]
-#[desc = "a `.` expression"]
-pub enum Member {
-    Unnamed(#[highlight(HighlightColor::Cyan)] IntLiteral),
-    Named(Ident),
+impl From<AngleUnaryExpr> for UnaryExpr {
+    fn from(value: AngleUnaryExpr) -> Self {
+        Self {
+            prefixes: value.prefixes.into_iter().map(Into::into).collect(),
+            core: value.core.into(),
+            exts: value.exts.into_iter().map(Into::into).collect(),
+        }
+    }
 }
-
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct UnaryExpr {
-    pub attrs: Repeated<Attr>,
-    pub prefix: Repeated<ExprPrefix>,
-    pub core: Try<ExprCore>,
-    pub postfix: Repeated<ExprPostfix>,
-}
-
-// Binary Expr
-
-#[derive(Debug, OptionParse)]
-#[desc = "a binary expr extension"]
-pub struct ExprBinaryPostfix {
-    pub op: BinaryOperator,
-    pub rhs: Try<UnaryExpr>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
-#[desc = "a binary operator"]
-pub enum BinaryOperator {
-    Add(punct!("+")),
-    Sub(punct!("-")),
-    Mul(punct!("*")),
-    Div(punct!("/")),
-    Rem(punct!("%")),
-
-    And(punct!("&")),
-    Or(punct!("|")),
-    Xor(punct!("^")),
-
-    Bound(punct!(":")),
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct Expr {
-    pub lhs: UnaryExpr,
-    pub bin_ops: Repeated<ExprBinaryPostfix>,
-}
-
-// Angle Expr
-
-#[derive(Debug, OptionParse)]
-#[desc = "an expression prefix"]
-pub enum AngleExprPrefix {
-    Neg(punct!("-")),
-    Not(punct!("!")),
-    Deref(punct!("*")),
-    Ref(punct!("&"), ReferenceBounds),
-    Eq(punct!("==")),
-    NotEq(punct!("!=")),
-    MoreEq(punct!(">=")),
-    LessEq(punct!("<=")),
-    Question(punct!("?")),
-    Lifetime(Lifetime),
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct AngleUnaryExpr {
-    pub attrs: Repeated<Attr>,
-    pub prefix: Repeated<AngleExprPrefix>,
-    pub core: Try<ExprCore>,
-    pub postfix: Repeated<ExprPostfix>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct AngleExpr {
-    pub lhs: AngleUnaryExpr,
-    pub bin_ops: Repeated<ExprBinaryPostfix>,
+impl From<AngleExprBinOpExt> for ExprBinOpExt {
+    fn from(value: AngleExprBinOpExt) -> Self {
+        Self {
+            op: value.op,
+            rhs: value.rhs.map(Into::into),
+        }
+    }
 }
 
 // Brace Expr
 
-#[derive(Debug, OptionParse)]
+pub type BraceExpr = GenericExpr<UnaryExprPrefix, BraceExprCore, BraceUnaryExprExt>;
+pub type BraceUnaryExpr = GenericUnaryExpr<UnaryExprPrefix, BraceExprCore, BraceUnaryExprExt>;
+pub type BraceExprBinOpExt = GenericExprBinOpExt<AngleUnaryExprPrefix, ExprCore, UnaryExprExt>;
+
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an expression"]
 pub enum BraceExprCore {
     Ident(Ident),
@@ -160,161 +299,39 @@ pub enum BraceExprCore {
     For(For),
 }
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an expression postfix"]
-pub enum BraceExprPostfix {
-    Member(punct!("."), Try<Member>),
+pub enum BraceUnaryExprExt {
+    Member(UnaryExprMemberExt),
     Call(Tuple),
     Index(Array),
     Generics(GenericArgs),
 }
 
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct UnaryBraceExpr {
-    pub attrs: Repeated<Attr>,
-    pub prefix: Repeated<ExprPrefix>,
-    pub core: Try<BraceExprCore>,
-    pub postfix: Repeated<BraceExprPostfix>,
+impl From<BraceExprCore> for ExprCore {
+    fn from(value: BraceExprCore) -> Self {
+        match value {
+            BraceExprCore::Ident(value) => Self::Ident(value.into()),
+            BraceExprCore::Keyword(value) => Self::Keyword(value.into()),
+            BraceExprCore::Literal(value) => Self::Literal(value.into()),
+            BraceExprCore::Array(value) => Self::Array(value.into()),
+            BraceExprCore::Tuple(value) => Self::Tuple(value.into()),
+            BraceExprCore::If(value) => Self::If(value.into()),
+            BraceExprCore::Loop(value) => Self::Loop(value.into()),
+            BraceExprCore::While(value) => Self::While(value.into()),
+            BraceExprCore::Until(value) => Self::Until(value.into()),
+            BraceExprCore::For(value) => Self::For(value.into()),
+        }
+    }
 }
 
-#[derive(Debug, OptionParse)]
-#[desc = "an expression"]
-pub struct BraceExpr {
-    pub lhs: UnaryBraceExpr,
-    pub bin_ops: Repeated<ExprBinaryPostfix>,
-}
-
-// Anonymous Types
-
-#[derive(Debug, OptionParse)]
-#[desc = "an array"]
-#[framed]
-pub struct Array {
-    pub delims: Frame<delims!("[ ]")>,
-    pub items: List<Expr>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "a tuple"]
-#[framed]
-pub struct Tuple {
-    pub delims: Frame<delims!("( )")>,
-    pub items: List<Expr>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "`{ }`"]
-#[framed]
-pub struct Construct {
-    pub delims: Frame<delims!("{ }")>,
-    pub items: List<ConstructField>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an identifier"]
-pub struct ConstructField {
-    #[highlight(HighlightColor::Cyan)]
-    pub ident: Ident,
-    pub set: Try<Set>,
-}
-
-// If Else
-
-#[derive(Debug, OptionParse)]
-#[desc = "`if`"]
-pub struct If {
-    pub keyword: keyword!("if"),
-    pub condition: Try<Box<BraceExpr>>,
-    pub body: IfBody,
-}
-
-#[derive(Debug, Parse)]
-pub enum IfBody {
-    Then {
-        keyword: keyword!("then"),
-        expr: Try<Box<Expr>>,
-        else_: Option<ThenElse>,
-    },
-    #[fallback]
-    Block { block: Try<Block>, else_: Option<Else> },
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "`else`"]
-pub struct Else {
-    pub keyword: keyword!("else"),
-    pub body: ElseBody,
-}
-
-#[derive(Debug, Parse)]
-pub enum ElseBody {
-    ElseIf {
-        keyword: keyword!("if"),
-        condition: Try<Box<BraceExpr>>,
-        body: Box<IfBody>,
-    },
-    #[fallback]
-    Else(Try<Block>),
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an if statement"]
-pub struct ThenElse {
-    pub keyword: keyword!("else"),
-    pub expr: Try<Box<Expr>>,
-}
-
-// Loops
-
-#[derive(Debug, OptionParse)]
-#[desc = "a loop"]
-pub struct Loop {
-    pub keyword: keyword!("loop"),
-    pub block: Try<Block>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "a while loop"]
-pub struct While {
-    pub keyword: keyword!("while"),
-    pub condition: Try<Box<BraceExpr>>,
-    pub block: Try<Block>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "an until loop"]
-pub struct Until {
-    pub keyword: keyword!("until"),
-    pub condition: Try<Box<BraceExpr>>,
-    pub block: Try<Block>,
-}
-
-#[derive(Debug, OptionParse)]
-#[desc = "a for loop"]
-pub struct For {
-    pub keyword: keyword!("for"),
-    #[highlight(HighlightColor::Cyan)]
-    pub item: Try<Box<Param>>,
-    pub in_: Try<keyword!("in")>,
-    pub iter: Try<Box<BraceExpr>>,
-    pub block: Try<Block>,
-}
-
-// Var
-
-#[derive(Debug, OptionParse)]
-#[desc = "`'`"]
-pub struct Lifetime {
-    pub punct: punct!("'"),
-    pub ident: Try<Ident>,
-}
-
-// Set
-
-#[derive(Debug, OptionParse)]
-#[desc = "`= ...`"]
-pub struct Set {
-    pub eq: punct!("="),
-    pub value: Try<Expr>,
+impl From<BraceUnaryExprExt> for UnaryExprExt {
+    fn from(value: BraceUnaryExprExt) -> Self {
+        match value {
+            BraceUnaryExprExt::Member(value) => Self::Member(value.into()),
+            BraceUnaryExprExt::Call(value) => Self::Call(value.into()),
+            BraceUnaryExprExt::Index(value) => Self::Index(value.into()),
+            BraceUnaryExprExt::Generics(value) => Self::Generics(value.into()),
+        }
+    }
 }

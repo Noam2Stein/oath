@@ -2,12 +2,13 @@ use derive_more::Debug;
 
 use super::*;
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "`{ }`"]
 #[framed]
 pub struct Block {
     pub frame: Frame<delims!("{ }")>,
-    pub stmts: Repeated<Stmt>,
+    #[parse_as(Repeated<_>)]
+    pub stmts: Vec<Stmt>,
 }
 
 #[derive(Debug, OptionParse)]
@@ -28,7 +29,7 @@ pub struct LetStmt {
     pub keyword: keyword!("let"),
     #[highlight(HighlightColor::Cyan)]
     pub name: Try<Param>,
-    pub value: Option<Set>,
+    pub value: Option<Assign>,
     pub semi: Try<punct!(";")>,
 }
 
@@ -36,7 +37,7 @@ pub struct LetStmt {
 #[desc = "a statement"]
 pub struct ExprStmt {
     pub expr: Expr,
-    pub set: Option<Set>,
+    pub set: Option<Assign>,
     pub semi: Try<punct!(";")>,
 }
 

@@ -1,9 +1,10 @@
 use super::*;
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "an attribute"]
 pub struct Attr {
     pub hash: punct!("#"),
+    #[option_spanned]
     pub body: Try<AttrBody>,
 }
 
@@ -14,7 +15,7 @@ pub struct InnerAttr {
     pub body: Try<AttrBody>,
 }
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "`[ ]`"]
 #[framed]
 pub struct AttrBody {
@@ -27,5 +28,5 @@ pub struct AttrBody {
 #[desc = "a meta value"]
 pub enum AttrInput {
     Fn(Tuple),
-    Set(Set),
+    Set(Assign),
 }

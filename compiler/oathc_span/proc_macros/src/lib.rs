@@ -8,7 +8,7 @@ use syn::{
 mod fields;
 use fields::*;
 
-#[proc_macro_derive(Spanned, attributes(span, not_spanned))]
+#[proc_macro_derive(Spanned, attributes(span, option_spanned, not_spanned))]
 pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         attrs,
@@ -20,7 +20,7 @@ pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::Token
 
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
-            type_param.bounds.push(parse_quote!(::oath_src::Spanned));
+            type_param.bounds.push(parse_quote!(Spanned));
         }
     }
 
@@ -47,7 +47,7 @@ pub fn spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::Token
     .into()
 }
 
-#[proc_macro_derive(OptionSpanned, attributes(span, not_spanned))]
+#[proc_macro_derive(OptionSpanned, attributes(span, option_spanned, not_spanned))]
 pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         attrs,
@@ -59,7 +59,7 @@ pub fn option_spanned_derive_macro(input: proc_macro::TokenStream) -> proc_macro
 
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
-            type_param.bounds.push(parse_quote!(::oath_src::OptionSpanned));
+            type_param.bounds.push(parse_quote!(Spanned));
         }
     }
 

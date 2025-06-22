@@ -1,8 +1,9 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Spanned)]
 pub struct Angles {
     pub open: punct!("<"),
+    #[option_spanned]
     pub close: Try<MorePunct>,
 }
 

@@ -1,7 +1,8 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Spanned)]
 pub struct Frame<D: FrameDelimiters> {
+    #[span]
     pub delims: D,
     pub leftovers: Leftovers,
 }

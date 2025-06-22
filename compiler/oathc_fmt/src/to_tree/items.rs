@@ -7,5 +7,7 @@ impl ToFormatTree for SyntaxTree {
 }
 
 impl ToFormatTree for Item {
-    fn to_format_tree(&self, interner: &Interner) -> FormatTree {}
+    fn to_format_tree(&self, interner: &Interner) -> FormatTree {
+        self.
+    }
 }

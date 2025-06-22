@@ -4,7 +4,7 @@ use super::*;
 
 pub use oathc_span_proc_macros::Spanned;
 
-pub trait Spanned {
+pub trait Spanned: OptionSpanned {
     fn span(&self) -> Span;
 }
 

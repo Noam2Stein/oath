@@ -1,14 +1,7 @@
 use super::*;
 
-#[derive(Debug, Clone)]
 pub struct Repeated<T: OptionParse> {
-    pub values: Vec<T>,
-}
-
-impl<T: OptionParse> Default for Repeated<T> {
-    fn default() -> Self {
-        Self { values: Vec::new() }
-    }
+    values: Vec<T>,
 }
 
 impl<T: OptionParse> OptionParse for Repeated<T> {
@@ -56,10 +49,8 @@ impl<T: OptionParse> Parse for Repeated<T> {
     }
 }
 
-impl<T: OptionParse + Highlightable> Highlightable for Repeated<T> {
-    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
-        for value in &self.values {
-            value.highlight(color, h);
-        }
+impl<T: OptionParse> Into<Vec<T>> for Repeated<T> {
+    fn into(self) -> Vec<T> {
+        self.values
     }
 }

@@ -2,10 +2,9 @@ use std::marker::PhantomData;
 
 use super::*;
 
-#[derive(Debug, Clone)]
 pub struct Trailing<T: OptionParse, S: OptionParse> {
-    pub values: Vec<T>,
-    pub danny: PhantomData<S>,
+    values: Vec<T>,
+    danny: PhantomData<S>,
 }
 
 impl<T: OptionParse, S: OptionParse> OptionParse for Trailing<T, S> {
@@ -63,10 +62,8 @@ impl<T: OptionParse, S: OptionParse> Parse for Trailing<T, S> {
     }
 }
 
-impl<T: OptionParse + Highlightable, S: OptionParse> Highlightable for Trailing<T, S> {
-    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
-        for value in &self.values {
-            value.highlight(color, h);
-        }
+impl<T: OptionParse, S: OptionParse> Into<Vec<T>> for Trailing<T, S> {
+    fn into(self) -> Vec<T> {
+        self.values
     }
 }

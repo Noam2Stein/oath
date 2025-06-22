@@ -4,10 +4,9 @@ use nonempty::NonEmpty;
 
 use super::*;
 
-#[derive(Debug, Clone)]
 pub struct Seperated<T: ParseDesc, S: OptionParse> {
-    pub values: NonEmpty<T>,
-    pub danny: PhantomData<S>,
+    values: NonEmpty<T>,
+    danny: PhantomData<S>,
 }
 
 impl<T: ParseDesc, S: OptionParse> OptionParse for Seperated<T, S> {
@@ -61,10 +60,8 @@ impl<T: ParseDesc, S: OptionParse> ParseDesc for Seperated<T, S> {
     }
 }
 
-impl<T: ParseDesc + Highlightable, S: OptionParse> Highlightable for Seperated<T, S> {
-    fn highlight(&self, color: HighlightColor, h: &mut Vec<Highlight>) {
-        for value in &self.values {
-            value.highlight(color, h);
-        }
+impl<T: ParseDesc, S: OptionParse> Into<NonEmpty<T>> for Seperated<T, S> {
+    fn into(self) -> NonEmpty<T> {
+        self.values
     }
 }

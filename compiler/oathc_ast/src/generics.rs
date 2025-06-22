@@ -1,11 +1,12 @@
 use super::*;
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "`< >`"]
 #[framed]
 pub struct GenericArgs {
     pub frame: Frame<Angles>,
-    pub args: List<Expr>,
+    #[parse_as(Trailing<_, punct!(",")>)]
+    pub args: Vec<Expr>,
 }
 
 #[derive(Debug, OptionParse)]
@@ -14,5 +15,6 @@ pub struct GenericArgs {
 pub struct GenericParams {
     pub frame: Frame<Angles>,
     #[highlight(HighlightColor::Green)]
-    pub params: List<Param>,
+    #[parse_as(Trailing<_, punct!(",")>)]
+    pub params: Vec<Param>,
 }

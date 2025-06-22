@@ -310,6 +310,31 @@ pub fn detect_fields(fields: &Fields, fields_span: Span, fields_attrs: &[Attribu
 fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
     let field_type = &field.ty;
 
+    let parse = if let Some(attr) = field.attrs.iter().find(|attr| attr.path().is_ident("parse_as")) {
+        let parse_type = attr
+            .meta
+            .require_list()
+            .map(|list| list.tokens.clone())
+            .unwrap_or_else(|err| err.into_compile_error());
+
+        quote_spanned! {
+            parse_type.span() => {
+                let mut temp_output = <#parse_type as Parse>::parse_error();
+                let exit = <#parse_type as Parse>::parse(parser, &mut temp_output);
+
+                *#output = <#parse_type as Into<#field_type>>::into(temp_output);
+
+                exit
+            }
+        }
+    } else {
+        quote_spanned! {
+            field_type.span() =>
+
+            <#field_type as Parse>::parse(parser, #output)
+        }
+    };
+
     let highlight = field.attrs.iter().find(|attr| attr.path().is_ident("highlight")).map(|attr| {
         let color = match attr.meta.require_list() {
             Ok(ok) => &ok.tokens,
@@ -327,7 +352,7 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         field.span() =>
 
         {
-            let exit = <#field_type as Parse>::parse(parser, #output);
+            let exit = #parse;
 
             #highlight
 
@@ -339,10 +364,24 @@ fn parse_field(field: &Field, output: &TokenStream) -> TokenStream {
 fn field_parse_error(field: &Field) -> TokenStream {
     let field_type = &field.ty;
 
-    quote_spanned! {
-        field.span() =>
+    if let Some(attr) = field.attrs.iter().find(|attr| attr.path().is_ident("parse_as")) {
+        let parse_type = attr
+            .meta
+            .require_list()
+            .map(|list| list.tokens.clone())
+            .unwrap_or_else(|err| err.into_compile_error());
 
-        <#field_type as Parse>::parse_error()
+        quote_spanned! {
+            parse_type.span() =>
+
+            <#parse_type as Into<#field_type>>::into(<#parse_type as Parse>::parse_error())
+        }
+    } else {
+        quote_spanned! {
+            field_type.span() =>
+
+            <#field_type as Parse>::parse_error()
+        }
     }
 }
 
@@ -350,6 +389,31 @@ fn field_parse_error(field: &Field) -> TokenStream {
 
 fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
     let field_type = &field.ty;
+
+    let parse = if let Some(attr) = field.attrs.iter().find(|attr| attr.path().is_ident("parse_as")) {
+        let parse_type = attr
+            .meta
+            .require_list()
+            .map(|list| list.tokens.clone())
+            .unwrap_or_else(|err| err.into_compile_error());
+
+        quote_spanned! {
+            parse_type.span() => {
+                let mut temp_output = None;
+                let exit = <#parse_type as OptionParse>::option_parse(parser, &mut temp_output);
+
+                *#output = temp_output.map(|temp| <#parse_type as Into<#field_type>>::into(temp));
+
+                exit
+            }
+        }
+    } else {
+        quote_spanned! {
+            field_type.span() =>
+
+            <#field_type as OptionParse>::option_parse(parser, #output)
+        }
+    };
 
     let highlight = field.attrs.iter().find(|attr| attr.path().is_ident("highlight")).map(|attr| {
         let color = match attr.meta.require_list() {
@@ -368,7 +432,7 @@ fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
         field.span() =>
 
         {
-            let exit = <#field_type as OptionParse>::option_parse(parser, #output);
+            let exit = #parse;
 
             #highlight
 
@@ -378,11 +442,25 @@ fn option_parse_field(field: &Field, output: &TokenStream) -> TokenStream {
 }
 
 fn detect_field(field: &Field) -> TokenStream {
-    let field_type = &field.ty;
+    if let Some(attr) = field.attrs.iter().find(|attr| attr.path().is_ident("parse_as")) {
+        let parse_type = attr
+            .meta
+            .require_list()
+            .map(|list| list.tokens.clone())
+            .unwrap_or_else(|err| err.into_compile_error());
 
-    quote_spanned! {
-        field.span() =>
+        quote_spanned! {
+            parse_type.span() =>
 
-        <#field_type as OptionParse>::detect(parser)
+            <#parse_type as OptionParse>::detect(parser)
+        }
+    } else {
+        let field_type = &field.ty;
+
+        quote_spanned! {
+            field_type.span() =>
+
+            <#field_type as OptionParse>::detect(parser)
+        }
     }
 }

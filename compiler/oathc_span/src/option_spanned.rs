@@ -8,6 +8,12 @@ pub trait OptionSpanned {
     fn option_span(&self) -> Option<Span>;
 }
 
+impl OptionSpanned for Span {
+    fn option_span(&self) -> Option<Span> {
+        Some(*self)
+    }
+}
+
 impl<T: OptionSpanned> OptionSpanned for Option<T> {
     fn option_span(&self) -> Option<Span> {
         self.as_ref().map_or(None, T::option_span)
@@ -15,6 +21,12 @@ impl<T: OptionSpanned> OptionSpanned for Option<T> {
 }
 
 impl<T: OptionSpanned> OptionSpanned for &T {
+    fn option_span(&self) -> Option<Span> {
+        T::option_span(&self)
+    }
+}
+
+impl<T: OptionSpanned> OptionSpanned for Box<T> {
     fn option_span(&self) -> Option<Span> {
         T::option_span(&self)
     }
