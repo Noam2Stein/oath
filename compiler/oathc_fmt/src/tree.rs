@@ -138,17 +138,18 @@ impl FormatTree {
 
             Self::Chain(items) => {
                 for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
+                    item.format(s, tab_lvl, config)?;
                 }
             }
 
             Self::DotChain(items) => {
-                for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, ".")?;
-                }
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx > 0 {
+                        write!(s, "\n{}.", "\t".repeat(tab_lvl as usize + 1))?;
+                    }
 
-                s.pop();
+                    item.format_unexpanded(s, tab_lvl, config)?;
+                }
             }
 
             Self::DenseDelims(open, inner, close) => {
