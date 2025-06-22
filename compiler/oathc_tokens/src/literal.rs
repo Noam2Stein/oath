@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Spanned)]
+#[derive(Debug, Spanned, InternedDisplay)]
 pub enum Literal {
     Char(CharLiteral),
     Float(FloatLiteral),
@@ -10,7 +10,7 @@ pub enum Literal {
 
 const _: () = verify_token_type::<Literal>();
 
-#[derive(Debug)]
+#[derive(Debug, InternedDisplay)]
 pub struct LiteralSuffix {
     pub ident: Try<Ident>,
 }

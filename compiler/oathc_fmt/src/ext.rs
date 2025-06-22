@@ -15,10 +15,10 @@ impl<T: AsRef<str>> FormatExt for T {
         let highlights = &mut vec![];
 
         let ast = text.tokenize(path, interner, diagnostics, highlights).parse_ast();
-        let tree = ast.to_format_tree();
+        let format_tree = ast.to_format_tree(interner);
 
         let mut s = String::with_capacity(text.len());
-        tree.format(&mut s, 0, config).unwrap();
+        format_tree.format(&mut s, 0, config).unwrap();
 
         s
     }

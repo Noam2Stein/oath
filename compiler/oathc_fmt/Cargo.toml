@@ -4,6 +4,7 @@ name    = "oathc_fmt"
 version = "0.1.0"
 
 [dependencies]
+itertools          = "0.14.0"
 oathc_ast          = { path = "../oathc_ast" }
 oathc_diagnostics  = { path = "../oathc_diagnostics" }
 oathc_file         = { path = "../oathc_file" }

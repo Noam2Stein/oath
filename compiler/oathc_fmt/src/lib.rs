@@ -1,7 +1,10 @@
 use oathc_ast::*;
+use oathc_diagnostics::*;
 use oathc_file::*;
 use oathc_interner::*;
+use oathc_parser::*;
 use oathc_tokenizer::*;
+use oathc_tokens::*;
 
 mod config;
 mod ext;

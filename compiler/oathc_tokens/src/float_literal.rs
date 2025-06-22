@@ -1,6 +1,11 @@
 use super::*;
 
-#[derive(Debug, new, Spanned)]
+#[derive(Debug, new, Spanned, InternedDisplay)]
+#[display(
+    "{value_integral}.{}{value_fraction}{}",
+    "0".repeat(self.value_leading_zeros as usize),
+    suffix.as_ref().map_or(String::new(), |suffix| suffix.to_string_interned(interner))
+)]
 pub struct FloatLiteral {
     #[span]
     pub span: Span,

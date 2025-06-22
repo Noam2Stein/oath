@@ -59,3 +59,12 @@ impl<T> Try<T> {
         }
     }
 }
+
+impl<T: InternedDisplay> InternedDisplay for Try<T> {
+    fn interned_fmt(&self, f: &mut std::fmt::Formatter, interner: &Interner) -> std::fmt::Result {
+        match self {
+            Self::Success(t) => t.interned_fmt(f, interner),
+            Self::Failure(_) => Ok(()),
+        }
+    }
+}

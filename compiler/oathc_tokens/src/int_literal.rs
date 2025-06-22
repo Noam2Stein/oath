@@ -1,6 +1,7 @@
 use super::*;
 
-#[derive(Debug, new, Spanned)]
+#[derive(Debug, new, Spanned, InternedDisplay)]
+#[display("{value}{}", suffix.as_ref().map_or(String::new(), |suffix| suffix.to_string_interned(interner)))]
 pub struct IntLiteral {
     #[span]
     pub span: Span,
