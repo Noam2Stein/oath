@@ -7,49 +7,42 @@ use super::*;
 #[derive(Debug, Clone)]
 pub enum FormatTree {
     None,
-
     Atom(String),
+    AtomStr(&'static str),
+
     Chain(Vec<FormatTree>),
+    SpacedChain(Vec<FormatTree>),
     LineChain(Vec<FormatTree>),
     SpacedLineChain(Vec<FormatTree>),
+
+    List(Vec<FormatTree>),
 
     DotChain(Vec<FormatTree>),
     Assign(Box<FormatTree>, Box<FormatTree>),
 
     DenseDelims(char, Box<FormatTree>, char),
-    DenseDelimsList(char, Vec<FormatTree>, char),
-
     SpacedDelims(char, Box<FormatTree>, char),
-    SpacedDelimsList(char, Vec<FormatTree>, char),
-    SpacedDelimsStmts(char, Vec<FormatTree>, char),
 }
 
 impl FormatTree {
     pub fn unexpanded_len(&self) -> u32 {
         match self {
             Self::None => 0,
-
             Self::Atom(str) => str.chars().count() as u32,
+            Self::AtomStr(str) => str.chars().count() as u32,
+
             Self::Chain(items) => items.iter().map(FormatTree::unexpanded_len).sum::<u32>(),
-            Self::LineChain(items) | Self::SpacedLineChain(items) => {
+            Self::SpacedChain(items) | Self::LineChain(items) | Self::SpacedLineChain(items) => {
                 Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 1).sum::<u32>()
             }
 
             Self::DotChain(items) => Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 1).sum::<u32>(),
             Self::Assign(lhs, rhs) => lhs.unexpanded_len() + 3 + rhs.unexpanded_len(),
 
-            Self::DenseDelims(_, inner, _) => 2 + inner.unexpanded_len(),
-            Self::DenseDelimsList(_, items, _) => {
-                2 + Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 2).sum::<u32>()
-            }
+            Self::List(items) => Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 2).sum::<u32>(),
 
+            Self::DenseDelims(_, inner, _) => 2 + inner.unexpanded_len(),
             Self::SpacedDelims(_, inner, _) => 4 + inner.unexpanded_len(),
-            Self::SpacedDelimsList(_, items, _) => {
-                4 + Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 2).sum::<u32>()
-            }
-            Self::SpacedDelimsStmts(_, items, _) => {
-                4 + Itertools::intersperse(items.iter().map(FormatTree::unexpanded_len), 2).sum::<u32>() + 1
-            }
         }
     }
 
@@ -67,8 +60,20 @@ impl FormatTree {
 
             Self::Atom(str) => write!(s, "{str}")?,
 
+            Self::AtomStr(str) => write!(s, "{str}")?,
+
             Self::Chain(items) => {
                 for item in items {
+                    item.format_unexpanded(s, config)?;
+                }
+            }
+
+            Self::SpacedChain(items) => {
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx > 0 {
+                        write!(s, " ")?;
+                    }
+
                     item.format_unexpanded(s, config)?;
                 }
             }
@@ -77,6 +82,16 @@ impl FormatTree {
                 for (item_idx, item) in items.iter().enumerate() {
                     if item_idx > 0 {
                         write!(s, " ")?;
+                    }
+
+                    item.format_unexpanded(s, config)?;
+                }
+            }
+
+            Self::List(items) | Self::SpacedLineChain(items) => {
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx > 0 {
+                        write!(s, ", ")?;
                     }
 
                     item.format_unexpanded(s, config)?;
@@ -104,49 +119,10 @@ impl FormatTree {
                 write!(s, "{close}")?;
             }
 
-            Self::DenseDelimsList(open, items, close) => {
-                write!(s, "{open}")?;
-
-                for (item_idx, item) in items.iter().enumerate() {
-                    if item_idx > 0 {
-                        write!(s, ", ")?;
-                    }
-
-                    item.format_unexpanded(s, config)?;
-                }
-
-                write!(s, "{close}")?;
-            }
-
             Self::SpacedDelims(open, inner, close) => {
                 write!(s, "{open} ")?;
                 inner.format_unexpanded(s, config)?;
                 write!(s, " {close}")?;
-            }
-
-            Self::SpacedDelimsList(open, items, close) => {
-                write!(s, "{open} ")?;
-
-                for (item_idx, item) in items.iter().enumerate() {
-                    if item_idx > 0 {
-                        write!(s, ", ")?;
-                    }
-
-                    item.format_unexpanded(s, config)?;
-                }
-
-                write!(s, " {close}")?;
-            }
-
-            Self::SpacedDelimsStmts(open, items, close) => {
-                write!(s, "{open} ")?;
-
-                for item in items {
-                    item.format_unexpanded(s, config)?;
-                    write!(s, "; ")?;
-                }
-
-                write!(s, "{close}")?;
             }
         };
 
@@ -157,7 +133,11 @@ impl FormatTree {
         let tabs = "\t".repeat(tab_lvl as usize);
 
         match self {
+            Self::None => {}
+
             Self::Atom(str) => write!(s, "{str}")?,
+
+            Self::AtomStr(str) => write!(s, "{str}")?,
 
             Self::Chain(items) => {
                 for item in items {
@@ -165,83 +145,70 @@ impl FormatTree {
                 }
             }
 
+            Self::SpacedChain(items) => {
+                for (item_idx, item) in items.iter().filter(|item| item.unexpanded_len() > 0).enumerate() {
+                    if item_idx > 0 {
+                        write!(s, " ")?;
+                    }
+
+                    item.format(s, tab_lvl, config)?;
+                }
+            }
+
+            Self::LineChain(items) => {
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx > 0 {
+                        write!(s, "\n{tabs}")?;
+                    }
+
+                    item.format(s, tab_lvl, config)?;
+                }
+            }
+
+            Self::SpacedLineChain(items) => {
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx > 0 {
+                        write!(s, "\n\n{tabs}")?;
+                    }
+
+                    item.format(s, tab_lvl, config)?;
+                }
+            }
+
             Self::DotChain(items) => {
-                items[0].format(s, tab_lvl, config)?;
-
-                for item in items.iter().skip(1) {
-                    write!(s, "\n{tabs}\t.")?;
-
-                    item.format(s, tab_lvl + 1, config)?;
+                for (item_idx, item) in items.iter().enumerate() {
+                    if item_idx == 0 {
+                        item.format(s, tab_lvl, config)?;
+                    } else {
+                        write!(s, "\n{tabs}\t.")?;
+                        item.format(s, tab_lvl + 1, config)?;
+                    }
                 }
             }
 
             Self::DenseDelims(open, inner, close) => {
                 write!(s, "{open}\n{tabs}\t")?;
-                inner.format(s, tab_lvl + 1, config)?;
+                inner.format_expanded(s, tab_lvl + 1, config)?;
                 write!(s, "\n{tabs}{close}")?;
             }
 
             Self::SpacedDelims(open, inner, close) => {
                 write!(s, "{open} ")?;
-                inner.format_unexpanded(s, tab_lvl, config)?;
+                inner.format_expanded(s, tab_lvl, config)?;
                 write!(s, " {close}")?;
             }
 
-            Self::DenseDelimsList(open, items, close) => {
-                write!(s, "{open}")?;
-
+            Self::List(items) => {
                 for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, ", ")?;
+                    item.format_expanded(s, tab_lvl, config)?;
+                    write!(s, ",\n{tabs}")?;
                 }
-                s.pop();
-                s.pop();
-
-                write!(s, "{close}")?;
             }
 
-            Self::SpacedDelimsList(open, items, close) => {
-                write!(s, "{open} ")?;
-
-                for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, ", ")?;
-                }
-                s.pop();
-                s.pop();
-
-                write!(s, " {close}")?;
-            }
-
-            Self::DenseDelimsStmts(open, items, close) => {
-                write!(s, "{open}")?;
-
-                for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, "; ")?;
-                }
-                s.pop();
-
-                write!(s, "{close}")?;
-            }
-
-            Self::SpacedDelimsStmts(open, items, close) => {
-                write!(s, "{open} ")?;
-
-                for item in items {
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, "; ")?;
-                }
-
-                write!(s, "{close}")?;
-            }
-
-            Self::Items(items) => {
-                for item in items {
-                    write!(s, "\n")?;
-                    item.format_unexpanded(s, tab_lvl, config)?;
-                    write!(s, "\n")?;
-                }
+            Self::Assign(lhs, rhs) => {
+                lhs.format(s, tab_lvl, config)?;
+                write!(s, "\n{tabs}\t = ")?;
+                rhs.format(s, tab_lvl + 1, config)?;
             }
         };
 

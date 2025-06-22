@@ -1,3 +1,5 @@
+use oathc_interner::InternedDisplay;
+
 use super::*;
 
 pub type Expr = GenericExpr<UnaryExprPrefix, ExprCore, UnaryExprExt>;
@@ -30,7 +32,7 @@ pub struct GenericExprBinOpExt<
     pub rhs: Try<GenericUnaryExpr<P, C, E>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Spanned, OptionParse, InternedDisplay)]
 #[desc = "a binary operator"]
 pub enum BinOp {
     Add(punct!("+")),

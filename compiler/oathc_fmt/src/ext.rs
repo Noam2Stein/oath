@@ -1,5 +1,3 @@
-use oathc_diagnostics::Diagnostics;
-
 use super::*;
 
 pub trait FormatExt {

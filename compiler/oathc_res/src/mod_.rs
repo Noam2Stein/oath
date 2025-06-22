@@ -185,7 +185,6 @@ impl ModRawFile {
 
         let items = ast
             .items
-            .values
             .into_iter()
             .map(|item| {
                 Item::new(
@@ -267,7 +266,6 @@ impl Mod {
     ) -> Self {
         let items = ast
             .items
-            .values
             .into_iter()
             .map(|item| {
                 Item::new(

@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use oathc_diagnostics::*;
 use oathc_highlighting::*;
+use oathc_interner::*;
 use oathc_parser::*;
 use oathc_span::*;
 use oathc_tokenizer::*;

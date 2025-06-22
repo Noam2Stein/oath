@@ -1,8 +1,8 @@
 use super::*;
 
-impl ToFormatTree for Repeated<Attr> {
+impl ToFormatTree for Vec<Attr> {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::LineChain(self.values.iter().map(|attr| attr.to_format_tree(interner)).collect())
+        FormatTree::LineChain(self.iter().map(|attr| attr.to_format_tree(interner)).collect())
     }
 }
 
@@ -18,9 +18,11 @@ impl ToFormatTree for AttrBody {
             Some(AttrInput::Fn(fn_input)) => FormatTree::Chain(
                 [
                     self.ident.to_format_tree(interner),
-                    FormatTree::DenseDelimsList(
+                    FormatTree::DenseDelims(
                         '(',
-                        fn_input.items.values.iter().map(|arg| arg.to_format_tree(interner)).collect(),
+                        Box::new(FormatTree::List(
+                            fn_input.items.iter().map(|arg| arg.to_format_tree(interner)).collect(),
+                        )),
                         ')',
                     ),
                 ]

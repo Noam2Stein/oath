@@ -114,8 +114,7 @@ pub struct Fn {
     pub ident: Try<Ident>,
     pub generics: Option<FramedParams<Angles>>,
     pub input: Try<FramedParams<delims!("( )")>>,
-    #[parse_as(Option<BraceExpr>)]
-    pub output: Option<Expr>,
+    pub output: Option<BraceExpr>,
     pub contract: Contract,
     pub body: Try<FnBody>,
 }
