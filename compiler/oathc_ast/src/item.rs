@@ -1,11 +1,13 @@
 use super::*;
 
-#[derive(Debug, OptionParse)]
+#[derive(Debug, OptionParse, Format)]
 #[desc = "an item"]
 pub struct Item {
     #[parse_as(Repeated<Attr>)]
+    #[format_as(LineChain)]
     pub attrs: Vec<Attr>,
     #[parse_as(Repeated<ItemModifier>)]
+    #[format_as(SpacedChain)]
     pub modifiers: Vec<ItemModifier>,
     pub core: Try<ItemCore>,
 }

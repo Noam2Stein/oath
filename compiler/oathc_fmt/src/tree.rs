@@ -22,8 +22,8 @@ pub enum FormatTree {
     DotChain(Vec<FormatTree>),
     Assign(Box<FormatTree>, Box<FormatTree>),
 
-    DenseDelims(char, Box<FormatTree>, char),
-    SpacedDelims(char, Box<FormatTree>, char),
+    DenseDelims(&'static str, Box<FormatTree>, &'static str),
+    SpacedDelims(&'static str, Box<FormatTree>, &'static str),
 }
 
 impl FormatTree {
@@ -58,8 +58,10 @@ impl FormatTree {
                 Itertools::intersperse(items.iter().map(|item| FormatTree::unexpanded_len(item, config)), 2).sum::<u32>()
             }
 
-            Self::DenseDelims(_, inner, _) => 2 + inner.unexpanded_len(config),
-            Self::SpacedDelims(_, inner, _) => 4 + inner.unexpanded_len(config),
+            Self::DenseDelims(open, inner, close) => open.len() as u32 + inner.unexpanded_len(config) + close.len() as u32,
+            Self::SpacedDelims(open, inner, close) => {
+                open.len() as u32 + 1 + inner.unexpanded_len(config) + 1 + close.len() as u32
+            }
         }
     }
 

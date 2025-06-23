@@ -31,6 +31,7 @@ pub use type_::*;
 #[derive(Debug, Default, Parse, Format)]
 pub struct SyntaxTree {
     #[parse_as(Repeated<Item>)]
+    #[format_as(SpacedLineChain)]
     pub items: Vec<Item>,
     pub leftovers: Leftovers,
 }
