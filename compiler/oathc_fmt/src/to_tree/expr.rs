@@ -111,6 +111,6 @@ impl ToFormatTree for RefModifier {
 
 impl ToFormatTree for BinOp {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string_interned(interner))
+        FormatTree::AtomString(self.to_string_interned(interner))
     }
 }

@@ -2,32 +2,32 @@ use super::*;
 
 impl ToFormatTree for Keyword {
     fn to_format_tree(&self, _interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string())
+        FormatTree::AtomString(self.to_string())
     }
 }
 with_tokens! {$(
     impl ToFormatTree for $keyword_type {
         fn to_format_tree(&self, _interner: &Interner) -> FormatTree {
-            FormatTree::Atom(self.to_string())
+            FormatTree::AtomStr($keyword)
         }
     }
 )*}
 
 impl ToFormatTree for Ident {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(interner.unintern(self.str_id()))
+        FormatTree::AtomString(interner.unintern(self.str_id()))
     }
 }
 
 impl ToFormatTree for Punct {
     fn to_format_tree(&self, _interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string())
+        FormatTree::AtomString(self.to_string())
     }
 }
 with_tokens! {$(
     impl ToFormatTree for $punct_type {
         fn to_format_tree(&self, _interner: &Interner) -> FormatTree {
-            FormatTree::Atom(self.to_string())
+            FormatTree::AtomStr($punct)
         }
     }
 )*}
@@ -44,21 +44,21 @@ impl ToFormatTree for Literal {
 }
 impl ToFormatTree for IntLiteral {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string_interned(interner))
+        FormatTree::AtomString(self.to_string_interned(interner))
     }
 }
 impl ToFormatTree for FloatLiteral {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string_interned(interner))
+        FormatTree::AtomString(self.to_string_interned(interner))
     }
 }
 impl ToFormatTree for CharLiteral {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string_interned(interner))
+        FormatTree::AtomString(self.to_string_interned(interner))
     }
 }
 impl ToFormatTree for StrLiteral {
     fn to_format_tree(&self, interner: &Interner) -> FormatTree {
-        FormatTree::Atom(self.to_string_interned(interner))
+        FormatTree::AtomString(self.to_string_interned(interner))
     }
 }
