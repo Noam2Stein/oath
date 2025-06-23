@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use oathc_diagnostics::*;
+use oathc_fmt::*;
 use oathc_highlighting::*;
 use oathc_interner::*;
 use oathc_parser::*;
@@ -27,7 +28,7 @@ pub use item::*;
 pub use param::*;
 pub use type_::*;
 
-#[derive(Debug, Default, Parse)]
+#[derive(Debug, Default, Parse, Format)]
 pub struct SyntaxTree {
     #[parse_as(Repeated<Item>)]
     pub items: Vec<Item>,

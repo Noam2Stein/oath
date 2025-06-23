@@ -78,6 +78,46 @@ impl Span {
             None
         }
     }
+
+    pub fn index_src(self, src: &str) -> &str {
+        let lines = src.lines();
+
+        let all_lines: Vec<&str> = lines.collect();
+
+        let start_line = self.start_line as usize;
+        let end_line = self.end_line as usize;
+        if start_line >= all_lines.len() || end_line >= all_lines.len() || start_line > end_line {
+            return "";
+        }
+
+        let start_str = all_lines[start_line];
+        let end_str = all_lines[end_line];
+
+        let start_byte_offset = start_str.char_indices().nth(self.start_char as usize).map(|(i, _)| i);
+        let end_byte_offset = end_str.char_indices().nth(self.end_char as usize).map(|(i, _)| i);
+
+        let start_byte = match start_byte_offset {
+            Some(i) => {
+                let prefix_len: usize = all_lines[..start_line].iter().map(|l| l.len() + 1).sum();
+                prefix_len + i
+            }
+            None => return "",
+        };
+
+        let end_byte = match end_byte_offset {
+            Some(i) => {
+                let prefix_len: usize = all_lines[..end_line].iter().map(|l| l.len() + 1).sum();
+                prefix_len + i
+            }
+            None => return "",
+        };
+
+        if start_byte > end_byte || end_byte > src.len() {
+            return "";
+        }
+
+        &src[start_byte..end_byte]
+    }
 }
 
 impl PartialOrd for Span {

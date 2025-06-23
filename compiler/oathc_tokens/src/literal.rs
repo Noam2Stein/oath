@@ -14,3 +14,9 @@ const _: () = verify_token_type::<Literal>();
 pub struct LiteralSuffix {
     pub ident: Try<Ident>,
 }
+
+impl Format for Literal {
+    fn format(&self, interner: &Interner) -> FormatTree {
+        FormatTree::AtomString(self.to_string_interned(interner))
+    }
+}

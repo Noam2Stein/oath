@@ -76,6 +76,9 @@ impl<'ctx> RawTokenizer<'ctx> {
         }
     }
 
+    pub fn src(&self) -> &'ctx str {
+        self.lexer.source()
+    }
     pub fn file(&self) -> FileId {
         self.file
     }

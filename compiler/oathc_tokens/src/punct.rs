@@ -84,3 +84,16 @@ with_tokens! {$(
         }
     }
 )*}
+
+impl Format for Punct {
+    fn format(&self, _interner: &Interner) -> FormatTree {
+        FormatTree::AtomStr(self.as_str())
+    }
+}
+with_tokens! {$(
+    impl Format for $punct_type {
+        fn format(&self, _interner: &Interner) -> FormatTree {
+            FormatTree::AtomStr($punct)
+        }
+    }
+)*}

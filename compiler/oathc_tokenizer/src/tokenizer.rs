@@ -14,6 +14,7 @@ pub trait Tokenizer {
     fn peek(&self) -> Option<&PeekToken>;
     fn peek_span(&self) -> Span;
 
+    fn src(&self) -> &str;
     fn file(&self) -> FileId;
     fn interner(&self) -> &Interner;
     fn diagnostics(&self) -> &Diagnostics;
@@ -146,6 +147,9 @@ impl<'ctx> Tokenizer for RootTokenizer<'ctx> {
         }
     }
 
+    fn src(&self) -> &str {
+        self.raw.src()
+    }
     fn file(&self) -> FileId {
         self.raw.file()
     }
@@ -284,6 +288,9 @@ impl<'ctx, 'parent> Tokenizer for GroupTokenizer<'ctx, 'parent> {
         }
     }
 
+    fn src(&self) -> &str {
+        self.parent.src()
+    }
     fn file(&self) -> FileId {
         self.parent.file()
     }
@@ -408,6 +415,12 @@ impl<'ctx, 'parent> ParentTokenizer<'ctx, 'parent> {
         }
     }
 
+    fn src(&self) -> &'ctx str {
+        match self {
+            Self::Root(root) => root.raw.src(),
+            Self::Group(group) => group.parent.src(),
+        }
+    }
     fn file(&self) -> FileId {
         match self {
             Self::Root(root) => root.raw.file(),

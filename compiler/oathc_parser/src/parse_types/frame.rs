@@ -16,6 +16,9 @@ pub trait FrameDelimiters: Sized {
     ) -> ParseExit;
 
     fn detect_frame(parser: &impl Tokenizer) -> Detection;
+
+    fn open_str(&self) -> &'static str;
+    fn close_str(&self) -> &'static str;
 }
 
 impl<D: FrameDelimiters> Frame<D> {

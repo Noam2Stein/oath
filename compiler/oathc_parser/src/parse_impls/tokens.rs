@@ -340,6 +340,13 @@ impl FrameDelimiters for Delimiters {
             Detection::NotDetected
         }
     }
+
+    fn open_str(&self) -> &'static str {
+        self.kind.open_str()
+    }
+    fn close_str(&self) -> &'static str {
+        self.kind.close_str()
+    }
 }
 
 with_tokens!($(
@@ -389,6 +396,13 @@ with_tokens!($(
             } else {
                 Detection::NotDetected
             }
+        }
+
+        fn open_str(&self) -> &'static str {
+            $delim_open
+        }
+        fn close_str(&self) -> &'static str {
+            $delim_close
         }
     }
 )*);

@@ -70,3 +70,9 @@ impl Highlightable for Ident {
         self.span.highlight(color, h);
     }
 }
+
+impl Format for Ident {
+    fn format(&self, interner: &Interner) -> FormatTree {
+        FormatTree::AtomString(self.to_string_interned(interner))
+    }
+}

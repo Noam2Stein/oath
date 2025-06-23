@@ -59,4 +59,11 @@ impl FrameDelimiters for Angles {
     fn detect_frame(parser: &impl Tokenizer) -> Detection {
         <punct!("<")>::detect(parser)
     }
+
+    fn open_str(&self) -> &'static str {
+        "<"
+    }
+    fn close_str(&self) -> &'static str {
+        ">"
+    }
 }

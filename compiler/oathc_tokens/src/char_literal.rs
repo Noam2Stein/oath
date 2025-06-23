@@ -9,3 +9,9 @@ pub struct CharLiteral {
 }
 
 const _: () = verify_token_type::<CharLiteral>();
+
+impl Format for CharLiteral {
+    fn format(&self, interner: &Interner) -> FormatTree {
+        FormatTree::AtomString(self.to_string_interned(interner))
+    }
+}

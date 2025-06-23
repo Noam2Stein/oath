@@ -9,3 +9,9 @@ pub struct StrLiteral {
 }
 
 const _: () = verify_token_type::<StrLiteral>();
+
+impl Format for StrLiteral {
+    fn format(&self, interner: &Interner) -> FormatTree {
+        FormatTree::AtomString(self.to_string_interned(interner))
+    }
+}

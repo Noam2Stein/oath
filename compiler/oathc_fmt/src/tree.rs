@@ -27,7 +27,17 @@ pub enum FormatTree {
 }
 
 impl FormatTree {
-    pub fn unexpanded_len(&self, config: &FormatConfig) -> u32 {
+    pub fn format(&self, config: &FormatConfig) -> String {
+        let mut s = String::new();
+
+        self.format_inner(&mut s, 0, config).unwrap();
+
+        s
+    }
+}
+
+impl FormatTree {
+    fn unexpanded_len(&self, config: &FormatConfig) -> u32 {
         match self {
             Self::None => 0,
             Self::TryFailure => 0,
@@ -53,7 +63,7 @@ impl FormatTree {
         }
     }
 
-    pub fn should_expand(&self, config: &FormatConfig) -> bool {
+    fn should_expand(&self, config: &FormatConfig) -> bool {
         match self {
             Self::Chain(_) | Self::SpacedChain(_) | Self::DotChain(_) | Self::List(_) | Self::Assign(_, _) => {
                 self.unexpanded_len(config) > config.max_width
@@ -67,7 +77,7 @@ impl FormatTree {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         match self {
             Self::None => true,
 
@@ -87,7 +97,7 @@ impl FormatTree {
         }
     }
 
-    pub fn format(&self, s: &mut String, tab_lvl: u32, config: &FormatConfig) -> std::fmt::Result {
+    fn format_inner(&self, s: &mut String, tab_lvl: u32, config: &FormatConfig) -> std::fmt::Result {
         if self.should_expand(config) {
             self.format_expanded(s, tab_lvl, config)
         } else {
@@ -95,7 +105,7 @@ impl FormatTree {
         }
     }
 
-    pub fn format_unexpanded(&self, s: &mut String, config: &FormatConfig) -> std::fmt::Result {
+    fn format_unexpanded(&self, s: &mut String, config: &FormatConfig) -> std::fmt::Result {
         match self {
             Self::None | Self::TryFailure => {}
             Self::AtomString(str) => write!(s, "{str}")?,
@@ -129,7 +139,7 @@ impl FormatTree {
         Ok(())
     }
 
-    pub fn format_expanded(&self, s: &mut String, tab_lvl: u32, config: &FormatConfig) -> std::fmt::Result {
+    fn format_expanded(&self, s: &mut String, tab_lvl: u32, config: &FormatConfig) -> std::fmt::Result {
         let tabs = "\t".repeat(tab_lvl as usize);
 
         match self {
@@ -139,7 +149,7 @@ impl FormatTree {
 
             Self::Chain(items) => {
                 for item in clean_iter(items) {
-                    item.format(s, tab_lvl, config)?;
+                    item.format_inner(s, tab_lvl, config)?;
                 }
             }
             Self::SpacedChain(items) => {
@@ -148,7 +158,7 @@ impl FormatTree {
                         write!(s, " ")?;
                     }
 
-                    item.format(s, tab_lvl, config)?;
+                    item.format_inner(s, tab_lvl, config)?;
                 }
             }
 
@@ -158,7 +168,7 @@ impl FormatTree {
                         write!(s, "\n{tabs}")?;
                     }
 
-                    item.format(s, tab_lvl, config)?;
+                    item.format_inner(s, tab_lvl, config)?;
                 }
             }
             Self::SpacedLineChain(items) => {
@@ -167,17 +177,17 @@ impl FormatTree {
                         write!(s, "\n\n{tabs}")?;
                     }
 
-                    item.format(s, tab_lvl, config)?;
+                    item.format_inner(s, tab_lvl, config)?;
                 }
             }
 
             Self::DotChain(items) => {
                 for (item_idx, item) in clean_iter(items).enumerate() {
                     if item_idx == 0 {
-                        item.format(s, tab_lvl, config)?;
+                        item.format_inner(s, tab_lvl, config)?;
                     } else {
                         write!(s, "\n{tabs}\t.")?;
-                        item.format(s, tab_lvl + 1, config)?;
+                        item.format_inner(s, tab_lvl + 1, config)?;
                     }
                 }
             }
@@ -192,9 +202,9 @@ impl FormatTree {
                 }
             }
             Self::Assign(lhs, rhs) => {
-                lhs.format(s, tab_lvl, config)?;
+                lhs.format_inner(s, tab_lvl, config)?;
                 write!(s, "\n{tabs}\t = ")?;
-                rhs.format(s, tab_lvl + 1, config)?;
+                rhs.format_inner(s, tab_lvl + 1, config)?;
             }
 
             Self::DenseDelims(open, inner, close) | Self::SpacedDelims(open, inner, close) => {

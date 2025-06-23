@@ -16,3 +16,9 @@ impl Highlightable for IntLiteral {
         self.span.highlight(color, h);
     }
 }
+
+impl Format for IntLiteral {
+    fn format(&self, interner: &Interner) -> FormatTree {
+        FormatTree::AtomString(self.to_string_interned(interner))
+    }
+}
