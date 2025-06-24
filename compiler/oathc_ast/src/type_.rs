@@ -1,17 +1,6 @@
 use super::*;
 
 #[derive(Debug, OptionParse)]
-#[desc = "a type declaration"]
-pub struct Type {
-    pub keyword: keyword!("type"),
-    #[highlight(HighlightColor::Green)]
-    pub ident: Try<Ident>,
-    pub generics: Option<FramedParams<Angles>>,
-    pub contract: Contract,
-    pub semi: Try<punct!(";")>,
-}
-
-#[derive(Debug, OptionParse)]
 #[desc = "a struct declaration"]
 pub struct Struct {
     pub keyword: keyword!("struct"),

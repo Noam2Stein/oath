@@ -3,7 +3,6 @@ use std::{fmt::Debug, hash::Hash};
 use derive_more::*;
 use derive_new::*;
 use oathc_diagnostics::*;
-use oathc_fmt::*;
 use oathc_highlighting::*;
 use oathc_interner::*;
 use oathc_span::*;
@@ -31,4 +30,4 @@ pub use punct::*;
 pub use str_literal::*;
 
 #[allow(dead_code)]
-const fn verify_token_type<T: Debug + Spanned + Format>() {}
+const fn verify_token_type<T: Debug + Spanned>() {}

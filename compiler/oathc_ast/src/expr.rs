@@ -205,7 +205,7 @@ pub struct ConstructField {
 
 // Assign
 
-#[derive(Debug, Spanned, OptionParse, Format)]
+#[derive(Debug, Spanned, OptionParse)]
 #[desc = "`=`"]
 pub struct Assign {
     pub eq: punct!("="),

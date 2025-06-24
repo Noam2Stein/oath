@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use oathc_diagnostics::*;
-use oathc_fmt::*;
 use oathc_highlighting::*;
 use oathc_interner::*;
 use oathc_parser::*;
@@ -28,10 +27,8 @@ pub use item::*;
 pub use param::*;
 pub use type_::*;
 
-#[derive(Debug, Default, Parse, Format)]
+#[derive(Debug, Default)]
 pub struct SyntaxTree {
-    #[parse_as(Repeated<Item>)]
-    #[format_as(SpacedLineChain)]
     pub items: Vec<Item>,
     pub leftovers: Leftovers,
 }
@@ -47,10 +44,14 @@ impl<T: Tokenizer> ParseAstExt for T {
     fn parse_ast(self) -> SyntaxTree {
         let mut parser = self;
 
-        let mut output = SyntaxTree::parse_error();
+        let mut items = Repeated::parse_error();
+        Parse::parse(&mut parser, &mut items);
 
-        SyntaxTree::parse(&mut parser, &mut output);
+        let leftovers = Leftovers::collect(&mut parser);
 
-        output
+        SyntaxTree {
+            items: items.into(),
+            leftovers,
+        }
     }
 }

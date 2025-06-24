@@ -31,7 +31,6 @@ impl Item {
                     oathc_ast::ItemCore::Struct(core) => core.ident.option_span().unwrap_or(core.keyword.span()),
                     oathc_ast::ItemCore::Sys(core) => core.ident.option_span().unwrap_or(core.keyword.span()),
                     oathc_ast::ItemCore::Trait(core) => core.ident.option_span().unwrap_or(core.keyword.span()),
-                    oathc_ast::ItemCore::Type(core) => core.ident.option_span().unwrap_or(core.keyword.span()),
                     oathc_ast::ItemCore::Use(core) => core.keyword.span(),
                 };
 

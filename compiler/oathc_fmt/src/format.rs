@@ -1,7 +1,5 @@
 use super::*;
 
-pub use oathc_fmt_proc_macros::Format;
-
 pub trait Format {
     fn format(&self, interner: &Interner) -> FormatTree;
 }

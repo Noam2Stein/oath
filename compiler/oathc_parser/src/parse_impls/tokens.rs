@@ -313,14 +313,10 @@ impl FrameDelimiters for Delimiters {
             return ParseExit::Complete;
         };
 
-        let mut leftovers = Leftovers::default();
-
         let (value, exit) = parse_inside(&mut parser);
-        match exit {
-            ParseExit::Complete => {
-                Leftovers::parse(&mut parser, &mut leftovers);
-            }
-            ParseExit::Cut => {}
+        let leftovers = match exit {
+            ParseExit::Complete => Leftovers::collect(&mut parser),
+            ParseExit::Cut => Leftovers::default(),
         };
 
         let frame = Frame {
@@ -366,15 +362,12 @@ with_tokens!($(
                 return ParseExit::Complete;
             };
 
-            let mut leftovers = Leftovers::default();
-
             let (value, exit) = parse_inside(&mut parser);
-            match exit {
-                ParseExit::Complete => {
-                    Leftovers::parse(&mut parser, &mut leftovers);
-                }
-                ParseExit::Cut => {}
+            let leftovers = match exit {
+                ParseExit::Complete => Leftovers::collect(&mut parser),
+                ParseExit::Cut => Leftovers::default(),
             };
+
 
             let frame = Frame {
                 delims: parser.finish().try_into().unwrap(),

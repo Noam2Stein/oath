@@ -4,7 +4,9 @@ name    = "oathc_fmt"
 version = "0.1.0"
 
 [dependencies]
-itertools             = "0.14.0"
-oathc_diagnostics     = { path = "../oathc_diagnostics" }
-oathc_fmt_proc_macros = { path = "proc_macros" }
-oathc_interner        = { path = "../oathc_interner" }
+itertools         = "0.14.0"
+oathc_ast         = { path = "../oathc_ast" }
+oathc_diagnostics = { path = "../oathc_diagnostics" }
+oathc_interner    = { path = "../oathc_interner" }
+oathc_parser      = { path = "../oathc_parser" }
+oathc_tokens      = { path = "../oathc_tokens" }

@@ -7,7 +7,6 @@ version = "0.1.0"
 derive-new               = "0.7.0"
 derive_more              = { version = "2.0.1", features = [ "full" ] }
 oathc_diagnostics        = { path = "../oathc_diagnostics" }
-oathc_fmt                = { path = "../oathc_fmt" }
 oathc_highlighting       = { path = "../oathc_highlighting" }
 oathc_interner           = { path = "../oathc_interner" }
 oathc_span               = { path = "../oathc_span" }

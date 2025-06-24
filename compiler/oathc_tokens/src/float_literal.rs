@@ -22,9 +22,3 @@ impl Highlightable for FloatLiteral {
         self.span.highlight(color, h);
     }
 }
-
-impl Format for FloatLiteral {
-    fn format(&self, interner: &Interner) -> FormatTree {
-        FormatTree::AtomString(self.to_string_interned(interner))
-    }
-}

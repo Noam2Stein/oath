@@ -83,16 +83,3 @@ with_tokens! {$(
         }
     }
 )*}
-
-impl Format for Keyword {
-    fn format(&self, _interner: &Interner) -> FormatTree {
-        FormatTree::AtomStr(self.as_str())
-    }
-}
-with_tokens! {$(
-    impl Format for $keyword_type {
-        fn format(&self, _interner: &Interner) -> FormatTree {
-            FormatTree::AtomStr($keyword)
-        }
-    }
-)*}
