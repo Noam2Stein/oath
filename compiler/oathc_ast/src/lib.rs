@@ -15,6 +15,7 @@ mod control_flow;
 mod expr;
 mod generics;
 mod item;
+mod ops;
 mod param;
 mod type_;
 pub use attr::*;
@@ -24,6 +25,7 @@ pub use control_flow::*;
 pub use expr::*;
 pub use generics::*;
 pub use item::*;
+pub use ops::*;
 pub use param::*;
 pub use type_::*;
 

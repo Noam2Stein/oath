@@ -54,6 +54,7 @@ define_tokens!(
     puncts: [
         ">>=" ShiftRAssign,
         "<<=" ShiftLAssign,
+        "..=" DotDotEq,
         "<<" ShiftL,
         ">>" ShiftR,
         "+=" PlusAssign,

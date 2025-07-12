@@ -13,17 +13,21 @@ pub enum FormatTree {
     AtomStr(&'static str),
 
     Chain(Vec<FormatTree>),
-    SpacedChain(Vec<FormatTree>),
+    SpacedChain(FormatSpacing, Vec<FormatTree>),
 
-    LineChain(Vec<FormatTree>),
-    SpacedLineChain(Vec<FormatTree>),
+    DenseDelims(&'static str, Box<FormatTree>, String, &'static str),
+    SpacedDelims(&'static str, Box<FormatTree>, String, &'static str),
+}
 
-    List(Vec<FormatTree>),
-    DotChain(Vec<FormatTree>),
-    Assign(Box<FormatTree>, Box<FormatTree>),
-
-    DenseDelims(&'static str, Box<FormatTree>, &'static str),
-    SpacedDelims(&'static str, Box<FormatTree>, &'static str),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FormatSpacing {
+    Space,
+    Line,
+    TwoLines,
+    SpaceOrLine,
+    SpaceOrLineTab,
+    LineOrTwo,
+    Colon,
 }
 
 impl FormatTree {
@@ -45,21 +49,23 @@ impl FormatTree {
             Self::AtomStr(str) => str.chars().count() as u32,
 
             Self::Chain(items) => items.iter().map(|item| FormatTree::unexpanded_len(item, config)).sum::<u32>(),
-            Self::SpacedChain(items) | Self::LineChain(items) | Self::SpacedLineChain(items) => {
-                Itertools::intersperse(items.iter().map(|item| FormatTree::unexpanded_len(item, config)), 1).sum::<u32>()
+            Self::SpacedChain(spacing, items) => {
+                let space_len = match spacing {
+                    FormatSpacing::Colon => 2,
+
+                    FormatSpacing::Line
+                    | FormatSpacing::LineOrTwo
+                    | FormatSpacing::Space
+                    | FormatSpacing::SpaceOrLine
+                    | FormatSpacing::SpaceOrLineTab
+                    | FormatSpacing::TwoLines => 1,
+                };
+
+                Itertools::intersperse(items.iter().map(|item| FormatTree::unexpanded_len(item, config)), space_len).sum::<u32>()
             }
 
-            Self::DotChain(items) => {
-                Itertools::intersperse(items.iter().map(|item| FormatTree::unexpanded_len(item, config)), 1).sum::<u32>()
-            }
-            Self::Assign(lhs, rhs) => lhs.unexpanded_len(config) + 3 + rhs.unexpanded_len(config),
-
-            Self::List(items) => {
-                Itertools::intersperse(items.iter().map(|item| FormatTree::unexpanded_len(item, config)), 2).sum::<u32>()
-            }
-
-            Self::DenseDelims(open, inner, close) => open.len() as u32 + inner.unexpanded_len(config) + close.len() as u32,
-            Self::SpacedDelims(open, inner, close) => {
+            Self::DenseDelims(open, inner, _, close) => open.len() as u32 + inner.unexpanded_len(config) + close.len() as u32,
+            Self::SpacedDelims(open, inner, _, close) => {
                 open.len() as u32 + 1 + inner.unexpanded_len(config) + 1 + close.len() as u32
             }
         }
@@ -67,15 +73,23 @@ impl FormatTree {
 
     fn should_expand(&self, config: &FormatConfig) -> bool {
         match self {
-            Self::Chain(_) | Self::SpacedChain(_) | Self::DotChain(_) | Self::List(_) | Self::Assign(_, _) => {
-                self.unexpanded_len(config) > config.max_width
+            Self::Chain(items) => {
+                self.unexpanded_len(config) > config.max_width || items.iter().any(|item| item.should_expand(config))
             }
+
+            Self::SpacedChain(spacing, items) => match spacing {
+                FormatSpacing::Line | FormatSpacing::TwoLines | FormatSpacing::LineOrTwo => true,
+
+                FormatSpacing::Colon | FormatSpacing::SpaceOrLine | FormatSpacing::SpaceOrLineTab => {
+                    self.unexpanded_len(config) > config.max_width || items.iter().any(|item| item.should_expand(config))
+                }
+
+                FormatSpacing::Space => false,
+            },
 
             Self::TryFailure | Self::AtomStr(_) | Self::AtomString(_) | Self::None => false,
 
-            Self::LineChain(_) | Self::SpacedLineChain(_) => true,
-
-            Self::DenseDelims(_, inner, _) | Self::SpacedDelims(_, inner, _) => inner.should_expand(config),
+            Self::DenseDelims(_, inner, _, _) | Self::SpacedDelims(_, inner, _, _) => inner.should_expand(config),
         }
     }
 
@@ -86,16 +100,10 @@ impl FormatTree {
             Self::TryFailure
             | Self::AtomStr(_)
             | Self::AtomString(_)
-            | Self::Assign(_, _)
-            | Self::DenseDelims(_, _, _)
-            | Self::SpacedDelims(_, _, _) => false,
+            | Self::DenseDelims(_, _, _, _)
+            | Self::SpacedDelims(_, _, _, _) => false,
 
-            Self::Chain(items)
-            | Self::DotChain(items)
-            | Self::LineChain(items)
-            | Self::List(items)
-            | Self::SpacedChain(items)
-            | Self::SpacedLineChain(items) => items.iter().all(FormatTree::is_empty),
+            Self::Chain(items) | Self::SpacedChain(_, items) => items.iter().all(FormatTree::is_empty),
         }
     }
 
@@ -114,27 +122,29 @@ impl FormatTree {
             Self::AtomStr(str) => write!(s, "{str}")?,
 
             Self::Chain(items) => format_unexpanded_sep(s, config, items, "")?,
-            Self::SpacedChain(items) | Self::LineChain(items) | Self::SpacedLineChain(items) => {
-                format_unexpanded_sep(s, config, items, " ")?
+            Self::SpacedChain(spacing, items) => {
+                let space = match spacing {
+                    FormatSpacing::Colon => ", ",
+                    FormatSpacing::Line
+                    | FormatSpacing::LineOrTwo
+                    | FormatSpacing::Space
+                    | FormatSpacing::SpaceOrLine
+                    | FormatSpacing::SpaceOrLineTab
+                    | FormatSpacing::TwoLines => "",
+                };
+
+                format_unexpanded_sep(s, config, items, space)?;
             }
 
-            Self::List(items) => format_unexpanded_sep(s, config, items, ", ")?,
-            Self::DotChain(items) => format_unexpanded_sep(s, config, items, ".")?,
-            Self::Assign(lhs, rhs) => {
-                lhs.format_unexpanded(s, config)?;
-                write!(s, " = ")?;
-                rhs.format_unexpanded(s, config)?;
-            }
-
-            Self::DenseDelims(open, inner, close) => {
+            Self::DenseDelims(open, inner, leftovers, close) => {
                 write!(s, "{open}")?;
                 inner.format_unexpanded(s, config)?;
-                write!(s, "{close}")?;
+                write!(s, "{leftovers}{close}")?;
             }
-            Self::SpacedDelims(open, inner, close) => {
+            Self::SpacedDelims(open, inner, leftovers, close) => {
                 write!(s, "{open} ")?;
                 inner.format_unexpanded(s, config)?;
-                write!(s, " {close}")?;
+                write!(s, " {leftovers}{close}")?;
             }
         };
 
@@ -154,64 +164,39 @@ impl FormatTree {
                     item.format_inner(s, tab_lvl, config)?;
                 }
             }
-            Self::SpacedChain(items) => {
+            Self::SpacedChain(spacing, items) => {
                 for (item_idx, item) in clean_iter(items).enumerate() {
                     if item_idx > 0 {
-                        write!(s, " ")?;
+                        match spacing {
+                            FormatSpacing::Colon => write!(s, ",\n{tabs}")?,
+                            FormatSpacing::Line => write!(s, "\n{tabs}")?,
+                            FormatSpacing::LineOrTwo => write!(s, "\n{tabs}")?,
+                            FormatSpacing::Space => write!(s, " ")?,
+                            FormatSpacing::SpaceOrLine => write!(s, "\n{tabs}")?,
+                            FormatSpacing::SpaceOrLineTab => write!(s, "\n{tabs}\t")?,
+                            FormatSpacing::TwoLines => write!(s, "\n\n{tabs}")?,
+                        }
                     }
 
                     item.format_inner(s, tab_lvl, config)?;
                 }
-            }
 
-            Self::LineChain(items) => {
-                for (item_idx, item) in clean_iter(items).enumerate() {
-                    if item_idx > 0 {
-                        write!(s, "\n{tabs}")?;
-                    }
+                match spacing {
+                    FormatSpacing::Colon => write!(s, ",\n{tabs}")?,
 
-                    item.format_inner(s, tab_lvl, config)?;
-                }
-            }
-            Self::SpacedLineChain(items) => {
-                for (item_idx, item) in clean_iter(items).enumerate() {
-                    if item_idx > 0 {
-                        write!(s, "\n\n{tabs}")?;
-                    }
-
-                    item.format_inner(s, tab_lvl, config)?;
+                    FormatSpacing::Line
+                    | FormatSpacing::LineOrTwo
+                    | FormatSpacing::Space
+                    | FormatSpacing::SpaceOrLine
+                    | FormatSpacing::SpaceOrLineTab
+                    | FormatSpacing::TwoLines => {}
                 }
             }
 
-            Self::DotChain(items) => {
-                for (item_idx, item) in clean_iter(items).enumerate() {
-                    if item_idx == 0 {
-                        item.format_inner(s, tab_lvl, config)?;
-                    } else {
-                        write!(s, "\n{tabs}\t.")?;
-                        item.format_inner(s, tab_lvl + 1, config)?;
-                    }
-                }
-            }
-            Self::List(items) => {
-                for (item_idx, item) in clean_iter(items).enumerate() {
-                    if item_idx > 0 {
-                        write!(s, "\n{tabs}")?;
-                    }
-
-                    item.format_expanded(s, tab_lvl, config)?;
-                    write!(s, ",")?;
-                }
-            }
-            Self::Assign(lhs, rhs) => {
-                lhs.format_inner(s, tab_lvl, config)?;
-                write!(s, "\n{tabs}\t = ")?;
-                rhs.format_inner(s, tab_lvl + 1, config)?;
-            }
-
-            Self::DenseDelims(open, inner, close) | Self::SpacedDelims(open, inner, close) => {
+            Self::DenseDelims(open, inner, leftovers, close) | Self::SpacedDelims(open, inner, leftovers, close) => {
                 write!(s, "{open}\n{tabs}\t")?;
                 inner.format_expanded(s, tab_lvl + 1, config)?;
+                write!(s, "\n{tabs}{leftovers}")?;
                 write!(s, "\n{tabs}{close}")?;
             }
         };
