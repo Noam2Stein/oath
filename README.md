@@ -1,5 +1,5 @@
-`Oath` is a new general-purpose programming language focused on semantic safety through compile-time value constraints.
-It helps you catch more bugs (not just memory errors) before your code runs, while improving performance, flexibility, and productivity.
+`Oath` is an early-development, general-purpose programming language focused on semantic safety through compile-time value constraints.
+It helps you catch logic bugs and memory bugs at compile-time, generates optimal code, and provides great productivity through powerful abstractions.
 
 # Constraints
 In most languages, the only information you can express about a value is its type.
@@ -8,7 +8,7 @@ In `Oath`, you can go further by adding compile-time constraints to function inp
 ```oath
 fn main() {
   not_five(4);
-  not_five(5); // ERROR: `not_five` requires the input to not be 5
+  not_five(5); // ERROR: fn `not_five` requires the input to not be `5`
   not_five(6);
 }
 
@@ -18,26 +18,26 @@ fn not_five(num i32: != 5) {
 ```
 
 In most languages, there's no way to say "`num` must not be 5."
-You’d have to document it and trust the caller, and if they get it wrong, you’ll hit a runtime bug.
-Oath catches it at compile time.
+You’d have to document it and trust the caller, and even perform a runtime check.
+Oath allows you to track invariants at compile-time.
 
 Constraints can be promised in outputs:
 
 ```oath
 fn main() {
-  // The compiler verifies that num is never 5, so it can safely be passed to not_five.
+  // The compiler verifies that num is never 5, so it can safely be passed to `not_five`.
   let num = promise_not_five();
   not_five(num);
 }
 
-fn promise_not_five() i32: != 5 {
-  eval 7;
+fn promise_not_five() -> i32: != 5 {
+  7
 }
 ```
 
 ```oath
 fn bad_fn() i32: > 0 {
-  eval -1; // ERROR: promised `output > 0`
+  -1 // ERROR: promised `output > 0`
 }
 ```
 
@@ -50,13 +50,14 @@ struct Range {
 }
 ```
 
-With constraints, Oath catches not just memory bugs, but logic errors, panics, and invalid assumptions, before you run your program.
+With constraints, you can catch logical bugs at compile-time.
 
 # Generics
 
-Generics in Oath are defined by parameterizing items over values — including types, since types themselves are values of type `type`.
+Generics in Oath are defined as items parameterized over values,
+where each unique combination of generic-parameters counts as a distinct type.
 
-Each unique value of a parameter produces a distinct, compile-time-specialized definition.
+Oath treats types as values, of type `type`, this allows for more powerful generics.
 
 ```oath
 // `T` is a value of type `type`.
@@ -76,23 +77,16 @@ struct Polygon<N u32> {
 }
 ```
 
-This makes generics in Oath fully value-based and statically resolved, enabling flexible, zero-cost abstractions.
-
 # Performance
 
-`Oath` enables you to resolve constraints at compile time, eliminating the need for many runtime checks — making your code faster and more predictable.
+`Oath` enables you to track invariants at compile time, eliminating the need for many unnecessary runtime checks — making code faster.
 
 Take `null` as an example:
-In many languages, because the compiler can’t guarantee that a reference isn’t `null`, you end up writing lots of runtime checks.
-In languages that can track nullability at compile time, those checks go away — and performance improves.
+In many languages, because all references can be `null`, you have to constantly check if values are `null`.
+In languages that can track nullability at compile time (meaning values cannot normally be `null`), those checks go away which improves performance.
 
 `Oath` takes this concept further.
-It removes unnecessary checks not just for `null`, but for any condition you can express.
-Bounds checks, state invariants, function preconditions — if you can constrain it, the compiler can optimize it away.
-
-
-
-
+It allows you to remove unnecessary checks not just for `null`, but for any condition ever.
 
 
 
