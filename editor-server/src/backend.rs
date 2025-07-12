@@ -95,7 +95,7 @@ impl LanguageServer for BackendArc {
 
         let text = self.open_files.get(uri).unwrap();
 
-        let formatted = self.oathc.format(text.as_str(), &FormatConfig::default());
+        let formatted = self.oathc.format(text.as_str());
 
         let range = Range {
             start: Position::new(0, 0),

@@ -12,7 +12,6 @@ nonempty    = "0.11.0"
 oathc_ast          = { path = "../oathc_ast" }
 oathc_diagnostics  = { path = "../oathc_diagnostics" }
 oathc_file         = { path = "../oathc_file" }
-oathc_fmt          = { path = "../oathc_fmt" }
 oathc_highlighting = { path = "../oathc_highlighting" }
 oathc_interner     = { path = "../oathc_interner" }
 oathc_parser       = { path = "../oathc_parser" }
